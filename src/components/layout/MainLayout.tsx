@@ -1,0 +1,43 @@
+import React, { useState } from 'react';
+import Sidebar from './Sidebar';
+import TopAppBar from './TopAppBar';
+import { cn } from '../../lib/utils';
+
+interface MainLayoutProps {
+  children: React.ReactNode;
+  title: string;
+}
+
+export default function MainLayout({ children, title }: MainLayoutProps) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  return (
+    <div className="flex h-screen w-full bg-surface">
+      <Sidebar isCollapsed={isSidebarCollapsed} />
+      <main 
+        className={cn(
+          "flex-1 flex flex-col relative transition-all duration-300 ease-in-out h-screen overflow-hidden",
+          isSidebarCollapsed ? "ml-20" : "ml-72"
+        )}
+      >
+        <div className="flex-1 overflow-y-auto bg-surface-container-low/30">
+          <TopAppBar 
+            title={title} 
+            isSidebarCollapsed={isSidebarCollapsed} 
+            onToggleSidebar={toggleSidebar} 
+          />
+          <div className="p-8 pb-24">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+

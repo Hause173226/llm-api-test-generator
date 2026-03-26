@@ -1,0 +1,649 @@
+{
+  "common": {
+    "dashboard": "Bảng điều khiển",
+    "projectManagement": "Quản lý Dự án",
+    "apiSpecifications": "Đặc tả API",
+    "endpointsManagement": "Quản lý Điểm cuối",
+    "testSuites": "Bộ kịch bản Kiểm thử",
+    "testExecutionOrderGate": "Cổng Thứ tự Thực thi Kiểm thử",
+    "testCaseStudio": "Phòng thiết kế Kịch bản Kiểm thử",
+    "llmSuggestions": "Gợi ý từ LLM",
+    "environments": "Môi trường",
+    "testExecutionRuns": "Lượt thực thi Kiểm thử",
+    "failureExplanation": "Giải thích Lỗi",
+    "reports": "Báo cáo",
+    "subscriptionBilling": "Gói dịch vụ & Thanh toán",
+    "accountSettings": "Cài đặt Tài khoản",
+    "help": "Trợ giúp",
+    "llmActive": "LLM ĐANG HOẠT ĐỘNG",
+    "softwareStudent": "Sinh viên Kỹ thuật Phần mềm",
+    "logOut": "Đăng xuất",
+    "switchToLightMode": "Chuyển sang chế độ sáng",
+    "switchToDarkMode": "Chuyển sang chế độ tối"
+  },
+  "dashboard": {
+    "title": "Bảng điều khiển",
+    "welcome": "Chào mừng trở lại, Đỗ Trần Phúc Hậu",
+    "activeProjects": "Dự án Đang hoạt động",
+    "totalEndpoints": "Tổng số Điểm cuối",
+    "avgLatency": "Độ trễ Trung bình",
+    "testCoverage": "Độ bao phủ Kiểm thử",
+    "recentActivity": "Hoạt động Gần đây",
+    "systemHealth": "Sức khỏe Hệ thống",
+    "activeServices": "Dịch vụ Đang hoạt động"
+  },
+  "help": {
+    "title": "Trung tâm Trợ giúp và Hỗ trợ",
+    "subtitle": "Tìm câu trả lời, khám phá tài liệu và tận dụng tối đa TestFlow Intelligence.",
+    "searchPlaceholder": "Chúng tôi có thể giúp gì cho bạn hôm nay?",
+    "categories": {
+      "gettingStarted": {
+        "title": "Bắt đầu",
+        "description": "Tìm hiểu các kiến thức cơ bản về TestFlow Intelligence và thiết lập dự án đầu tiên của bạn."
+      },
+      "apiTesting": {
+        "title": "Kiểm thử API",
+        "description": "Tài liệu chi tiết về quản lý dự án, bộ kịch bản và các trường hợp kiểm thử."
+      },
+      "llmIntegration": {
+        "title": "Tích hợp LLM",
+        "description": "Tham chiếu kỹ thuật cho công cụ cốt lõi và khả năng tích hợp của chúng tôi."
+      },
+      "billing": {
+        "title": "Thanh toán & Gói dịch vụ",
+        "description": "Giải pháp cho các vấn đề thường gặp và mẹo gỡ lỗi cho các lượt chạy kiểm thử của bạn."
+      }
+    },
+    "faqTitle": "Câu hỏi Thường gặp",
+    "faqSubtitle": "Câu trả lời nhanh cho các câu hỏi phổ biến nhất từ người dùng của chúng tôi.",
+    "faqs": {
+      "q1": {
+        "question": "Làm cách nào để kết nối Đặc tả OpenAPI của tôi với một dự án mới?",
+        "answer": "Để kết nối Đặc tả OpenAPI, hãy truy cập trang Quản lý Dự án, nhấp vào 'Tạo Dự án Mới' và chọn 'Đặc tả OpenAPI' làm nguồn dữ liệu của bạn. Sau đó, bạn có thể dán nội dung JSON/YAML hoặc cung cấp URL đến tệp đặc tả."
+      },
+      "q2": {
+        "question": "'Cổng Thứ tự Thực thi Kiểm thử' là gì và nó hoạt động như thế nào?",
+        "answer": "Cổng Thứ tự Thực thi Kiểm thử là một lớp bảo mật đảm bảo các bài kiểm thử của bạn được thực thi theo một trình tự logic cụ thể. Nó ngăn chặn tình trạng tranh chấp (race conditions) và đảm bảo rằng dữ liệu tiên quyết có sẵn trước khi các bài kiểm thử phụ thuộc được chạy."
+      },
+      "q3": {
+        "question": "Tôi có thể xuất báo cáo kiểm thử của mình sang các định dạng bên ngoài không?",
+        "answer": "Có, bạn có thể xuất báo cáo ở định dạng PDF, JSON và CSV từ trang Báo cáo. Chỉ cần chọn lượt thực thi mong muốn và nhấp vào nút 'Xuất' ở góc trên bên phải."
+      },
+      "q4": {
+        "question": "Tính năng Gợi ý từ LLM giúp ích gì trong việc kiểm thử?",
+        "answer": "Tính năng Gợi ý từ LLM của chúng tôi phân tích các điểm cuối API của bạn và tự động tạo ra các kịch bản kiểm thử trường hợp biên, phân tích giá trị biên và kiểm tra lỗ hổng bảo mật tiềm ẩn có thể bị bỏ sót trong quá trình thiết kế thủ công."
+      }
+    },
+    "contactTitle": "Vẫn cần hỗ trợ?",
+    "contactSubtitle": "Đội ngũ hỗ trợ kỹ thuật của chúng tôi sẵn sàng 24/7 để giúp bạn giải quyết mọi vấn đề phức tạp hoặc nhu cầu tích hợp tùy chỉnh.",
+    "contactButton": "Liên hệ Hỗ trợ",
+    "liveChatButton": "Trò chuyện Trực tiếp",
+    "footer": {
+      "community": "Diễn đàn Cộng đồng",
+      "status": "Trạng thái Hệ thống",
+      "notes": "Ghi chú Phát hành"
+    }
+  },
+  "projects": {
+    "title": "Quản lý Dự án",
+    "subtitle": "Quản lý và giám sát vòng đời kiểm thử API của bạn",
+    "searchPlaceholder": "Tìm kiếm tên dự án...",
+    "filterButton": "Lọc Dự án",
+    "createButton": "Tạo Dự án Mới",
+    "table": {
+      "name": "Tên Dự án",
+      "spec": "Tài liệu Đặc tả API",
+      "lastRun": "Ngày Thực thi Cuối cùng",
+      "status": "Trạng thái Hiện tại",
+      "actions": "Thao tác"
+    },
+    "modal": {
+      "title": "Tạo Dự án Mới",
+      "nameLabel": "Tên Pháp lý của Dự án",
+      "namePlaceholder": "Nhập tên dự án chính thức",
+      "descriptionLabel": "Mô tả",
+      "descriptionPlaceholder": "Mô tả ngắn gọn mục tiêu dự án",
+      "sourceLabel": "Chọn Nguồn Dữ liệu",
+      "sourcePlaceholder": "Chọn một nguồn cấu hình",
+      "cancel": "Hủy",
+      "confirm": "Xác nhận Tạo"
+    }
+  },
+  "specifications": {
+    "title": "Đặc tả API",
+    "subtitle": "Điều phối tài liệu kỹ thuật của bạn thông qua khung vẽ thông minh của chúng tôi. Tải lên, quản lý và xác thực các lược đồ của bạn với độ chính xác biên tập.",
+    "upload": {
+      "title": "Kéo và Thả các Tệp Đặc tả API vào đây",
+      "formats": "Định dạng hỗ trợ:",
+      "button": "Chọn Tệp Cục bộ"
+    },
+    "manual": {
+      "label": "Cấu hình Trực tiếp",
+      "title": "Xác định các Tham số Đặc tả Thủ công",
+      "description": "Tạo một đặc tả mới từ đầu bằng môi trường biên tập có cấu trúc của chúng tôi để ánh xạ điểm cuối chính xác.",
+      "button": "Nhập Dữ liệu Thủ công"
+    },
+    "recent": {
+      "title": "Tài liệu Đặc tả Gần đây",
+      "subtitle": "Xem lại và quản lý các tài sản đã đồng bộ hóa gần đây của bạn.",
+      "activeCount": "{{count}} Tài liệu Đang hoạt động",
+      "table": {
+        "name": "Tên Tài liệu Đặc tả",
+        "type": "Loại Định dạng",
+        "version": "Phiên bản",
+        "parseStatus": "Trạng thái Phân tích",
+        "status": "Trạng thái",
+        "actions": "Hành động"
+      },
+      "actions": {
+        "view": "Xem Chi tiết",
+        "delete": "Xóa"
+      },
+      "pagination": "Hiển thị {{current}} trên {{total}} Đặc tả Đã đăng ký"
+    }
+  },
+  "endpoints": {
+    "title": "Quản lý Điểm cuối",
+    "subtitle": "Giám sát và quản lý tất cả các điểm cuối API đã được phát hiện trên các dịch vụ của bạn.",
+    "exportButton": "Xuất Danh sách",
+    "syncButton": "Đồng bộ Điểm cuối",
+    "searchPlaceholder": "Tìm kiếm theo đường dẫn hoặc mô tả...",
+    "methodLabel": "Phương thức:",
+    "table": {
+      "status": "Trạng thái",
+      "latency": "Độ trễ",
+      "coverage": "Độ bao phủ Kiểm thử"
+    },
+    "loadMore": "Tải thêm Điểm cuối"
+  },
+  "testSuites": {
+    "title": "Bộ Kiểm thử",
+    "subtitle": "Tổ chức và điều phối các bộ sưu tập kiểm thử API của bạn để thực thi một cách hệ thống.",
+    "createButton": "Tạo Bộ mới",
+    "suiteId": "ID:",
+    "endpoints": "Điểm cuối",
+    "generation": "Tạo mới",
+    "runButton": "Chạy Bộ",
+    "addNew": {
+      "title": "Thêm Bộ Kiểm thử Mới",
+      "subtitle": "Tạo một bộ sưu tập các điểm cuối tùy chỉnh"
+    },
+    "modal": {
+      "title": "Tạo Bộ mới",
+      "cancel": "Hủy",
+      "confirm": "Xác nhận Tạo",
+      "nameLabel": "Tên Tài liệu Bộ Kiểm thử",
+      "namePlaceholder": "Nhập mã định danh bộ kiểm thử",
+      "envLabel": "Môi trường Kiểm thử",
+      "envPlaceholder": "Chọn môi trường đích",
+      "envDev": "Hộp cát Phát triển",
+      "envStaging": "Môi trường Staging",
+      "envProd": "Môi trường Sản xuất",
+      "endpointsLabel": "Chọn các Điểm cuối API"
+    }
+  },
+  "testCaseStudio": {
+    "title": "Studio Trường hợp Kiểm thử",
+    "subtitle": "Thiết kế và tinh chỉnh các trường hợp kiểm thử API riêng lẻ với xác thực thời gian thực.",
+    "saveButton": "Lưu Trường hợp",
+    "runButton": "Chạy Kiểm thử",
+    "caseNameLabel": "Tên Trường hợp Kiểm thử",
+    "endpointTargetLabel": "Mục tiêu Điểm cuối",
+    "assertionsLabel": "Khẳng định",
+    "addNewAssertion": "Thêm mới",
+    "aiAssistant": {
+      "title": "Trình tạo Kiểm thử AI",
+      "description": "Dựa trên lược đồ điểm cuối của bạn, tôi có thể tạo thêm 12 trường hợp kiểm thử bổ sung bao gồm các giá trị biên và trạng thái lỗi.",
+      "button": "Tạo Gợi ý"
+    },
+    "editor": {
+      "format": "Định dạng",
+      "consoleTitle": "Bảng điều khiển Thực thi",
+      "initRunner": "Đang khởi tạo trình chạy kiểm thử...",
+      "connecting": "Đang kết nối tới 'Môi trường Sản xuất'...",
+      "complete": "Thực thi Bộ Kiểm thử Hoàn tất. 1 thành công, 0 thất bại."
+    }
+  },
+  "testRuns": {
+    "title": "Lượt Thực thi Kiểm thử",
+    "subtitle": "Theo dõi và kiểm tra mọi lượt thực thi kiểm thử API trên tất cả các môi trường.",
+    "downloadAudit": "Tải xuống Nhật ký Kiểm tra",
+    "runNew": "Chạy Thực thi Mới",
+    "stats": {
+      "total": "Tổng lượt chạy",
+      "success": "Tỷ lệ Thành công",
+      "failures": "Thất bại",
+      "duration": "Thời lượng Trung bình"
+    },
+    "searchPlaceholder": "Tìm kiếm theo mã lượt chạy hoặc tên bộ...",
+    "range": {
+      "last7": "7 Ngày qua",
+      "last30": "30 Ngày qua",
+      "custom": "Phạm vi Tùy chỉnh"
+    },
+    "table": {
+      "id": "Mã Lượt chạy",
+      "suite": "Bộ Kiểm thử",
+      "env": "Môi trường",
+      "status": "Trạng thái",
+      "tests": "Kiểm thử",
+      "duration": "Thời lượng",
+      "actions": "Hành động",
+      "by": "Bởi"
+    },
+    "actions": {
+      "view": "Xem Báo cáo"
+    },
+    "pagination": "Hiển thị {{current}} trên {{total}} Lượt chạy"
+  },
+  "reports": {
+    "title": "Phân tích & Báo cáo",
+    "subtitle": "Thông tin chi tiết về hiệu suất kiểm thử API và xu hướng độ tin cậy của bạn.",
+    "exportPdf": "Xuất PDF",
+    "metrics": {
+      "passRate": "Tỷ lệ Vượt qua Tổng thể",
+      "responseTime": "Thời gian Phản hồi Trung bình",
+      "testCoverage": "Độ bao phủ Kiểm thử",
+      "totalExecutions": "Tổng lượt Thực thi"
+    },
+    "reliability": {
+      "title": "Xu hướng Độ tin cậy",
+      "subtitle": "Tỷ lệ phần trăm vượt qua hàng ngày trên tất cả các bộ",
+      "production": "Sản xuất",
+      "staging": "Dàn dựng",
+      "day": "Ngày"
+    },
+    "distribution": {
+      "title": "Phân bổ Thất bại",
+      "subtitle": "Phân tích các loại thất bại theo danh mục",
+      "totalFailures": "Tổng số Thất bại",
+      "auth": "Xác thực",
+      "timeout": "Hết thời gian",
+      "validation": "Xác thực dữ liệu"
+    },
+    "topPerforming": {
+      "title": "Các Bộ Kiểm thử Hiệu suất Cao nhất",
+      "fullLeaderboard": "Bảng xếp hạng Đầy đủ",
+      "executions": "Lượt thực thi",
+      "reliable": "Đáng tin cậy"
+    }
+  },
+  "environments": {
+    "title": "Quản lý Môi trường",
+    "subtitle": "Cấu hình và giám sát cơ sở hạ tầng nơi các bài kiểm thử API của bạn được thực thi.",
+    "add": "Thêm Môi trường",
+    "status": {
+      "operational": "Hoạt động",
+      "degraded": "Suy giảm",
+      "default": "Mặc định"
+    },
+    "details": {
+      "copyUrl": "Sao chép URL",
+      "authMethod": "Phương thức Xác thực",
+      "region": "Vùng",
+      "sslVerified": "Đã xác minh SSL",
+      "autoSync": "Tự động Đồng bộ BẬT",
+      "configureVariables": "Cấu hình Biến"
+    },
+    "register": {
+      "title": "Đăng ký Môi trường Mới",
+      "subtitle": "Kết nối các cụm dàn dựng, QA hoặc sản xuất của bạn để kiểm thử tự động."
+    }
+  },
+  "failureExplanation": {
+    "title": "Giải thích Thất bại",
+    "subtitle": "Phân tích nguyên nhân gốc rễ tự động cho các lượt thực thi kiểm thử API thất bại.",
+    "reAnalyze": "Phân tích lại Thất bại",
+    "analysis": {
+      "title": "Phân tích Nguyên nhân Gốc rễ bằng Trí tuệ Nhân tạo",
+      "expected": "Hành vi Mong đợi",
+      "suggested": "Giải pháp Đề xuất",
+      "payloadComparison": "So sánh Dữ liệu Yêu cầu",
+      "actual": "Yêu cầu Thực tế (Thất bại)",
+      "expectedRequest": "Yêu cầu Mong đợi (Thành công)"
+    },
+    "impact": {
+      "title": "Phân tích Tác động",
+      "risk": "Mức độ Rủi ro",
+      "critical": "Nghiêm trọng",
+      "affected": "Người dùng bị Ảnh hưởng",
+      "generatePr": "Tạo PR Sửa lỗi"
+    },
+    "similar": {
+      "title": "Thất bại Tương tự",
+      "match": "Khớp"
+    },
+    "selfHealing": {
+      "title": "Mẹo Tự phục hồi",
+      "tip": "Bật <0>Tự động Sửa lỗi</0> cho bộ này để cho phép LLM tự động cập nhật các trường hợp kiểm thử khi lược đồ API thay đổi."
+    }
+  },
+  "settings": {
+    "title": "Cài đặt Tài khoản",
+    "subtitle": "Quản lý thông tin cá nhân, thông tin bảo mật và tùy chọn ứng dụng của bạn.",
+    "save": "Lưu Thay đổi",
+    "success": "Cài đặt của bạn đã được cập nhật thành công.",
+    "tabs": {
+      "profile": "Thông tin Hồ sơ",
+      "security": "Bảo mật và Mật khẩu",
+      "notifications": "Tùy chọn Thông báo"
+    },
+    "profile": {
+      "title": "Thông tin Hồ sơ",
+      "subtitle": "Cập nhật chi tiết cá nhân và thông tin liên hệ của bạn.",
+      "name": "Họ và Tên Pháp lý",
+      "email": "Địa chỉ Thư điện tử",
+      "emailWarning": "Việc thay đổi địa chỉ thư điện tử của bạn sẽ yêu cầu một quy trình xác minh mới. Bạn sẽ nhận được một liên kết xác nhận tại địa chỉ mới của mình."
+    },
+    "security": {
+      "title": "Bảo mật và Mật khẩu",
+      "subtitle": "Đảm bảo tài khoản của bạn được bảo vệ bằng mật khẩu mạnh.",
+      "current": "Mật khẩu Hiện tại",
+      "new": "Mật khẩu Mới",
+      "confirm": "Xác nhận Mật khẩu Mới"
+    },
+    "notifications": {
+      "title": "Tùy chọn Thông báo",
+      "subtitle": "Kiểm soát cách thức và thời điểm bạn nhận được cập nhật từ nền tảng.",
+      "critical": {
+        "label": "Cảnh báo Hệ thống Quan trọng",
+        "desc": "Nhận thông báo ngay lập tức về các lỗi API và thời gian ngừng hoạt động của hệ thống."
+      },
+      "weekly": {
+        "label": "Báo cáo Hiệu suất Hàng tuần",
+        "desc": "Bản tóm tắt kết quả thực thi kiểm thử và các chỉ số sức khỏe của API."
+      },
+      "security": {
+        "label": "Thông báo Bảo mật và Đăng nhập",
+        "desc": "Cảnh báo cho các lần đăng nhập mới, thay đổi mật khẩu và cập nhật bảo mật."
+      },
+      "marketing": {
+        "label": "Cập nhật và Tin tức Sản phẩm",
+        "desc": "Luôn cập nhật thông tin về các tính năng mới, cải tiến và thông báo nền tảng."
+      }
+    }
+  },
+  "projectDetail": {
+    "title": "Xem Chi tiết Dự án",
+    "back": "Quay lại Bảng điều khiển",
+    "metrics": {
+      "totalSuites": "Tổng số Bộ Kiểm thử",
+      "successRate": "Tỷ lệ Thành công Lần thực thi Cuối",
+      "endpoints": "Các Điểm cuối API Liên kết"
+    },
+    "dataSource": {
+      "title": "Cấu hình Nguồn Dữ liệu",
+      "format": "Định dạng Cấu hình",
+      "fileName": "Tên Tệp Nguồn",
+      "uploadedAt": "Ngày Tải lên Cuối",
+      "update": "Cập nhật Cấu hình Nguồn Dữ liệu"
+    },
+    "timeline": {
+      "title": "Dòng thời gian Hoạt động"
+    }
+  },
+  "testOrderGate": {
+    "title": "Cổng Thứ tự Thực thi Kiểm thử",
+    "subtitle": "Xác định và trực quan hóa luồng phụ thuộc logic cho các kịch bản kiểm thử API phức tạp.",
+    "save": "Lưu Đồ thị",
+    "execute": "Thực thi Trình tự",
+    "llm": {
+      "title": "Trí tuệ LLM",
+      "desc": "LLM đã phân tích đặc tả của bạn và xác định được <1>{{count}} chuỗi phụ thuộc quan trọng</1>.",
+      "regenerate": "Tạo lại Lộ trình Tối ưu"
+    },
+    "stats": {
+      "title": "Thống kê Trình tự",
+      "totalSteps": "Tổng số Bước",
+      "parallelPaths": "Số Luồng Song song",
+      "complexity": "Độ phức tạp",
+      "medium": "Trung bình"
+    },
+    "proTip": {
+      "title": "Mẹo nhỏ",
+      "desc": "Kéo các nút để sắp xếp lại thứ tự thực thi. Sử dụng menu ngữ cảnh để thêm các cổng logic điều kiện giữa các bước."
+    },
+    "steps": {
+      "entry": "Bước 01: Điểm vào",
+      "dataFetch": "Bước 02: Lấy Dữ liệu",
+      "verification": "Bước 02: Xác minh",
+      "finalization": "Bước 03: Hoàn tất"
+    }
+  },
+  "failureExplanation": {
+    "title": "Giải thích Thất bại",
+    "subtitle": "Phân tích nguyên nhân gốc rễ được hỗ trợ bởi LLM cho các lần thực thi kiểm thử thất bại.",
+    "reAnalyze": "Phân tích lại Thất bại",
+    "analysis": {
+      "title": "Phân tích Nguyên nhân Gốc rễ bằng LLM",
+      "expected": "Hành vi Mong đợi",
+      "suggested": "Sửa lỗi Đề xuất",
+      "payloadComparison": "So sánh Dữ liệu Gửi đi",
+      "actual": "Yêu cầu Thực tế",
+      "expectedRequest": "Yêu cầu Mong đợi"
+    },
+    "impact": {
+      "title": "Tác động Kinh doanh",
+      "risk": "Mức độ Rủi ro",
+      "critical": "Nghiêm trọng",
+      "affected": "Người dùng bị Ảnh hưởng",
+      "generatePr": "Tạo Bản sửa lỗi Pull Request"
+    },
+    "similar": {
+      "title": "Các Thất bại Tương tự",
+      "match": "Khớp"
+    },
+    "selfHealing": {
+      "title": "Tự chữa lành",
+      "tip": "Bật <1>Tự động Sửa lỗi</1> cho bộ kiểm thử này để cho phép LLM tự động cập nhật các kịch bản kiểm thử khi lược đồ API thay đổi."
+    }
+  },
+  "suggestions": {
+    "title": "Đề xuất từ LLM",
+    "subtitle": "Công cụ trí tuệ tự trị của chúng tôi đã phân tích các đặc tả API và kết quả kiểm thử của bạn để xác định các lỗ hổng bao phủ và tối ưu hóa quan trọng.",
+    "reAnalyze": "Phân tích lại Bộ kiểm thử",
+    "metrics": {
+      "score": "Điểm Trí tuệ Tổng thể",
+      "scoreTrend": "+4.2% so với tuần trước",
+      "gaps": "Lỗ hổng được Xác định",
+      "gapsDesc": "Các lỗ hổng bảo mật và trường hợp biên quan trọng đã được tìm thấy.",
+      "timeSaved": "Thời gian Tiết kiệm Ước tính",
+      "timeSavedDesc": "Số giờ thiết kế kiểm thử thủ công được loại bỏ bởi AI."
+    },
+    "active": {
+      "title": "Đề xuất Đang hoạt động",
+      "sortBy": "Sắp xếp theo Tác động"
+    },
+    "item": {
+      "impact": "Tác động",
+      "difficulty": "Độ khó",
+      "estTime": "Thời gian Triển khai Ước tính",
+      "mins": "phút",
+      "add": "Thêm vào Bộ kiểm thử",
+      "dismiss": "Bỏ qua"
+    },
+    "banner": {
+      "title": "Bạn muốn tạo toàn bộ bộ kiểm thử một cách tự động?",
+      "desc": "LLM của chúng tôi có thể phân tích toàn bộ đặc tả API của bạn và tạo ra một bộ kiểm thử hồi quy toàn diện trong vài giây.",
+      "launch": "Kích hoạt Trình tạo Tự trị"
+    }
+  },
+  "billing": {
+    "title": "Đăng ký & Thanh toán",
+    "subtitle": "Quản lý gói dịch vụ, thông tin thanh toán và giới hạn sử dụng của bạn.",
+    "usage": {
+      "testRuns": "Số lượt Chạy Kiểm thử Hàng tháng",
+      "testRunsDesc": "Đã sử dụng {{percent}}% giới hạn hàng tháng của bạn",
+      "projects": "Dự án Đang hoạt động",
+      "projectsLimit": "Đã đạt giới hạn. Nâng cấp để thêm.",
+      "aiTokens": "Token AI đã Sử dụng",
+      "aiTokensReset": "Đặt lại sau {{days}} ngày"
+    },
+    "plans": {
+      "title": "Các Gói dịch vụ Hiện có",
+      "monthly": "Hàng tháng",
+      "yearly": "Hàng năm (Tiết kiệm 20%)",
+      "mostPopular": "Phổ biến nhất",
+      "perMonth": "/tháng",
+      "custom": "Tùy chỉnh",
+      "starter": {
+        "name": "Cơ bản",
+        "desc": "Hoàn hảo cho các dự án nhỏ và nhà phát triển cá nhân.",
+        "features": [
+          "Tối đa 3 dự án",
+          "1.000 lượt chạy kiểm thử / tháng",
+          "Đề xuất AI cơ bản",
+          "Lưu trữ dữ liệu trong 24 giờ",
+          "Hỗ trợ cộng đồng"
+        ],
+        "button": "Gói hiện tại"
+      },
+      "professional": {
+        "name": "Chuyên nghiệp",
+        "desc": "Các tính năng nâng cao cho các nhóm đang phát triển và ứng dụng mở rộng.",
+        "features": [
+          "Không giới hạn dự án",
+          "50.000 lượt chạy kiểm thử / tháng",
+          "Suy luận LLM nâng cao",
+          "Lưu trữ dữ liệu trong 30 ngày",
+          "Hỗ trợ qua email ưu tiên",
+          "Môi trường tùy chỉnh"
+        ],
+        "button": "Nâng cấp lên Pro"
+      },
+      "enterprise": {
+        "name": "Doanh nghiệp",
+        "desc": "Bảo mật tối đa và hỗ trợ tận tâm cho các tổ chức lớn.",
+        "features": [
+          "Không giới hạn mọi thứ",
+          "Tùy chọn triển khai tại chỗ",
+          "Quản lý tài khoản tận tâm",
+          "Cam kết SLA",
+          "Đào tạo mô hình AI tùy chỉnh",
+          "SSO & Bảo mật Nâng cao"
+        ],
+        "button": "Liên hệ bộ phận Bán hàng"
+      }
+    },
+    "history": {
+      "title": "Lịch sử Thanh toán",
+      "downloadAll": "Tải xuống Tất cả",
+      "table": {
+        "invoice": "Mã Hóa đơn",
+        "date": "Ngày",
+        "amount": "Số tiền",
+        "status": "Trạng thái",
+        "action": "Hành động"
+      },
+      "paid": "Đã thanh toán"
+    }
+  },
+  "landing": {
+    "nav": {
+      "product": "Sản phẩm",
+      "intelligence": "Trí tuệ",
+      "enterprise": "Doanh nghiệp",
+      "pricing": "Bảng giá",
+      "signIn": "Đăng nhập",
+      "getStarted": "Bắt đầu Miễn phí"
+    },
+    "hero": {
+      "title": "Kiểm thử API Tự trị <1>Được hỗ trợ bởi Trí tuệ.</1>",
+      "subtitle": "Ngừng viết các kịch bản kiểm thử thủ công. Hãy để các LLM của chúng tôi phân tích các đặc tả của bạn, tạo ra các đường dẫn kiểm thử tối ưu và tự chữa lành các bộ kiểm thử hồi quy của bạn.",
+      "cta": "Bắt đầu Xây dựng Miễn phí",
+      "watchDemo": "Xem Bản demo"
+    },
+    "features": {
+      "title": "Được Thiết kế cho Độ chính xác Kỹ thuật",
+      "subtitle": "Một bộ công cụ hoàn chỉnh để quản lý toàn bộ vòng đời kiểm thử API.",
+      "items": {
+        "discovery": {
+          "title": "Khám phá Điểm cuối",
+          "desc": "Tự động đồng bộ hóa và ánh xạ mọi điểm cuối từ các đặc tả OpenAPI, Swagger hoặc Postman của bạn."
+        },
+        "generation": {
+          "title": "Tạo bởi LLM",
+          "desc": "Các LLM phân tích logic kinh doanh của bạn để tạo ra các kịch bản kiểm thử có độ bao phủ cao cho các trường hợp biên phức tạp."
+        },
+        "healing": {
+          "title": "Bộ kiểm thử Tự chữa lành",
+          "desc": "Khi API của bạn thay đổi, trí tuệ của chúng tôi sẽ tự động cập nhật các bộ kiểm thử để ngăn chặn sự đổ vỡ."
+        },
+        "diagnostics": {
+          "title": "Chẩn đoán Thời gian thực",
+          "desc": "Phân tích nguyên nhân gốc rễ tức thì cho mọi lỗi, xác định chính xác lý do tại sao một yêu cầu thất bại và cách khắc phục."
+        },
+        "execution": {
+          "title": "Thực thi Đa môi trường",
+          "desc": "Điều phối các bài kiểm thử trên các cụm sản xuất, thử nghiệm và cục bộ với quản lý môi trường tập trung."
+        },
+        "mapping": {
+          "title": "Ánh xạ Phụ thuộc",
+          "desc": "Trực quan hóa các thứ tự thực thi phức tạp và các cổng logic với Cổng Thứ tự Thực thi Kiểm thử trực quan của chúng tôi."
+        }
+      }
+    },
+    "social": {
+      "title": "Được tin dùng bởi các Nhóm Hiệu suất cao",
+      "subtitle": "Tham gia cùng hàng ngàn nhà phát triển đã loại bỏ các nút thắt cổ chai trong kiểm thử thủ công và đạt được độ tin cậy API 100%.",
+      "stats": {
+        "executed": "Bài kiểm thử đã Thực thi",
+        "uptime": "Cam kết Thời gian hoạt động",
+        "rating": "Đánh giá của Người dùng"
+      },
+      "benefits": [
+        "Tăng tốc chu kỳ phát hành lên 40%",
+        "Giảm chi phí QA thủ công xuống 65%",
+        "Xác định các lỗ hổng bảo mật sớm",
+        "Duy trì đồng bộ hóa tài liệu hoàn hảo"
+      ]
+    },
+    "cta": {
+      "title": "Sẵn sàng Tự động hóa Việc kiểm thử API của bạn?",
+      "button": "Bắt đầu Miễn phí",
+      "contact": "Liên hệ bộ phận Bán hàng",
+      "trial": "Không yêu cầu thẻ tín dụng • 14 ngày dùng thử miễn phí"
+    },
+    "footer": {
+      "rights": "© 2026 Nền tảng Trí tuệ TestFlow. Bảo lưu mọi quyền.",
+      "privacy": "Chính sách Bảo mật",
+      "terms": "Điều khoản Dịch vụ"
+    }
+  },
+  "auth": {
+    "welcomeBack": "Chào mừng trở lại",
+    "registerAccount": "Đăng ký tài khoản",
+    "loginDescription": "Truy cập bảng điều khiển kiểm thử tự động và theo dõi sức khỏe API của bạn.",
+    "registerDescription": "Tham gia thế hệ kiểm thử API mới và tự động hóa toàn bộ quy trình của bạn.",
+    "fullName": "Họ và tên pháp lý",
+    "email": "Địa chỉ thư điện tử",
+    "password": "Mật khẩu",
+    "createPassword": "Tạo mật khẩu",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "forgotPassword": "Quên mật khẩu?",
+    "signInToDashboard": "Đăng nhập vào Dashboard",
+    "registerAction": "Đăng ký tài khoản",
+    "orContinueWith": "Hoặc tiếp tục với",
+    "dontHaveAccount": "Chưa có tài khoản?",
+    "alreadyHaveAccount": "Đã có tài khoản?",
+    "registerFree": "Đăng ký miễn phí",
+    "signIn": "Đăng nhập",
+    "enterpriseReady": "Sẵn sàng cho doanh nghiệp",
+    "panelTitle": "Nền tảng kiểm thử biết suy luận cho bạn.",
+    "panelDescription": "Trải nghiệm sức mạnh của kiểm thử API tự động. Nền tảng của chúng tôi xử lý phần phức tạp để bạn tập trung xây dựng sản phẩm.",
+    "benefits": [
+      "Tạo kiểm thử tự động",
+      "Chẩn đoán lỗi thời gian thực",
+      "Bộ hồi quy tự chữa lành",
+      "Điều phối đa môi trường"
+    ],
+    "joinedBy": "Được tham gia bởi hơn 12k lập trình viên",
+    "passwordMismatch": "Mật khẩu xác nhận phải trùng với mật khẩu đã tạo.",
+    "forgotTitle": "Khôi phục thông tin đăng nhập",
+    "forgotSubtitle": "Nhập địa chỉ thư điện tử đã đăng ký để nhận liên kết đặt lại bảo mật.",
+    "sendReset": "Gửi hướng dẫn đặt lại",
+    "returnToSignIn": "Quay lại trang đăng nhập",
+    "instructionsSent": "Đã gửi hướng dẫn",
+    "instructionsBody": "Chúng tôi đã gửi liên kết đặt lại bảo mật tới <1>{{email}}</1>. Vui lòng kiểm tra hộp thư của bạn."
+  }
+}

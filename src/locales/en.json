@@ -1,0 +1,649 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "projectManagement": "Project Management",
+    "apiSpecifications": "API Specifications",
+    "endpointsManagement": "Endpoints Management",
+    "testSuites": "Test Suites",
+    "testExecutionOrderGate": "Test Execution Order Gate",
+    "testCaseStudio": "Test Case Studio",
+    "llmSuggestions": "LLM Suggestions",
+    "environments": "Environments",
+    "testExecutionRuns": "Test Execution Runs",
+    "failureExplanation": "Failure Explanation",
+    "reports": "Reports",
+    "subscriptionBilling": "Subscription & Billing",
+    "accountSettings": "Account Settings",
+    "help": "Help",
+    "llmActive": "LLM ACTIVE",
+    "softwareStudent": "Software Engineering Student",
+    "logOut": "Log Out",
+    "switchToLightMode": "Switch to Light Mode",
+    "switchToDarkMode": "Switch to Dark Mode"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, Đỗ Trần Phúc Hậu",
+    "activeProjects": "Active Projects",
+    "totalEndpoints": "Total Endpoints",
+    "avgLatency": "Avg. Latency",
+    "testCoverage": "Test Coverage",
+    "recentActivity": "Recent Activity",
+    "systemHealth": "System Health",
+    "activeServices": "Active Services"
+  },
+  "help": {
+    "title": "Help and Support Center",
+    "subtitle": "Find answers, explore documentation, and get the most out of TestFlow Intelligence.",
+    "searchPlaceholder": "How can we assist you today?",
+    "categories": {
+      "gettingStarted": {
+        "title": "Getting Started",
+        "description": "Learn the basics of TestFlow Intelligence and set up your first project."
+      },
+      "apiTesting": {
+        "title": "API Testing",
+        "description": "Detailed documentation on managing projects, suites, and test cases."
+      },
+      "llmIntegration": {
+        "title": "LLM Integration",
+        "description": "Technical reference for our core engine and integration capabilities."
+      },
+      "billing": {
+        "title": "Billing & Subscription",
+        "description": "Solutions to common issues and debugging tips for your test runs."
+      }
+    },
+    "faqTitle": "Frequently Asked Questions",
+    "faqSubtitle": "Quick answers to the most common questions from our users.",
+    "faqs": {
+      "q1": {
+        "question": "How do I connect my OpenAPI Specification to a new project?",
+        "answer": "To connect an OpenAPI Specification, go to the Project Management page, click 'Create New Project', and select 'OpenAPI Specification' as your data source. You can then paste your JSON/YAML content or provide a URL to the specification file."
+      },
+      "q2": {
+        "question": "What is the 'Test Execution Order Gate' and how does it work?",
+        "answer": "The Test Execution Order Gate is a security layer that ensures your tests are executed in a specific, logical sequence. It prevents race conditions and ensures that prerequisite data is available before dependent tests are run."
+      },
+      "q3": {
+        "question": "Can I export my test reports to external formats?",
+        "answer": "Yes, you can export reports in PDF, JSON, and CSV formats from the Reports page. Simply select the desired execution run and click the 'Export' button in the top right corner."
+      },
+      "q4": {
+        "question": "How does the LLM Suggestions feature help in testing?",
+        "answer": "Our LLM Suggestions feature analyzes your API endpoints and automatically generates edge-case test scenarios, boundary value analyses, and potential security vulnerability checks that might be missed during manual design."
+      }
+    },
+    "contactTitle": "Still need assistance?",
+    "contactSubtitle": "Our technical support team is available 24/7 to help you with any complex issues or custom integration needs.",
+    "contactButton": "Contact Support",
+    "liveChatButton": "Live Chat",
+    "footer": {
+      "community": "Community Forum",
+      "status": "System Status",
+      "notes": "Release Notes"
+    }
+  },
+  "projects": {
+    "title": "Project Management",
+    "subtitle": "Manage and monitor your API testing lifecycle",
+    "searchPlaceholder": "Search project names...",
+    "filterButton": "Filter Projects",
+    "createButton": "Create New Project",
+    "table": {
+      "name": "Project Name",
+      "spec": "API Specification Document",
+      "lastRun": "Last Execution Run Date",
+      "status": "Current Status",
+      "actions": "Actions"
+    },
+    "modal": {
+      "title": "Create New Project",
+      "nameLabel": "Project Legal Name",
+      "namePlaceholder": "Enter the official project name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the project objectives",
+      "sourceLabel": "Select Data Source",
+      "sourcePlaceholder": "Choose a configuration source",
+      "cancel": "Cancel",
+      "confirm": "Confirm Creation"
+    }
+  },
+  "specifications": {
+    "title": "API Specifications",
+    "subtitle": "Orchestrate your technical documentation through our intelligent canvas. Upload, manage, and validate your schemas with editorial precision.",
+    "upload": {
+      "title": "Drag and Drop API Specification Files here",
+      "formats": "Supported formats:",
+      "button": "Select Local Files"
+    },
+    "manual": {
+      "label": "Direct Configuration",
+      "title": "Define Specification Parameters Manually",
+      "description": "Create a new specification from scratch using our structured editorial environment for precise endpoint mapping.",
+      "button": "Manual Data Entry"
+    },
+    "recent": {
+      "title": "Recent Specification Documents",
+      "subtitle": "Review and manage your recently synchronized assets.",
+      "activeCount": "{{count}} Active Documents",
+      "table": {
+        "name": "Specification Document Name",
+        "type": "Format Type",
+        "version": "Version",
+        "parseStatus": "Parse Status",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "View Details",
+        "delete": "Delete"
+      },
+      "pagination": "Showing {{current}} of {{total}} Registered Specifications"
+    }
+  },
+  "endpoints": {
+    "title": "Endpoints Management",
+    "subtitle": "Monitor and manage all discovered API endpoints across your services.",
+    "exportButton": "Export List",
+    "syncButton": "Sync Endpoints",
+    "searchPlaceholder": "Search by path or description...",
+    "methodLabel": "Method:",
+    "table": {
+      "status": "Status",
+      "latency": "Latency",
+      "coverage": "Test Coverage"
+    },
+    "loadMore": "Load More Endpoints"
+  },
+  "testSuites": {
+    "title": "Test Suites",
+    "subtitle": "Organize and orchestrate your API test collections for systematic execution.",
+    "createButton": "Create New Suite",
+    "suiteId": "ID:",
+    "endpoints": "Endpoints",
+    "generation": "Generation",
+    "runButton": "Run Suite",
+    "addNew": {
+      "title": "Add New Test Suite",
+      "subtitle": "Create a custom collection of endpoints"
+    },
+    "modal": {
+      "title": "Create New Suite",
+      "cancel": "Cancel",
+      "confirm": "Confirm Creation",
+      "nameLabel": "Suite Document Name",
+      "namePlaceholder": "Enter the test suite identifier",
+      "envLabel": "Testing Environment",
+      "envPlaceholder": "Select target environment",
+      "envDev": "Development Sandbox",
+      "envStaging": "Staging Environment",
+      "envProd": "Production Environment",
+      "endpointsLabel": "Select API Endpoints"
+    }
+  },
+  "testCaseStudio": {
+    "title": "Test Case Studio",
+    "subtitle": "Design and refine individual API test cases with real-time validation.",
+    "saveButton": "Save Case",
+    "runButton": "Run Test",
+    "caseNameLabel": "Test Case Name",
+    "endpointTargetLabel": "Endpoint Target",
+    "assertionsLabel": "Assertions",
+    "addNewAssertion": "Add New",
+    "aiAssistant": {
+      "title": "AI Test Generator",
+      "description": "Based on your endpoint schema, I can generate 12 additional test cases covering boundary values and error states.",
+      "button": "Generate Suggestions"
+    },
+    "editor": {
+      "format": "Format",
+      "consoleTitle": "Execution Console",
+      "initRunner": "Initializing test runner...",
+      "connecting": "Connecting to 'Production-Environment'...",
+      "complete": "Test Suite Execution Complete. 1 passed, 0 failed."
+    }
+  },
+  "testRuns": {
+    "title": "Test Execution Runs",
+    "subtitle": "Track and audit every API test execution across all environments.",
+    "downloadAudit": "Download Audit Log",
+    "runNew": "Run New Execution",
+    "stats": {
+      "total": "Total Runs",
+      "success": "Success Rate",
+      "failures": "Failures",
+      "duration": "Avg. Duration"
+    },
+    "searchPlaceholder": "Search by run ID or suite name...",
+    "range": {
+      "last7": "Last 7 Days",
+      "last30": "Last 30 Days",
+      "custom": "Custom Range"
+    },
+    "table": {
+      "id": "Run ID",
+      "suite": "Test Suite",
+      "env": "Environment",
+      "status": "Status",
+      "tests": "Tests",
+      "duration": "Duration",
+      "actions": "Actions",
+      "by": "By"
+    },
+    "actions": {
+      "view": "View Report"
+    },
+    "pagination": "Showing {{current}} of {{total}} Runs"
+  },
+  "reports": {
+    "title": "Analytics & Reports",
+    "subtitle": "Deep insights into your API testing performance and reliability trends.",
+    "exportPdf": "Export PDF",
+    "metrics": {
+      "passRate": "Overall Pass Rate",
+      "responseTime": "Avg. Response Time",
+      "testCoverage": "Test Coverage",
+      "totalExecutions": "Total Executions"
+    },
+    "reliability": {
+      "title": "Reliability Trend",
+      "subtitle": "Daily pass rate percentage across all suites",
+      "production": "Production",
+      "staging": "Staging",
+      "day": "Day"
+    },
+    "distribution": {
+      "title": "Failure Distribution",
+      "subtitle": "Breakdown of failure types by category",
+      "totalFailures": "Total Failures",
+      "auth": "Authentication",
+      "timeout": "Timeout",
+      "validation": "Validation"
+    },
+    "topPerforming": {
+      "title": "Top Performing Test Suites",
+      "fullLeaderboard": "Full Leaderboard",
+      "executions": "Executions",
+      "reliable": "Reliable"
+    }
+  },
+  "environments": {
+    "title": "Environments Management",
+    "subtitle": "Configure and monitor the infrastructure where your API tests are executed.",
+    "add": "Add Environment",
+    "status": {
+      "operational": "Operational",
+      "degraded": "Degraded",
+      "default": "Default"
+    },
+    "details": {
+      "copyUrl": "Copy URL",
+      "authMethod": "Auth Method",
+      "region": "Region",
+      "sslVerified": "SSL Verified",
+      "autoSync": "Auto-Sync ON",
+      "configureVariables": "Configure Variables"
+    },
+    "register": {
+      "title": "Register New Environment",
+      "subtitle": "Connect your staging, QA, or production clusters for automated testing."
+    }
+  },
+  "failureExplanation": {
+    "title": "Failure Explanation",
+    "subtitle": "Autonomous root-cause analysis for failed API test executions.",
+    "reAnalyze": "Re-Analyze Failures",
+    "analysis": {
+      "title": "AI Root Cause Analysis",
+      "expected": "Expected Behavior",
+      "suggested": "Suggested Resolution",
+      "payloadComparison": "Request Payload Comparison",
+      "actual": "Actual Request (Failed)",
+      "expectedRequest": "Expected Request (Success)"
+    },
+    "impact": {
+      "title": "Impact Analysis",
+      "risk": "Risk Level",
+      "critical": "Critical",
+      "affected": "Affected Users",
+      "generatePr": "Generate Fix PR"
+    },
+    "similar": {
+      "title": "Similar Failures",
+      "match": "Match"
+    },
+    "selfHealing": {
+      "title": "Self-Healing Tip",
+      "tip": "Enable <0>Auto-Fix</0> for this suite to allow the LLM to automatically update test cases when API schemas change."
+    }
+  },
+  "settings": {
+    "title": "Account Settings",
+    "subtitle": "Manage your personal information, security credentials, and application preferences.",
+    "save": "Save Changes",
+    "success": "Your settings have been updated successfully.",
+    "tabs": {
+      "profile": "Profile Information",
+      "security": "Security and Password",
+      "notifications": "Notification Preferences"
+    },
+    "profile": {
+      "title": "Profile Information",
+      "subtitle": "Update your personal details and contact information.",
+      "name": "Full Legal Name",
+      "email": "Electronic Mail Address",
+      "emailWarning": "Changing your electronic mail address will require a new verification process. You will receive a confirmation link at your new address."
+    },
+    "security": {
+      "title": "Security and Password",
+      "subtitle": "Ensure your account is protected with a strong password.",
+      "current": "Current Password",
+      "new": "New Password",
+      "confirm": "Confirm New Password"
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "subtitle": "Control how and when you receive updates from the platform.",
+      "critical": {
+        "label": "Critical System Alerts",
+        "desc": "Receive immediate notifications about API failures and system downtime."
+      },
+      "weekly": {
+        "label": "Weekly Performance Reports",
+        "desc": "A summary of your test execution results and API health metrics."
+      },
+      "security": {
+        "label": "Security and Login Notifications",
+        "desc": "Alerts for new login attempts, password changes, and security updates."
+      },
+      "marketing": {
+        "label": "Product Updates and News",
+        "desc": "Stay informed about new features, improvements, and platform announcements."
+      }
+    }
+  },
+  "projectDetail": {
+    "title": "Project Detailed View",
+    "back": "Go Back to Dashboard",
+    "metrics": {
+      "totalSuites": "Total Test Suites",
+      "successRate": "Last Execution Success Rate",
+      "endpoints": "Associated API Endpoints"
+    },
+    "dataSource": {
+      "title": "Data Source Configuration",
+      "format": "Configuration Format",
+      "fileName": "Source File Name",
+      "uploadedAt": "Last Uploaded Date",
+      "update": "Update Data Source Configuration"
+    },
+    "timeline": {
+      "title": "Activity Timeline"
+    }
+  },
+  "testOrderGate": {
+    "title": "Test Execution Order Gate",
+    "subtitle": "Define and visualize the logical dependency flow for complex API test scenarios.",
+    "save": "Save Graph",
+    "execute": "Execute Sequence",
+    "llm": {
+      "title": "LLM Intelligence",
+      "desc": "The LLM has analyzed your specification and identified <1>{{count}} critical dependency chains</1>.",
+      "regenerate": "Regenerate Optimal Path"
+    },
+    "stats": {
+      "title": "Sequence Stats",
+      "totalSteps": "Total Steps",
+      "parallelPaths": "Parallel Paths",
+      "complexity": "Complexity",
+      "medium": "Medium"
+    },
+    "proTip": {
+      "title": "Pro Tip",
+      "desc": "Drag nodes to reorder execution. Use the context menu to add conditional logic gates between steps."
+    },
+    "steps": {
+      "entry": "Step 01: Entry Point",
+      "dataFetch": "Step 02: Data Fetch",
+      "verification": "Step 02: Verification",
+      "finalization": "Step 03: Finalization"
+    }
+  },
+  "failureExplanation": {
+    "title": "Failure Explanation",
+    "subtitle": "LLM-powered root cause analysis for failed test executions.",
+    "reAnalyze": "Re-Analyze Failure",
+    "analysis": {
+      "title": "LLM Root Cause Analysis",
+      "expected": "Expected Behavior",
+      "suggested": "Suggested Fix",
+      "payloadComparison": "Payload Comparison",
+      "actual": "Actual Request",
+      "expectedRequest": "Expected Request"
+    },
+    "impact": {
+      "title": "Business Impact",
+      "risk": "Risk Level",
+      "critical": "Critical",
+      "affected": "Affected Users",
+      "generatePr": "Generate Pull Request Fix"
+    },
+    "similar": {
+      "title": "Similar Failures",
+      "match": "Match"
+    },
+    "selfHealing": {
+      "title": "Self-Healing",
+      "tip": "Enable <1>Auto-Fix</1> for this suite to allow the LLM to automatically update test cases when API schemas change."
+    }
+  },
+  "suggestions": {
+    "title": "LLM Suggestions",
+    "subtitle": "Our autonomous intelligence engine has analyzed your API specifications and test results to identify critical coverage gaps and optimizations.",
+    "reAnalyze": "Re-Analyze Suite",
+    "metrics": {
+      "score": "Overall Intelligence Score",
+      "scoreTrend": "+4.2% from last week",
+      "gaps": "Identified Gaps",
+      "gapsDesc": "Critical vulnerabilities and edge cases found.",
+      "timeSaved": "Estimated Time Saved",
+      "timeSavedDesc": "Manual test design hours eliminated by AI."
+    },
+    "active": {
+      "title": "Active Suggestions",
+      "sortBy": "Sorted by Impact"
+    },
+    "item": {
+      "impact": "Impact",
+      "difficulty": "Difficulty",
+      "estTime": "Est. Implementation",
+      "mins": "mins",
+      "add": "Add to Suite",
+      "dismiss": "Dismiss"
+    },
+    "banner": {
+      "title": "Want to generate an entire test suite autonomously?",
+      "desc": "Our LLM can analyze your entire API specification and generate a comprehensive regression suite in seconds.",
+      "launch": "Launch Autonomous Generator"
+    }
+  },
+  "billing": {
+    "title": "Subscription & Billing",
+    "subtitle": "Manage your plan, billing information, and usage limits.",
+    "usage": {
+      "testRuns": "Monthly Test Runs",
+      "testRunsDesc": "{{percent}}% of your monthly limit used",
+      "projects": "Active Projects",
+      "projectsLimit": "Limit reached. Upgrade for more.",
+      "aiTokens": "AI Tokens Used",
+      "aiTokensReset": "Resetting in {{days}} days"
+    },
+    "plans": {
+      "title": "Available Plans",
+      "monthly": "Monthly",
+      "yearly": "Yearly (Save 20%)",
+      "mostPopular": "Most Popular",
+      "perMonth": "/month",
+      "custom": "Custom",
+      "starter": {
+        "name": "Starter",
+        "desc": "Perfect for small projects and individual developers.",
+        "features": [
+          "Up to 3 projects",
+          "1,000 test runs / month",
+          "Basic AI suggestions",
+          "24h data retention",
+          "Community support"
+        ],
+        "button": "Current Plan"
+      },
+      "professional": {
+        "name": "Professional",
+        "desc": "Advanced features for growing teams and scaling apps.",
+        "features": [
+          "Unlimited projects",
+          "50,000 test runs / month",
+          "Advanced LLM reasoning",
+          "30-day data retention",
+          "Priority email support",
+          "Custom environments"
+        ],
+        "button": "Upgrade to Pro"
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "desc": "Maximum security and dedicated support for large organizations.",
+        "features": [
+          "Unlimited everything",
+          "On-premise deployment option",
+          "Dedicated account manager",
+          "SLA guarantees",
+          "Custom AI model training",
+          "SSO & Advanced Security"
+        ],
+        "button": "Contact Sales"
+      }
+    },
+    "history": {
+      "title": "Billing History",
+      "downloadAll": "Download All",
+      "table": {
+        "invoice": "Invoice ID",
+        "date": "Date",
+        "amount": "Amount",
+        "status": "Status",
+        "action": "Action"
+      },
+      "paid": "Paid"
+    }
+  },
+  "landing": {
+    "nav": {
+      "product": "Product",
+      "intelligence": "Intelligence",
+      "enterprise": "Enterprise",
+      "pricing": "Pricing",
+      "signIn": "Sign In",
+      "getStarted": "Get Started Free"
+    },
+    "hero": {
+      "title": "Autonomous API Testing <1>Powered by Intelligence.</1>",
+      "subtitle": "Stop writing manual test cases. Let our LLMs analyze your specifications, generate optimal test paths, and self-heal your regression suites.",
+      "cta": "Start Building Free",
+      "watchDemo": "Watch Demo"
+    },
+    "features": {
+      "title": "Engineered for Technical Precision",
+      "subtitle": "A complete suite of tools to manage the entire API testing lifecycle.",
+      "items": {
+        "discovery": {
+          "title": "Endpoint Discovery",
+          "desc": "Automatically synchronize and map every endpoint from your OpenAPI, Swagger, or Postman specifications."
+        },
+        "generation": {
+          "title": "LLM Generation",
+          "desc": "LLMs analyze your business logic to generate high-coverage test cases for complex edge cases."
+        },
+        "healing": {
+          "title": "Self-Healing Suites",
+          "desc": "When your API changes, our intelligence automatically updates your test suites to prevent breakage."
+        },
+        "diagnostics": {
+          "title": "Real-time Diagnostics",
+          "desc": "Instant root-cause analysis for every failure, identifying exactly why a request failed and how to fix it."
+        },
+        "execution": {
+          "title": "Multi-Env Execution",
+          "desc": "Orchestrate tests across production, staging, and local clusters with centralized environment management."
+        },
+        "mapping": {
+          "title": "Dependency Mapping",
+          "desc": "Visualize complex execution orders and logical gates with our intuitive Test Execution Order Gate."
+        }
+      }
+    },
+    "social": {
+      "title": "Trusted by High-Performance Teams",
+      "subtitle": "Join thousands of developers who have eliminated manual testing bottlenecks and achieved 100% API reliability.",
+      "stats": {
+        "executed": "Tests Executed",
+        "uptime": "Uptime Guaranteed",
+        "rating": "User Rating"
+      },
+      "benefits": [
+        "Accelerate release cycles by 40%",
+        "Reduce manual QA costs by 65%",
+        "Identify security vulnerabilities early",
+        "Maintain perfect documentation sync"
+      ]
+    },
+    "cta": {
+      "title": "Ready to Automate Your API Testing?",
+      "button": "Get Started for Free",
+      "contact": "Contact Sales",
+      "trial": "No credit card required • 14-day free trial"
+    },
+    "footer": {
+      "rights": "© 2026 TestFlow Intelligence Platform. All rights reserved.",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service"
+    }
+  },
+  "auth": {
+    "welcomeBack": "Welcome Back",
+    "registerAccount": "Register Account",
+    "loginDescription": "Access your autonomous testing dashboard and monitor your API health.",
+    "registerDescription": "Join the next generation of API testing and automate your entire workflow.",
+    "fullName": "Full Legal Name",
+    "email": "Electronic Mail Address",
+    "password": "Password",
+    "createPassword": "Create Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "signInToDashboard": "Sign In to Dashboard",
+    "registerAction": "Register Account",
+    "orContinueWith": "Or continue with",
+    "dontHaveAccount": "Don't have an account?",
+    "alreadyHaveAccount": "Already have an account?",
+    "registerFree": "Register Free",
+    "signIn": "Sign In",
+    "enterpriseReady": "Enterprise Ready",
+    "panelTitle": "Testing that thinks for you.",
+    "panelDescription": "Experience the power of autonomous API testing. Our platform handles the complexity so you can focus on building.",
+    "benefits": [
+      "Autonomous Test Generation",
+      "Real-time Failure Diagnostics",
+      "Self-Healing Regression Suites",
+      "Multi-Environment Orchestration"
+    ],
+    "joinedBy": "Joined by 12k+ developers",
+    "passwordMismatch": "Confirm Password must match Create Password.",
+    "forgotTitle": "Recover Your Credentials",
+    "forgotSubtitle": "Enter your registered electronic mail address to receive a secure reset link.",
+    "sendReset": "Send Reset Instruction",
+    "returnToSignIn": "Return to Sign In Page",
+    "instructionsSent": "Instructions Sent",
+    "instructionsBody": "We have sent a secure reset link to <1>{{email}}</1>. Please check your inbox."
+  }
+}
