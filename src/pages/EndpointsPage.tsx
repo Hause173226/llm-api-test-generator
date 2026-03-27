@@ -1,152 +1,766 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  RefreshCw, 
-  ExternalLink, 
-  AlertCircle, 
-  CheckCircle2, 
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import {
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
+  ExternalLink,
+  AlertCircle,
+  CheckCircle2,
   Clock,
-  MoreVertical
-} from 'lucide-react';
-import MainLayout from '../components/layout/MainLayout';
-import { cn } from '../lib/utils';
+  MoreVertical,
+  Loader2,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  Trash2,
+  Plus,
+} from "lucide-react";
+import MainLayout from "../components/layout/MainLayout";
+import Modal from "../components/ui/Modal";
+import { cn } from "../lib/utils";
+import { useEndpoints } from "../hooks/useEndpoints";
+import { useProject } from "../contexts/ProjectContext";
+import NoProjectSelected from "../components/common/NoProjectSelected";
+import {
+  handleError,
+  showErrorToast,
+  showSuccessToast,
+} from "../utils/errorHandler";
+import { testSuiteService } from "../services/testSuiteService";
 
 export default function EndpointsPage() {
   const { t } = useTranslation();
+  const { projectId: urlProjectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { selectedProject } = useProject();
 
-  const endpoints = [
-    { path: '/api/v1/users', method: 'GET', description: 'Retrieve a list of all registered users.', status: 'Active', latency: '24ms', coverage: 92 },
-    { path: '/api/v1/users', method: 'POST', description: 'Register a new user account.', status: 'Active', latency: '142ms', coverage: 85 },
-    { path: '/api/v1/users/{id}', method: 'GET', description: 'Get detailed information for a specific user.', status: 'Active', latency: '18ms', coverage: 100 },
-    { path: '/api/v1/auth/login', method: 'POST', description: 'Authenticate user and return access tokens.', status: 'Warning', latency: '256ms', coverage: 70 },
-    { path: '/api/v1/payments/verify', method: 'POST', description: 'Verify payment transaction status.', status: 'Error', latency: '--', coverage: 0 },
-  ];
+  // Get projectId from context first, fallback to query param, then URL param
+  const projectId =
+    selectedProject?.id || searchParams.get("projectId") || urlProjectId || "";
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedMethod, setSelectedMethod] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [specifications, setSpecifications] = useState<any[]>([]);
+  const [selectedSpecId, setSelectedSpecId] = useState<string>("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editForm, setEditForm] = useState({
+    path: "",
+    method: "GET",
+    description: "",
+  });
+  const [selectedEndpoints, setSelectedEndpoints] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isCreateSuiteModalOpen, setIsCreateSuiteModalOpen] = useState(false);
+  const [suiteName, setSuiteName] = useState("");
+  const [suiteDescription, setSuiteDescription] = useState("");
+  const pageSize = 20;
+
+  // Fetch specifications for the project
+  React.useEffect(() => {
+    const fetchSpecs = async () => {
+      if (!projectId) return;
+
+      try {
+        const { default: specificationService } =
+          await import("../services/specificationService");
+        const specs = await specificationService.getSpecifications(projectId);
+        const specList = Array.isArray(specs) ? specs : [];
+        setSpecifications(specList);
+
+        // Auto-select first spec if available
+        if (specList.length > 0 && !selectedSpecId) {
+          setSelectedSpecId(specList[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch specifications:", err);
+      }
+    };
+
+    fetchSpecs();
+  }, [projectId]);
+
+  const {
+    endpoints: allEndpoints,
+    totalCount,
+    totalPages,
+    isLoading,
+    error,
+    refetch,
+    updateEndpoint,
+    deleteEndpoint,
+  } = useEndpoints(
+    projectId || "",
+    selectedSpecId,
+    currentPage,
+    pageSize,
+    searchTerm,
+    selectedMethod,
+  );
+
+  // Client-side filtering
+  const endpoints = React.useMemo(() => {
+    let filtered = allEndpoints || [];
+
+    // Filter by method
+    if (selectedMethod) {
+      filtered = filtered.filter((ep) => ep.method === selectedMethod);
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (ep) =>
+          ep.path.toLowerCase().includes(term) ||
+          (ep.description && ep.description.toLowerCase().includes(term)),
+      );
+    }
+
+    return filtered;
+  }, [allEndpoints, selectedMethod, searchTerm]);
+
+  const handleMethodFilter = (method: string) => {
+    setSelectedMethod(method === "ALL" ? "" : method);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  const openEditModal = (endpoint: any) => {
+    setSelectedEndpoint(endpoint);
+    setEditForm({
+      path: endpoint.path,
+      method: endpoint.method,
+      description: endpoint.description || "",
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEdit = async () => {
+    if (!selectedEndpoint || !selectedSpecId) return;
+
+    try {
+      setIsSubmitting(true);
+      await updateEndpoint(selectedEndpoint.id, editForm);
+      showSuccessToast("Endpoint updated successfully");
+      setIsEditModalOpen(false);
+      setSelectedEndpoint(null);
+    } catch (err) {
+      showErrorToast(handleError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openDeleteModal = (endpoint: any) => {
+    setSelectedEndpoint(endpoint);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedEndpoint || !selectedSpecId) return;
+
+    try {
+      setIsSubmitting(true);
+      await deleteEndpoint(selectedEndpoint.id);
+      showSuccessToast("Endpoint deleted successfully");
+      setIsDeleteModalOpen(false);
+      setSelectedEndpoint(null);
+    } catch (err) {
+      showErrorToast(handleError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const toggleEndpointSelection = (endpointId: string) => {
+    const newSelection = new Set(selectedEndpoints);
+    if (newSelection.has(endpointId)) {
+      newSelection.delete(endpointId);
+    } else {
+      newSelection.add(endpointId);
+    }
+    setSelectedEndpoints(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedEndpoints.size === endpoints.length) {
+      setSelectedEndpoints(new Set());
+    } else {
+      setSelectedEndpoints(new Set(endpoints.map((e) => e.id)));
+    }
+  };
+
+  const handleCreateTestSuite = async () => {
+    if (!suiteName || selectedEndpoints.size === 0) {
+      showErrorToast(
+        "Please provide suite name and select at least one endpoint",
+      );
+      return;
+    }
+
+    if (!selectedSpecId) {
+      showErrorToast("Please select a specification first");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      await testSuiteService.createTestSuite(projectId, {
+        name: suiteName,
+        description: suiteDescription,
+        apiSpecId: selectedSpecId,
+        generationType: "Auto",
+        selectedEndpointIds: Array.from(selectedEndpoints),
+        endpointBusinessContexts: {},
+        globalBusinessRules: "",
+      });
+
+      showSuccessToast(
+        `Test suite "${suiteName}" created with ${selectedEndpoints.size} endpoints. LLM will generate test cases automatically.`,
+      );
+      setIsCreateSuiteModalOpen(false);
+      setSuiteName("");
+      setSuiteDescription("");
+      setSelectedEndpoints(new Set());
+
+      // Navigate to test suites page
+      navigate(`/test-suites?projectId=${projectId}`);
+    } catch (err) {
+      showErrorToast(handleError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getMethodColor = (method: string) => {
+    if (!method)
+      return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400";
+
+    switch (method.toUpperCase()) {
+      case "GET":
+        return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
+      case "POST":
+        return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400";
+      case "PUT":
+        return "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400";
+      case "DELETE":
+        return "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400";
+      case "PATCH":
+        return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400";
+      default:
+        return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400";
+    }
+  };
+
+  const getStatusIcon = (isActive: boolean) => {
+    if (isActive) {
+      return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
+    }
+    return <AlertCircle className="w-4 h-4 text-error" />;
+  };
+
+  const getStatusText = (isActive: boolean) => {
+    return isActive ? "Active" : "Inactive";
+  };
+
+  const getStatusColor = (isActive: boolean) => {
+    return isActive
+      ? "text-emerald-700 dark:text-emerald-400"
+      : "text-error dark:text-rose-400";
+  };
+
+  if (error) {
+    return (
+      <MainLayout title={t("endpoints.title")}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
+            <p className="text-on-surface-variant mb-4">{error}</p>
+            <button
+              onClick={refetch}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!projectId) {
+    return (
+      <MainLayout title={t("endpoints.title")}>
+        <NoProjectSelected />
+      </MainLayout>
+    );
+  }
 
   return (
-    <MainLayout title={t('endpoints.title')}>
+    <MainLayout title={t("endpoints.title")}>
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-1">
-            <h1 className="text-4xl font-bold tracking-tight text-on-surface mt-10 mb-2">{t('endpoints.title')}</h1>
-            <p className="text-on-surface-variant">{t('endpoints.subtitle')}</p>
+            <h1 className="text-4xl font-bold tracking-tight text-on-surface mt-10 mb-2">
+              {t("endpoints.title")}
+            </h1>
+            <p className="text-on-surface-variant">{t("endpoints.subtitle")}</p>
           </div>
           <div className="flex gap-3">
-            <button className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all">
-              <Download className="w-5 h-5" />
-              {t('endpoints.exportButton')}
-            </button>
-            <button className="px-5 py-2.5 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-              <RefreshCw className="w-5 h-5" />
-              {t('endpoints.syncButton')}
+            {selectedEndpoints.size > 0 && (
+              <button
+                onClick={() => setIsCreateSuiteModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Create Test Suite ({selectedEndpoints.size})
+              </button>
+            )}
+            <button
+              onClick={refetch}
+              disabled={isLoading}
+              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+            >
+              <RefreshCw
+                className={cn("w-5 h-5", isLoading && "animate-spin")}
+              />
+              {t("endpoints.syncButton")}
             </button>
           </div>
         </header>
+
+        {/* Specification Selector */}
+        {specifications.length > 0 && (
+          <div className="bg-surface-container-low dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800">
+            <label className="text-sm font-semibold text-on-surface-variant mb-2 block">
+              Specification
+            </label>
+            <select
+              value={selectedSpecId}
+              onChange={(e) => setSelectedSpecId(e.target.value)}
+              className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-surface-container-lowest dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface font-medium focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all"
+            >
+              {specifications.map((spec) => (
+                <option key={spec.id} value={spec.id}>
+                  {spec.name} ({spec.type}) - {spec.parseStatus}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Filter Bar */}
         <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
           <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-            <input 
-              className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface" 
-              placeholder={t('endpoints.searchPlaceholder')} 
+            <input
+              className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
+              placeholder={t("endpoints.searchPlaceholder")}
               type="text"
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">{t('endpoints.methodLabel')}</span>
-            {['ALL', 'GET', 'POST', 'PUT', 'DELETE'].map((m) => (
-              <button key={m} className={cn(
-                "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
-                m === 'ALL' ? "bg-primary dark:bg-indigo-600 text-on-primary" : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700"
-              )}>
+            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
+              {t("endpoints.methodLabel")}
+            </span>
+            {["ALL", "GET", "POST", "PUT", "DELETE", "PATCH"].map((m) => (
+              <button
+                key={m}
+                onClick={() => handleMethodFilter(m)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
+                  (m === "ALL" && !selectedMethod) || m === selectedMethod
+                    ? "bg-primary dark:bg-indigo-600 text-on-primary"
+                    : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
+                )}
+              >
                 {m}
               </button>
             ))}
           </div>
-          <button className="ml-auto p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors">
-            <Filter className="w-5 h-5 text-on-surface-variant" />
-          </button>
+        </div>
+
+        {/* Stats Bar */}
+        <div className="flex items-center justify-between px-4">
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={
+                  selectedEndpoints.size === endpoints.length &&
+                  endpoints.length > 0
+                }
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <span className="text-sm font-medium text-on-surface">
+                Select All
+              </span>
+            </label>
+            <p className="text-sm text-on-surface-variant">
+              Showing{" "}
+              {endpoints.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
+              {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
+              endpoints
+            </p>
+          </div>
+          <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest bg-surface-container-low dark:bg-slate-800 px-3 py-1 rounded-full">
+            {endpoints.filter((e) => e.isActive).length} Active
+          </span>
         </div>
 
         {/* Endpoints List */}
         <div className="grid grid-cols-1 gap-4">
-          {endpoints.map((endpoint, i) => (
-            <div key={i} className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
-              <div className="flex items-start justify-between gap-6">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-black tracking-tighter min-w-[60px] text-center",
-                    endpoint.method === 'GET' ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : 
-                    endpoint.method === 'POST' ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                  )}>
-                    {endpoint.method}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-bold text-on-surface tracking-tight">{endpoint.path}</h3>
-                      <ExternalLink className="w-4 h-4 text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
-                    </div>
-                    <p className="text-sm text-on-surface-variant leading-relaxed">{endpoint.description}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-8">
-                  <div className="text-center">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">{t('endpoints.table.status')}</p>
-                    <div className="flex items-center gap-1.5">
-                      {endpoint.status === 'Active' ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      ) : endpoint.status === 'Warning' ? (
-                        <Clock className="w-4 h-4 text-amber-500" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 text-error" />
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : endpoints.length === 0 ? (
+            <div className="bg-surface-container-lowest dark:bg-slate-900 p-12 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-center">
+              <p className="text-on-surface-variant">No endpoints found</p>
+            </div>
+          ) : (
+            endpoints.map((endpoint) => (
+              <div
+                key={endpoint.id}
+                className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group"
+              >
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex items-start gap-4 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedEndpoints.has(endpoint.id)}
+                      onChange={() => toggleEndpointSelection(endpoint.id)}
+                      className="mt-1 w-4 h-4 rounded border-outline-variant text-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                    <div
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-black tracking-tighter min-w-[60px] text-center",
+                        getMethodColor(endpoint.method),
                       )}
-                      <span className={cn(
-                        "text-xs font-bold",
-                        endpoint.status === 'Active' ? "text-emerald-700 dark:text-emerald-400" : 
-                        endpoint.status === 'Warning' ? "text-amber-700 dark:text-amber-400" : "text-error dark:text-rose-400"
-                      )}>{endpoint.status}</span>
+                    >
+                      {endpoint.method}
+                    </div>
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-bold text-on-surface tracking-tight">
+                          {endpoint.path}
+                        </h3>
+                        <ExternalLink className="w-4 h-4 text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
+                      </div>
+                      {endpoint.description && (
+                        <p className="text-sm text-on-surface-variant leading-relaxed">
+                          {endpoint.description}
+                        </p>
+                      )}
+                      {endpoint.tags &&
+                        Array.isArray(endpoint.tags) &&
+                        endpoint.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {endpoint.tags.map((tag, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-0.5 bg-surface-container dark:bg-slate-800 text-on-surface-variant text-[10px] font-bold rounded-full"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   </div>
 
-                  <div className="text-center min-w-[80px]">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">{t('endpoints.table.latency')}</p>
-                    <p className="text-sm font-mono font-bold text-on-surface">{endpoint.latency}</p>
-                  </div>
-
-                  <div className="text-right min-w-[120px]">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">{t('endpoints.table.coverage')}</p>
-                    <div className="flex items-center justify-end gap-3">
-                      <span className="text-sm font-black text-on-surface">{endpoint.coverage}%</span>
-                      <div className="w-16 h-1.5 bg-surface-container dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div 
+                  <div className="flex items-center gap-8">
+                    <div className="text-center">
+                      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                        {t("endpoints.table.status")}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        {getStatusIcon(endpoint.isActive)}
+                        <span
                           className={cn(
-                            "h-full transition-all duration-500",
-                            endpoint.coverage > 80 ? "bg-emerald-500" : endpoint.coverage > 40 ? "bg-amber-500" : "bg-error"
-                          )} 
-                          style={{ width: `${endpoint.coverage}%` }}
-                        ></div>
+                            "text-xs font-bold",
+                            getStatusColor(endpoint.isActive),
+                          )}
+                        >
+                          {getStatusText(endpoint.isActive)}
+                        </span>
                       </div>
                     </div>
-                  </div>
 
-                  <button className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors">
-                    <MoreVertical className="w-5 h-5 text-on-surface-variant" />
-                  </button>
+                    <div className="text-center min-w-[80px]">
+                      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                        Created
+                      </p>
+                      <p className="text-xs font-medium text-on-surface">
+                        {new Date(endpoint.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditModal(endpoint)}
+                        className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        title="Edit endpoint"
+                      >
+                        <Edit3 className="w-4 h-4 text-on-surface-variant" />
+                      </button>
+                      <button
+                        onClick={() => openDeleteModal(endpoint)}
+                        className="p-2 hover:bg-rose-100 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
+                        title="Delete endpoint"
+                      >
+                        <Trash2 className="w-4 h-4 text-error" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
-        <div className="flex justify-center pt-4">
-          <button className="text-sm font-bold text-primary dark:text-indigo-400 hover:underline">{t('endpoints.loadMore')}</button>
-        </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-surface-container-low dark:border-slate-800">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1 || isLoading}
+              className="px-6 py-2 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold rounded-lg hover:bg-primary-fixed dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </button>
+
+            <span className="text-sm font-medium text-on-surface">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages || isLoading}
+              className="px-6 py-2 bg-primary dark:bg-indigo-600 text-on-primary font-semibold rounded-lg hover:bg-primary-container dark:hover:bg-indigo-500 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedEndpoint(null);
+        }}
+        title="Edit Endpoint"
+        footer={
+          <>
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setSelectedEndpoint(null);
+              }}
+              disabled={isSubmitting}
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEdit}
+              disabled={isSubmitting}
+              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              Save Changes
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              Path
+            </label>
+            <input
+              type="text"
+              value={editForm.path}
+              onChange={(e) =>
+                setEditForm({ ...editForm, path: e.target.value })
+              }
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
+              placeholder="/api/endpoint"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              Method
+            </label>
+            <select
+              value={editForm.method}
+              onChange={(e) =>
+                setEditForm({ ...editForm, method: e.target.value })
+              }
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+              <option value="PATCH">PATCH</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              Description
+            </label>
+            <textarea
+              rows={3}
+              value={editForm.description}
+              onChange={(e) =>
+                setEditForm({ ...editForm, description: e.target.value })
+              }
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
+              placeholder="Endpoint description"
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedEndpoint(null);
+        }}
+        title="Delete Endpoint"
+        footer={
+          <>
+            <button
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setSelectedEndpoint(null);
+              }}
+              disabled={isSubmitting}
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isSubmitting}
+              className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              Delete
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-on-surface">
+            Are you sure you want to delete endpoint{" "}
+            <span className="font-bold">{selectedEndpoint?.path}</span>?
+          </p>
+          <p className="text-sm text-on-surface-variant">
+            This action cannot be undone. All test cases associated with this
+            endpoint will also be affected.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Create Test Suite Modal */}
+      <Modal
+        isOpen={isCreateSuiteModalOpen}
+        onClose={() => {
+          setIsCreateSuiteModalOpen(false);
+          setSuiteName("");
+          setSuiteDescription("");
+        }}
+        title="Create Test Suite"
+        footer={
+          <>
+            <button
+              onClick={() => {
+                setIsCreateSuiteModalOpen(false);
+                setSuiteName("");
+                setSuiteDescription("");
+              }}
+              disabled={isSubmitting}
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreateTestSuite}
+              disabled={isSubmitting || !suiteName}
+              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Suite
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <div className="bg-primary-fixed/10 dark:bg-indigo-900/20 p-4 rounded-xl">
+            <p className="text-sm text-on-surface">
+              <span className="font-bold">{selectedEndpoints.size}</span>{" "}
+              endpoints selected
+            </p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              Suite Name *
+            </label>
+            <input
+              type="text"
+              value={suiteName}
+              onChange={(e) => setSuiteName(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
+              placeholder="e.g., Products API Test Suite"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              Description (Optional)
+            </label>
+            <textarea
+              rows={3}
+              value={suiteDescription}
+              onChange={(e) => setSuiteDescription(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
+              placeholder="Describe what this test suite covers..."
+            />
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl">
+            <p className="text-sm text-amber-800 dark:text-amber-400">
+              💡 LLM will automatically generate test cases for each selected
+              endpoint
+            </p>
+          </div>
+        </div>
+      </Modal>
     </MainLayout>
   );
 }
-

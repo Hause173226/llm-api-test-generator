@@ -104,13 +104,13 @@ export default function LandingPage() {
               </span>
             </button>
             <Link
-              to="/auth"
+              to="/login"
               className="text-sm font-bold text-on-surface hover:text-primary transition-colors"
             >
               {t("landing.nav.signIn")}
             </Link>
             <Link
-              to="/auth"
+              to="/register"
               className="px-6 py-2.5 bg-on-surface dark:bg-on-surface-variant text-surface dark:text-on-surface rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-on-surface/10"
             >
               {t("landing.nav.getStarted")}
@@ -136,7 +136,7 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6">
             <Link
-              to="/auth"
+              to="/register"
               className="w-full sm:w-auto px-10 py-5 bg-primary text-on-primary rounded-2xl font-bold text-lg shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 group"
             >
               {t("landing.hero.cta")}
@@ -323,7 +323,7 @@ export default function LandingPage() {
         </h2>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <Link
-            to="/auth"
+            to="/register"
             className="w-full sm:w-auto px-12 py-6 bg-primary text-on-primary rounded-2xl font-bold text-xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
           >
             {t("landing.cta.button")}

@@ -1,0 +1,96 @@
+import { useState, useEffect } from 'react';
+import subscriptionService, { Plan, Subscription, UsageTracking, PaymentTransaction } from '../services/subscriptionService';
+import { handleError } from '../utils/errorHandler';
+
+export const useSubscription = () => {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
+  const [usage, setUsage] = useState<UsageTracking[]>([]);
+  const [payments, setPayments] = useState<PaymentTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch plans first (this should always work)
+      const plansData = await subscriptionService.getPlans().catch(() => []);
+      setPlans(plansData);
+
+      // Try to fetch current subscription (user might not have one)
+      const subscriptionData = await subscriptionService.getCurrentSubscription().catch((err) => {
+        console.log('No subscription found:', err);
+        return null;
+      });
+      setCurrentSubscription(subscriptionData);
+
+      // If user has subscription, fetch usage and payments
+      if (subscriptionData) {
+        const [usageData, paymentsData] = await Promise.all([
+          subscriptionService.getMyUsage().catch((err) => {
+            console.log('No usage data:', err);
+            return [];
+          }),
+          subscriptionService.getPaymentTransactions(subscriptionData.id).catch((err) => {
+            console.log('No payment history:', err);
+            return [];
+          }),
+        ]);
+        setUsage(usageData);
+        setPayments(paymentsData);
+      } else {
+        // No subscription, set empty arrays
+        setUsage([]);
+        setPayments([]);
+      }
+    } catch (err) {
+      console.error('Error fetching subscription data:', err);
+      const errorMessage = handleError(err);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const subscribeToPlan = async (planId: string): Promise<{ paymentUrl: string; orderId: string } | null> => {
+    try {
+      const paymentData = await subscriptionService.subscribeToPlan(planId);
+      // Return payment data so caller can redirect to payment page
+      return paymentData;
+    } catch (err) {
+      handleError(err);
+      return null;
+    }
+  };
+
+  const cancelSubscription = async (reason?: string): Promise<boolean> => {
+    if (!currentSubscription) return false;
+    
+    try {
+      await subscriptionService.cancelSubscription(currentSubscription.id, reason);
+      await fetchData(); // Refresh data
+      return true;
+    } catch (err) {
+      handleError(err);
+      return false;
+    }
+  };
+
+  return {
+    plans,
+    currentSubscription,
+    usage,
+    payments,
+    loading,
+    error,
+    subscribeToPlan,
+    cancelSubscription,
+    refetch: fetchData,
+  };
+};

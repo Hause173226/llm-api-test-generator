@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Menu,
-  Bell,
   Sparkles,
   Moon,
   Sun,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface TopAppBarProps {
   title: string;
@@ -27,6 +27,7 @@ export default function TopAppBar({
 }: TopAppBarProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
@@ -64,10 +65,14 @@ export default function TopAppBar({
     navigate("/settings");
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    setIsUserMenuOpen(false);
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsUserMenuOpen(false);
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -123,11 +128,6 @@ export default function TopAppBar({
           </button>
         </div>
 
-        <div className="relative group">
-          <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" />
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-error rounded-full border-2 border-white dark:border-slate-900"></span>
-        </div>
-
         <div ref={userMenuRef} className="relative">
           <button
             onClick={() => setIsUserMenuOpen((prev) => !prev)}
@@ -135,19 +135,25 @@ export default function TopAppBar({
           >
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-on-surface leading-none">
-                Đỗ Trần Phúc Hậu
+                {user?.fullName || user?.email || "User"}
               </p>
               <p className="text-[10px] text-on-surface-variant tracking-wider uppercase font-bold mt-1">
-                {t("common.softwareStudent")}
+                {user?.roles?.[0] || t("common.softwareStudent")}
               </p>
             </div>
             <div className="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-sm">
-              <img
-                alt="Profile"
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJfq5ujJw3aHLC78LlNFyqyfFJvv0A14gRaveaVx2km64sgOVACRVJ3HNbNkGQ7msVUWVX9mqvjwnbf-ZLCkpBGfvuR-EMmeJFJP9yYMt6nkdPfk0IYQHsXvD6KnHNslu_QAkiTm0V4hn45y1KAmLxp4QVbeqXTaM3qZNtlGep4sB0vhvlbWPBJHaf1PX_klH1nNqfPjyK262wLQ4pwzHypqVER5oM87imJ4UEEV6PEdk7DqX15ttgbSYWclNgupAir6GG58oq-3w"
-                referrerPolicy="no-referrer"
-              />
+              {user?.avatar ? (
+                <img
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                  src={user.avatar}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-sm font-bold">
+                  {user?.fullName?.charAt(0) || user?.email?.charAt(0) || "U"}
+                </span>
+              )}
             </div>
             <ChevronDown
               className={cn(

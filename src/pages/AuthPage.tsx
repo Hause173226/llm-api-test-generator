@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Sparkles,
   Mail,
@@ -17,12 +17,16 @@ import {
   Languages,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../contexts/AuthContext";
+import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 
 export default function AuthPage() {
   const { t, i18n } = useTranslation();
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const [isLogin, setIsLogin] = useState(location.pathname === "/login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
@@ -34,6 +38,20 @@ export default function AuthPage() {
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login, register, isAuthenticated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Update isLogin based on route
+  useEffect(() => {
+    setIsLogin(location.pathname === "/login");
+    setError("");
+  }, [location.pathname]);
 
   useEffect(() => {
     if (isDark) {
@@ -50,19 +68,56 @@ export default function AuthPage() {
     i18n.changeLanguage(newLang);
   };
 
-  const handleAuth = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
-    if (!isLogin) {
-      if (formData.password !== formData.confirmPassword) {
-        setError(t("auth.passwordMismatch"));
-        return;
+    try {
+      if (!isLogin) {
+        // Register flow
+        if (formData.password !== formData.confirmPassword) {
+          setError(t("auth.passwordMismatch"));
+          setIsLoading(false);
+          return;
+        }
+
+        await register(formData.fullName, formData.email, formData.password);
+        showSuccessToast(
+          "Registration successful! Please check your email to verify your account.",
+        );
+        // Switch to login after successful registration
+        setIsLogin(true);
+        navigate("/login");
+        setFormData({
+          fullName: "",
+          email: formData.email,
+          password: "",
+          confirmPassword: "",
+        });
+      } else {
+        // Login flow
+        await login(formData.email, formData.password);
+        showSuccessToast("Login successful!");
+        navigate("/dashboard");
       }
-    }
+    } catch (err: any) {
+      // Extract error message from ApiError
+      let errorMessage = "An error occurred. Please try again.";
 
-    // Mock auth
-    navigate("/dashboard");
+      if (err?.message) {
+        errorMessage = err.message;
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.response?.data?.title) {
+        errorMessage = err.response.data.title;
+      }
+
+      // Only show toast, don't set error state (to avoid duplicate)
+      showErrorToast(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,9 +306,23 @@ export default function AuthPage() {
               )}
             </div>
 
-            <button className="w-full py-4 bg-primary text-on-primary rounded-2xl font-bold text-base shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group">
-              {isLogin ? t("auth.signInToDashboard") : t("auth.registerAction")}
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <button
+              disabled={isLoading}
+              className="w-full py-4 bg-primary text-on-primary rounded-2xl font-bold text-base shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  {isLogin ? "Signing in..." : "Creating account..."}
+                </>
+              ) : (
+                <>
+                  {isLogin
+                    ? t("auth.signInToDashboard")
+                    : t("auth.registerAction")}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </form>
 
@@ -281,15 +350,12 @@ export default function AuthPage() {
 
           <p className="text-center text-sm font-medium text-on-surface-variant">
             {isLogin ? t("auth.dontHaveAccount") : t("auth.alreadyHaveAccount")}{" "}
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError("");
-              }}
+            <Link
+              to={isLogin ? "/register" : "/login"}
               className="text-primary font-bold hover:underline"
             >
               {isLogin ? t("auth.registerFree") : t("auth.signIn")}
-            </button>
+            </Link>
           </p>
         </div>
 

@@ -11,11 +11,14 @@ import {
   Languages,
 } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
+import { authService } from "../services/authService";
+import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 
 export default function ForgotPasswordPage() {
   const { t, i18n } = useTranslation();
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
@@ -35,10 +38,21 @@ export default function ForgotPasswordPage() {
     i18n.changeLanguage(newLang);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock reset instruction send
-    setIsSubmitted(true);
+    setIsLoading(true);
+
+    try {
+      await authService.forgotPassword(email);
+      setIsSubmitted(true);
+      showSuccessToast("Password reset instructions sent to your email!");
+    } catch (err: any) {
+      const errorMessage =
+        err?.message || "Failed to send reset instructions. Please try again.";
+      showErrorToast(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -107,7 +121,7 @@ export default function ForgotPasswordPage() {
                   </p>
                 </div>
                 <Link
-                  to="/auth"
+                  to="/login"
                   className="inline-flex items-center gap-2 text-primary font-bold hover:underline"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -145,14 +159,26 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <button className="w-full py-5 bg-primary text-on-primary rounded-2xl font-bold text-lg shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group">
-                {t("auth.sendReset")}
-                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+              <button
+                disabled={isLoading}
+                className="w-full py-5 bg-primary text-on-primary rounded-2xl font-bold text-lg shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    {t("auth.sendReset")}
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
 
               <div className="text-center">
                 <Link
-                  to="/auth"
+                  to="/login"
                   className="inline-flex items-center gap-2 text-on-surface-variant font-bold text-sm hover:text-primary transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />

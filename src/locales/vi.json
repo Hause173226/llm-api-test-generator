@@ -23,7 +23,7 @@
   },
   "dashboard": {
     "title": "Bảng điều khiển",
-    "welcome": "Chào mừng trở lại, Đỗ Trần Phúc Hậu",
+    "welcome": "Chào mừng trở lại",
     "activeProjects": "Dự án Đang hoạt động",
     "totalEndpoints": "Tổng số Điểm cuối",
     "avgLatency": "Độ trễ Trung bình",
