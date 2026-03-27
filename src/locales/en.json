@@ -23,7 +23,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "welcome": "Welcome back, Đỗ Trần Phúc Hậu",
+    "welcome": "Welcome back",
     "activeProjects": "Active Projects",
     "totalEndpoints": "Total Endpoints",
     "avgLatency": "Avg. Latency",
