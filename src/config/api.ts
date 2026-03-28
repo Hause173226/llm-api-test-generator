@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://localhost:44312/api',
-  SIGNALR_HUB_URL: import.meta.env.VITE_SIGNALR_HUB_URL || 'https://localhost:44312/hubs/notifications',
+  SIGNALR_HUB_URL: import.meta.env.VITE_SIGNALR_HUB_URL || 'https://localhost:44312/hubs/notification',
   TIMEOUT: 30000,
   HEADERS: {
     'Content-Type': 'application/json',
