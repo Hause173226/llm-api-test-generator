@@ -57,9 +57,9 @@ export function useTestSuites(projectId: string) {
     }
   };
 
-  const deleteTestSuite = async (testSuiteId: string) => {
+  const deleteTestSuite = async (projectId: string, testSuiteId: string, rowVersion: string) => {
     try {
-      await testSuiteService.deleteTestSuite(projectId, testSuiteId);
+      await testSuiteService.deleteTestSuite(projectId, testSuiteId, rowVersion);
       await fetchTestSuites(); // Refresh list
     } catch (err) {
       throw err;

@@ -12,7 +12,9 @@ import SpecificationPage from "./pages/SpecificationPage";
 import EndpointsPage from "./pages/EndpointsPage";
 import TestSuitesPage from "./pages/TestSuitesPage";
 import TestSuiteDetailPage from "./pages/TestSuiteDetailPage";
-import TestOrderGatePage from "./pages/TestOrderGatePage";
+import GeneratingTestCasesPage from "./pages/GeneratingTestCasesPage";
+import TestCasesListPage from "./pages/TestCasesListPage";
+import TestCasesHubPage from "./pages/TestCasesHubPage";
 import TestCaseStudioPage from "./pages/TestCaseStudioPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
 import EnvironmentsPage from "./pages/EnvironmentsPage";
@@ -92,10 +94,26 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/order-gate"
+          path="/test-suites/:suiteId/generating"
           element={
             <ProtectedRoute>
-              <TestOrderGatePage />
+              <GeneratingTestCasesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-suites/:suiteId/test-cases"
+          element={
+            <ProtectedRoute>
+              <TestCasesListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-suites/:suiteId/test-cases/:testCaseId"
+          element={
+            <ProtectedRoute>
+              <TestCaseStudioPage />
             </ProtectedRoute>
           }
         />
@@ -103,7 +121,7 @@ export default function AppRouter() {
           path="/studio"
           element={
             <ProtectedRoute>
-              <TestCaseStudioPage />
+              <TestCasesHubPage />
             </ProtectedRoute>
           }
         />

@@ -46,7 +46,15 @@ export const useEnvironments = (projectId: string) => {
     data: Partial<Environment>
   ): Promise<boolean> => {
     try {
-      const updated = await environmentService.updateEnvironment(projectId, environmentId, data);
+      const current = environments.find(env => env.id === environmentId);
+      if (!current) {
+        throw new Error('Environment not found');
+      }
+
+      const updated = await environmentService.updateEnvironment(projectId, environmentId, {
+        ...current,
+        ...data,
+      });
       setEnvironments(prev => prev.map(env => (env.id === environmentId ? updated : env)));
       return true;
     } catch (err) {
@@ -57,7 +65,12 @@ export const useEnvironments = (projectId: string) => {
 
   const deleteEnvironment = async (environmentId: string): Promise<boolean> => {
     try {
-      await environmentService.deleteEnvironment(projectId, environmentId);
+      const current = environments.find(env => env.id === environmentId);
+      if (!current?.rowVersion) {
+        throw new Error('Missing rowVersion for delete operation');
+      }
+
+      await environmentService.deleteEnvironment(projectId, environmentId, current.rowVersion);
       setEnvironments(prev => prev.filter(env => env.id !== environmentId));
       return true;
     } catch (err) {
@@ -68,14 +81,27 @@ export const useEnvironments = (projectId: string) => {
 
   const setDefaultEnvironment = async (environmentId: string): Promise<boolean> => {
     try {
-      await environmentService.setDefaultEnvironment(projectId, environmentId);
-      // Update local state to reflect the new default
-      setEnvironments(prev =>
-        prev.map(env => ({
+      const target = environments.find(env => env.id === environmentId);
+      if (!target) {
+        throw new Error('Environment not found');
+      }
+
+      const updated = await environmentService.updateEnvironment(projectId, environmentId, {
+        ...target,
+        isDefault: true,
+      });
+
+      // Update local state to reflect single default environment.
+      setEnvironments(prev => prev.map(env => {
+        if (env.id === environmentId) {
+          return updated;
+        }
+
+        return {
           ...env,
-          isDefault: env.id === environmentId,
-        }))
-      );
+          isDefault: false,
+        };
+      }));
       return true;
     } catch (err) {
       handleError(err);
@@ -85,7 +111,20 @@ export const useEnvironments = (projectId: string) => {
 
   const cloneEnvironment = async (environmentId: string, newName: string): Promise<boolean> => {
     try {
-      const cloned = await environmentService.cloneEnvironment(projectId, environmentId, newName);
+      const target = environments.find(env => env.id === environmentId);
+      if (!target) {
+        throw new Error('Environment not found');
+      }
+
+      const cloned = await environmentService.createEnvironment({
+        projectId,
+        name: newName,
+        description: target.description,
+        baseUrl: target.baseUrl,
+        variables: target.variables || {},
+        headers: target.headers || {},
+        isDefault: false,
+      });
       setEnvironments(prev => [...prev, cloned]);
       return true;
     } catch (err) {
@@ -94,13 +133,18 @@ export const useEnvironments = (projectId: string) => {
     }
   };
 
-  const testEnvironment = async (environmentId: string): Promise<any> => {
+  const testEnvironment = async (environmentId: string): Promise<boolean> => {
     try {
-      const result = await environmentService.testEnvironment(projectId, environmentId);
-      return result;
+      const target = environments.find(env => env.id === environmentId);
+      if (!target) {
+        throw new Error('Environment not found');
+      }
+
+      // No backend test endpoint yet; return a lightweight local validation result.
+      return /^https?:\/\//i.test(target.baseUrl || '');
     } catch (err) {
       handleError(err);
-      return null;
+      return false;
     }
   };
 

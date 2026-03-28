@@ -67,11 +67,13 @@ export default function TopAppBar({
 
   const handleLogout = async () => {
     try {
-      await logout();
       setIsUserMenuOpen(false);
-      navigate("/login");
+      await logout();
+      navigate("/login", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
+      // Force navigation even if logout fails
+      navigate("/login", { replace: true });
     }
   };
 

@@ -126,7 +126,7 @@ export default function SpecificationPage() {
         navigate(`/endpoints?projectId=${projectId}`);
       }, 1500);
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -142,7 +142,7 @@ export default function SpecificationPage() {
       setIsDeleteModalOpen(false);
       setSelectedSpec(null);
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }

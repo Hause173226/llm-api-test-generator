@@ -91,7 +91,7 @@ export default function ProjectManagementPage() {
         navigate(`/specifications?projectId=${newProject.id}`);
       }
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err, navigate);
     } finally {
       setIsSubmitting(false);
     }
@@ -114,7 +114,7 @@ export default function ProjectManagementPage() {
       setSelectedProject(null);
       setFormData({ name: "", description: "", specType: "", specFile: null });
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -130,7 +130,7 @@ export default function ProjectManagementPage() {
       setIsDeleteModalOpen(false);
       setSelectedProject(null);
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }

@@ -51,12 +51,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async (): Promise<void> => {
     try {
+      // Call backend logout API (optional, can fail silently)
       await authService.logout();
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Logout API error:", error);
+      // Continue with local logout even if API fails
     } finally {
+      // Always clear local state
       setUser(null);
       clearAuthToken();
+      // Clear project selection
+      localStorage.removeItem("selectedProjectId");
     }
   };
 

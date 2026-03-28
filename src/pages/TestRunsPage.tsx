@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Play,
   Search,
@@ -32,17 +32,26 @@ import {
   showSuccessToast,
 } from "../utils/errorHandler";
 import { signalRService } from "../services/signalrService";
+import { useProject } from "../contexts/ProjectContext";
 
 export default function TestRunsPage() {
   const { t } = useTranslation();
-  const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { selectedProject } = useProject();
+
+  const projectId = selectedProject?.id || searchParams.get("projectId") || "";
+  const preselectedSuiteId = searchParams.get("suiteId") || "";
+  const preselectedTestCaseId = searchParams.get("testCaseId") || "";
+  const preselectedTestCaseIdsRaw = searchParams.get("testCaseIds") || "";
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [selectedTestSuiteId, setSelectedTestSuiteId] = useState("");
+  const [activeSuiteId, setActiveSuiteId] = useState("");
+  const [selectedTestCaseIds, setSelectedTestCaseIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pageSize = 20;
 
@@ -57,9 +66,50 @@ export default function TestRunsPage() {
     cancelTestRun,
     retryFailedTests,
     exportResults,
-  } = useTestRuns(projectId || "", currentPage, pageSize, statusFilter);
+  } = useTestRuns(activeSuiteId || "", currentPage, pageSize, statusFilter);
 
-  const { testSuites } = useTestSuites(projectId || "", 1, 100);
+  const { testSuites } = useTestSuites(projectId || "");
+
+  const activeSuiteName =
+    testSuites.find((suite) => suite.id === activeSuiteId)?.name || "";
+
+  const handleActiveSuiteChange = (suiteId: string) => {
+    setActiveSuiteId(suiteId);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    if (!activeSuiteId && testSuites.length > 0) {
+      setActiveSuiteId(testSuites[0].id);
+    }
+  }, [testSuites, activeSuiteId]);
+
+  useEffect(() => {
+    if (!preselectedSuiteId) return;
+
+    setSelectedTestSuiteId(preselectedSuiteId);
+    setActiveSuiteId(preselectedSuiteId);
+
+    const idsFromCsv = preselectedTestCaseIdsRaw
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    if (idsFromCsv.length > 0) {
+      setSelectedTestCaseIds(idsFromCsv);
+    } else if (preselectedTestCaseId) {
+      setSelectedTestCaseIds([preselectedTestCaseId]);
+    }
+
+    setIsStartModalOpen(true);
+
+    // Prevent repeated auto-open when user refreshes page state.
+    const params = new URLSearchParams(searchParams);
+    params.delete("suiteId");
+    params.delete("testCaseId");
+    params.delete("testCaseIds");
+    setSearchParams(params, { replace: true });
+  }, [preselectedSuiteId, preselectedTestCaseId, preselectedTestCaseIdsRaw]);
 
   // Connect to SignalR for real-time updates
   useEffect(() => {
@@ -86,12 +136,18 @@ export default function TestRunsPage() {
 
     try {
       setIsSubmitting(true);
-      await startTestRun({ testSuiteId: selectedTestSuiteId });
+      await startTestRun({
+        testSuiteId: selectedTestSuiteId,
+        selectedTestCaseIds:
+          selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
+      });
+      setActiveSuiteId(selectedTestSuiteId);
       showSuccessToast("Test run started successfully");
       setIsStartModalOpen(false);
       setSelectedTestSuiteId("");
+      setSelectedTestCaseIds([]);
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +158,7 @@ export default function TestRunsPage() {
       await cancelTestRun(testRunId);
       showSuccessToast("Test run cancelled");
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     }
   };
 
@@ -111,7 +167,7 @@ export default function TestRunsPage() {
       await retryFailedTests(testRunId);
       showSuccessToast("Retrying failed tests");
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     }
   };
 
@@ -131,7 +187,7 @@ export default function TestRunsPage() {
       document.body.removeChild(a);
       showSuccessToast("Export downloaded");
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     }
   };
 
@@ -259,6 +315,30 @@ export default function TestRunsPage() {
             </button>
           </div>
         </header>
+
+        <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
+          <p className="text-sm text-on-surface-variant">
+            Viewing runs for suite{" "}
+            <span className="font-bold text-on-surface">
+              {activeSuiteName || "N/A"}
+            </span>
+          </p>
+          <select
+            value={activeSuiteId}
+            onChange={(e) => handleActiveSuiteChange(e.target.value)}
+            className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface font-medium focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all"
+          >
+            {testSuites.length === 0 ? (
+              <option value="">No test suites available</option>
+            ) : (
+              testSuites.map((suite) => (
+                <option key={suite.id} value={suite.id}>
+                  {suite.name}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
 
         {/* Stats Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -524,6 +604,7 @@ export default function TestRunsPage() {
         onClose={() => {
           setIsStartModalOpen(false);
           setSelectedTestSuiteId("");
+          setSelectedTestCaseIds([]);
         }}
         title="Start New Test Run"
         footer={
@@ -532,6 +613,7 @@ export default function TestRunsPage() {
               onClick={() => {
                 setIsStartModalOpen(false);
                 setSelectedTestSuiteId("");
+                setSelectedTestCaseIds([]);
               }}
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
@@ -556,7 +638,10 @@ export default function TestRunsPage() {
             </label>
             <select
               value={selectedTestSuiteId}
-              onChange={(e) => setSelectedTestSuiteId(e.target.value)}
+              onChange={(e) => {
+                setSelectedTestSuiteId(e.target.value);
+                setSelectedTestCaseIds([]);
+              }}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
             >
               <option value="">Choose a test suite...</option>
@@ -568,8 +653,15 @@ export default function TestRunsPage() {
             </select>
           </div>
           <p className="text-sm text-on-surface-variant">
-            The test run will execute all test cases in the selected suite.
+            {selectedTestCaseIds.length > 0
+              ? `This run will execute ${selectedTestCaseIds.length} selected test case(s) in the suite.`
+              : "The test run will execute all test cases in the selected suite."}
           </p>
+          {!activeSuiteId && testSuites.length === 0 && (
+            <p className="text-sm text-on-surface-variant">
+              Please create a test suite first.
+            </p>
+          )}
         </div>
       </Modal>
     </MainLayout>

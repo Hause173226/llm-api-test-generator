@@ -5,7 +5,7 @@
     "apiSpecifications": "Đặc tả API",
     "endpointsManagement": "Quản lý Điểm cuối",
     "testSuites": "Bộ kịch bản Kiểm thử",
-    "testExecutionOrderGate": "Cổng Thứ tự Thực thi Kiểm thử",
+    "testExecutionOrderGate": "Cổng Thực thi Kiểm thử",
     "testCaseStudio": "Phòng thiết kế Kịch bản Kiểm thử",
     "llmSuggestions": "Gợi ý từ LLM",
     "environments": "Môi trường",

@@ -3,7 +3,7 @@ import { testRunService, TestRun, TestRunsResponse, StartTestRunRequest } from '
 import { handleError } from '../utils/errorHandler';
 
 export function useTestRuns(
-  projectId: string,
+  testSuiteId: string,
   pageNumber: number = 1,
   pageSize: number = 20,
   status?: string
@@ -15,13 +15,19 @@ export function useTestRuns(
   const [error, setError] = useState<string | null>(null);
 
   const fetchTestRuns = useCallback(async () => {
-    if (!projectId) return;
+    if (!testSuiteId) {
+      setTestRuns([]);
+      setTotalCount(0);
+      setTotalPages(0);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
-      const response: TestRunsResponse = await testRunService.getTestRuns(
-        projectId,
+      const response: TestRunsResponse = await testRunService.getTestRunsByTestSuite(
+        testSuiteId,
         pageNumber,
         pageSize,
         status
@@ -35,7 +41,7 @@ export function useTestRuns(
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, pageNumber, pageSize, status]);
+  }, [testSuiteId, pageNumber, pageSize, status]);
 
   useEffect(() => {
     fetchTestRuns();

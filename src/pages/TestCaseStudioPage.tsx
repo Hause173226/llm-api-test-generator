@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import {
   Code2,
@@ -33,11 +33,17 @@ interface Assertion {
 
 export default function TestCaseStudioPage() {
   const { t } = useTranslation();
+  const params = useParams<{ suiteId?: string; testCaseId?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const testSuiteId = searchParams.get("testSuiteId") || "";
-  const testCaseId = searchParams.get("testCaseId") || "";
+  const testSuiteId =
+    params.suiteId ||
+    searchParams.get("testSuiteId") ||
+    searchParams.get("suiteId") ||
+    "";
+  const testCaseId = params.testCaseId || searchParams.get("testCaseId") || "";
+  const hasShownMissingSuiteToastRef = useRef(false);
 
   const {
     testCase,
@@ -93,6 +99,11 @@ export default function TestCaseStudioPage() {
 
   useEffect(() => {
     if (!testSuiteId) {
+      if (hasShownMissingSuiteToastRef.current) {
+        return;
+      }
+
+      hasShownMissingSuiteToastRef.current = true;
       toast.error("Test Suite ID is required");
       navigate("/test-suites");
     }

@@ -21,13 +21,15 @@ import {
 } from "../components/ui/Skeleton";
 import { signalRService } from "../services/signalrService";
 import { useAuth } from "../contexts/AuthContext";
+import { useProject } from "../contexts/ProjectContext";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedProject } = useProject();
   const { metrics, activity, topEndpoints, isLoading, error, refetch } =
-    useDashboard();
+    useDashboard(selectedProject?.id);
 
   // Connect to SignalR for real-time updates
   useEffect(() => {
@@ -250,9 +252,7 @@ export default function DashboardPage() {
                   <tr className="text-xs uppercase tracking-widest text-on-surface-variant border-b border-slate-50 dark:border-slate-800">
                     <th className="px-8 py-4 font-bold">Endpoint</th>
                     <th className="px-8 py-4 font-bold">Method</th>
-                    <th className="px-8 py-4 font-bold">Status</th>
-                    <th className="px-8 py-4 font-bold">Latency</th>
-                    <th className="px-8 py-4 font-bold text-right">Coverage</th>
+                
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50/50 dark:divide-slate-800/50">
@@ -283,44 +283,7 @@ export default function DashboardPage() {
                             {endpoint.method}
                           </span>
                         </td>
-                        <td className="px-8 py-5">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                "w-2 h-2 rounded-full",
-                                endpoint.status === "Active"
-                                  ? "bg-emerald-500"
-                                  : "bg-error",
-                              )}
-                            ></span>
-                            <span className="text-sm text-on-surface font-medium">
-                              {endpoint.status}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-5 font-mono text-xs text-on-surface-variant">
-                          {endpoint.latency}
-                        </td>
-                        <td className="px-8 py-5 text-right">
-                          <div className="flex items-center justify-end gap-3">
-                            <span className="text-sm font-bold text-on-surface">
-                              {endpoint.coverage}%
-                            </span>
-                            <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full",
-                                  endpoint.coverage > 80
-                                    ? "bg-emerald-500"
-                                    : endpoint.coverage > 40
-                                      ? "bg-amber-500"
-                                      : "bg-error",
-                                )}
-                                style={{ width: `${endpoint.coverage}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
+                 
                       </tr>
                     ))
                   ) : (

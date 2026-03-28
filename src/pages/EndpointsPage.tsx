@@ -159,7 +159,7 @@ export default function EndpointsPage() {
       setIsEditModalOpen(false);
       setSelectedEndpoint(null);
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +180,7 @@ export default function EndpointsPage() {
       setIsDeleteModalOpen(false);
       setSelectedEndpoint(null);
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -220,7 +220,7 @@ export default function EndpointsPage() {
     try {
       setIsSubmitting(true);
 
-      await testSuiteService.createTestSuite(projectId, {
+      const newSuite = await testSuiteService.createTestSuite(projectId, {
         name: suiteName,
         description: suiteDescription,
         apiSpecId: selectedSpecId,
@@ -230,18 +230,66 @@ export default function EndpointsPage() {
         globalBusinessRules: "",
       });
 
+      // Create and approve proposal immediately after suite creation
+      if (newSuite && newSuite.id) {
+        try {
+          const { apiService } = await import("../services/apiService");
+          console.log("Creating proposal for suite:", newSuite.id);
+
+          // Create proposal
+          const proposal = await apiService.post(
+            `/test-suites/${newSuite.id}/order-proposals`,
+            {
+              SpecificationId: selectedSpecId,
+              SelectedEndpointIds: Array.from(selectedEndpoints),
+              Source: "User",
+              ReasoningNote:
+                "Initial proposal created after suite creation from endpoints",
+            },
+          );
+
+          console.log("Created proposal response:", proposal);
+
+          // Backend returns PascalCase, try both
+          const proposalId = proposal.proposalId || proposal.ProposalId;
+          const rowVersion = proposal.rowVersion || proposal.RowVersion;
+
+          // Approve proposal
+          if (proposalId) {
+            console.log("Approving proposal:", proposalId);
+            await apiService.post(
+              `/test-suites/${newSuite.id}/order-proposals/${proposalId}/approve`,
+              {
+                RowVersion: rowVersion,
+                ReviewNotes: "Auto-approved after suite creation",
+              },
+            );
+            console.log("Proposal approved successfully");
+          } else {
+            console.error("No proposalId found in response:", proposal);
+          }
+        } catch (proposalErr) {
+          console.error("Failed to create/approve proposal:", proposalErr);
+          showErrorToast(
+            "Suite created but failed to approve order. Please approve manually.",
+          );
+        }
+      }
+
       showSuccessToast(
-        `Test suite "${suiteName}" created with ${selectedEndpoints.size} endpoints. LLM will generate test cases automatically.`,
+        `Test suite "${suiteName}" created with ${selectedEndpoints.size} endpoints.`,
       );
       setIsCreateSuiteModalOpen(false);
       setSuiteName("");
       setSuiteDescription("");
       setSelectedEndpoints(new Set());
 
-      // Navigate to test suites page
-      navigate(`/test-suites?projectId=${projectId}`);
+      // Navigate to test suite detail page
+      if (newSuite && newSuite.id) {
+        navigate(`/test-suites/${newSuite.id}`);
+      }
     } catch (err) {
-      showErrorToast(handleError(err));
+      handleError(err);
     } finally {
       setIsSubmitting(false);
     }

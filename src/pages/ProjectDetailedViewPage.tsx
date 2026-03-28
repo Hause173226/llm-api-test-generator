@@ -1,22 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   Layers,
-  Activity,
   Database,
   FileText,
   Network,
   CheckCircle2,
-  Clock,
   AlertCircle,
-  ArrowRight,
   Plus,
   Loader2,
   AlertTriangle,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
-import { cn } from "../lib/utils";
 import { useTranslation } from "react-i18next";
 import { projectService } from "../services";
 import { handleError } from "../utils/errorHandler";
@@ -26,6 +22,15 @@ export default function ProjectDetailedViewPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
+  const goBackInTab = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/projects");
+  };
+
   const [project, setProject] = useState<any>(null);
   const [testSuites, setTestSuites] = useState<any[]>([]);
   const [specifications, setSpecifications] = useState<any[]>([]);
@@ -33,6 +38,19 @@ export default function ProjectDetailedViewPage() {
   const [hasEndpoints, setHasEndpoints] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const getProjectEndpointCount = (projectData: any): number => {
+    const activeSummary =
+      projectData?.activeSpecSummary || projectData?.ActiveSpecSummary;
+
+    return (
+      projectData?.totalEndpoints ||
+      projectData?.TotalEndpoints ||
+      activeSummary?.endpointCount ||
+      activeSummary?.EndpointCount ||
+      0
+    );
+  };
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -59,11 +77,18 @@ export default function ProjectDetailedViewPage() {
         }
 
         // Check if project has endpoints
-        setHasEndpoints((projectData.totalEndpoints || 0) > 0);
+        setHasEndpoints(getProjectEndpointCount(projectData) > 0);
 
-        // TODO: Fetch test suites for this project
-        // const suitesData = await testSuiteService.getTestSuites(id);
-        // setTestSuites(suitesData);
+        // Fetch test suites for this project
+        try {
+          const { testSuiteService } =
+            await import("../services/testSuiteService");
+          const suitesData = await testSuiteService.getTestSuites(id);
+          setTestSuites(Array.isArray(suitesData) ? suitesData : []);
+        } catch (err) {
+          console.error("Failed to fetch test suites:", err);
+          setTestSuites([]);
+        }
       } catch (err) {
         const errorMessage = handleError(err);
         setError(errorMessage);
@@ -94,37 +119,65 @@ export default function ProjectDetailedViewPage() {
             <p className="text-on-surface-variant mb-4">
               {error || "Project not found"}
             </p>
-            <Link
-              to="/projects"
+            <button
+              onClick={goBackInTab}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
             >
               Back to Projects
-            </Link>
+            </button>
           </div>
         </div>
       </MainLayout>
     );
   }
 
-  const getSpecIcon = (specType: string) => {
-    if (specType?.toLowerCase().includes("openapi")) return FileText;
-    if (specType?.toLowerCase().includes("graphql")) return Network;
-    return Database;
-  };
+  const latestSpecification = specifications[0] || null;
+  const latestSpecTypeRaw =
+    latestSpecification?.sourceType ||
+    latestSpecification?.SourceType ||
+    latestSpecification?.type ||
+    latestSpecification?.Type ||
+    "";
+  const latestSpecType =
+    latestSpecTypeRaw && typeof latestSpecTypeRaw === "string"
+      ? latestSpecTypeRaw
+      : "N/A";
+  const latestSpecCreatedAt =
+    latestSpecification?.createdDateTime ||
+    latestSpecification?.CreatedDateTime ||
+    latestSpecification?.createdAt ||
+    latestSpecification?.CreatedAt ||
+    null;
+  const latestSpecParseStatusRaw =
+    latestSpecification?.parseStatus ||
+    latestSpecification?.ParseStatus ||
+    "Pending";
+  const latestSpecParseStatus =
+    typeof latestSpecParseStatusRaw === "string"
+      ? latestSpecParseStatusRaw.toLowerCase()
+      : "pending";
 
-  const SpecIcon = getSpecIcon(project.specType);
+  const isSpecParsing = hasSpecifications && latestSpecParseStatus === "pending";
+  const isSpecParseFailed = hasSpecifications && latestSpecParseStatus === "failed";
+  const isSpecParsed = hasSpecifications && latestSpecParseStatus === "success";
+
+  const totalEndpoints = getProjectEndpointCount(project);
+  const totalSuites =
+    project.totalTestSuites || project.totalSuites || testSuites.length || 0;
+  const lastRunAt = project.lastRunAt || project.lastExecutionDate;
 
   return (
     <MainLayout title={t("projectDetail.title")}>
       <div className="space-y-8">
         <header className="flex flex-col gap-6">
-          <Link
-            to="/projects"
+          <button
+            type="button"
+            onClick={goBackInTab}
             className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all group w-fit"
           >
             <ChevronLeft className="w-5 h-5" />
             {t("projectDetail.back")}
-          </Link>
+          </button>
           <div className="flex flex-col gap-2">
             <h1 className="text-4xl font-bold tracking-tight text-on-surface mt-10 mb-2">
               {project.name}
@@ -146,7 +199,7 @@ export default function ProjectDetailedViewPage() {
                 {t("projectDetail.metrics.totalSuites")}
               </p>
               <p className="text-4xl font-black text-on-surface">
-                {project.totalTestSuites || 0}
+                {totalSuites}
               </p>
             </div>
           </div>
@@ -159,8 +212,8 @@ export default function ProjectDetailedViewPage() {
                 Last Run
               </p>
               <p className="text-xl font-black text-on-surface">
-                {project.lastRunAt
-                  ? new Date(project.lastRunAt).toLocaleDateString()
+                {lastRunAt
+                  ? new Date(lastRunAt).toLocaleDateString()
                   : "Never"}
               </p>
             </div>
@@ -174,7 +227,7 @@ export default function ProjectDetailedViewPage() {
                 {t("projectDetail.metrics.endpoints")}
               </p>
               <p className="text-4xl font-black text-on-surface">
-                {project.totalEndpoints || 0}
+                {totalEndpoints}
               </p>
             </div>
           </div>
@@ -224,7 +277,7 @@ export default function ProjectDetailedViewPage() {
                         Latest Specification
                       </span>
                       <span className="text-on-surface font-bold">
-                        {specifications[0]?.name || "N/A"}
+                        {latestSpecification?.name || latestSpecification?.Name || "N/A"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-3 border-b border-outline-variant/10">
@@ -232,7 +285,15 @@ export default function ProjectDetailedViewPage() {
                         Type
                       </span>
                       <span className="text-on-surface font-bold">
-                        {specifications[0]?.type || "N/A"}
+                        {latestSpecType}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b border-outline-variant/10">
+                      <span className="text-on-surface-variant font-medium">
+                        Parse Status
+                      </span>
+                      <span className="text-on-surface font-bold capitalize">
+                        {latestSpecParseStatus}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-3 border-b border-outline-variant/10">
@@ -240,7 +301,7 @@ export default function ProjectDetailedViewPage() {
                         Total Endpoints
                       </span>
                       <span className="text-on-surface font-bold">
-                        {project.totalEndpoints || 0}
+                        {totalEndpoints}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-3 border-b border-outline-variant/10">
@@ -248,9 +309,9 @@ export default function ProjectDetailedViewPage() {
                         Uploaded At
                       </span>
                       <span className="text-on-surface font-bold">
-                        {specifications[0]?.createdAt
+                        {latestSpecCreatedAt
                           ? new Date(
-                              specifications[0].createdAt,
+                              latestSpecCreatedAt,
                             ).toLocaleDateString()
                           : "N/A"}
                       </span>
@@ -304,7 +365,7 @@ export default function ProjectDetailedViewPage() {
                     Upload Specification
                   </button>
                 </div>
-              ) : !hasEndpoints ? (
+              ) : isSpecParsing ? (
                 <div className="text-center py-12">
                   <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
                   <p className="text-on-surface font-bold text-lg mb-2">
@@ -314,6 +375,42 @@ export default function ProjectDetailedViewPage() {
                     Your specification is being parsed automatically. This may
                     take a few moments. Check the Specifications page to see the
                     parse status.
+                  </p>
+                  <button
+                    onClick={() => navigate(`/specifications?projectId=${id}`)}
+                    className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 flex items-center gap-2 mx-auto font-semibold"
+                  >
+                    <FileText className="w-5 h-5" />
+                    View Specifications
+                  </button>
+                </div>
+              ) : isSpecParseFailed ? (
+                <div className="text-center py-12">
+                  <AlertTriangle className="w-16 h-16 text-error mx-auto mb-4" />
+                  <p className="text-on-surface font-bold text-lg mb-2">
+                    Specification Parse Failed
+                  </p>
+                  <p className="text-sm text-on-surface-variant mb-6 max-w-md mx-auto">
+                    The uploaded specification could not be parsed. Please review
+                    the file and upload again.
+                  </p>
+                  <button
+                    onClick={() => navigate(`/specifications?projectId=${id}`)}
+                    className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 flex items-center gap-2 mx-auto font-semibold"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Manage Specifications
+                  </button>
+                </div>
+              ) : isSpecParsed && !hasEndpoints ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                  <p className="text-on-surface font-bold text-lg mb-2">
+                    No Endpoints Detected
+                  </p>
+                  <p className="text-sm text-on-surface-variant mb-6 max-w-md mx-auto">
+                    Parsing completed but no endpoints were detected from this
+                    specification. Please verify the file content.
                   </p>
                   <button
                     onClick={() => navigate(`/specifications?projectId=${id}`)}
@@ -355,6 +452,14 @@ export default function ProjectDetailedViewPage() {
                   </button>
                 </div>
               )}
+
+              <button
+                onClick={() => navigate(`/test-suites?projectId=${id}`)}
+                className="w-full px-6 py-3 bg-surface-container-high dark:bg-slate-800 text-on-surface rounded-xl hover:bg-surface-container-highest dark:hover:bg-slate-700 flex items-center justify-center gap-2 font-semibold transition-colors mt-4"
+              >
+                <Layers className="w-5 h-5" />
+                Manage Test Suites
+              </button>
             </div>
           </section>
         </div>
