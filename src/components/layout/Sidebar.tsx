@@ -7,7 +7,6 @@ import {
   FileText,
   Network,
   Layers,
-  DoorOpen,
   Edit3,
   Sparkles,
   Settings2,
@@ -36,6 +35,11 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
+  // Fetch projects on mount to validate selected project
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
   // Fetch projects when dropdown opens
   useEffect(() => {
     if (isProjectDropdownOpen && projects.length === 0) {
@@ -47,7 +51,22 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
     try {
       setIsLoadingProjects(true);
       const data = await projectService.getProjects(1, 50);
-      setProjects(data.items || []);
+      const projectList = data.items || [];
+      setProjects(projectList);
+
+      // Validate selected project only once here
+      if (selectedProject) {
+        const projectExists = projectList.some(
+          (p: any) => p.id === selectedProject.id,
+        );
+        if (!projectExists) {
+          console.warn(
+            "Selected project no longer exists, clearing selection",
+            selectedProject.id,
+          );
+          clearSelectedProject();
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch projects:", err);
     } finally {
@@ -93,15 +112,10 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       path: "/endpoints",
     },
     { icon: Layers, label: t("common.testSuites"), path: "/test-suites" },
-    {
-      icon: DoorOpen,
-      label: t("common.testExecutionOrderGate"),
-      path: "/order-gate",
-    },
-    { icon: Edit3, label: t("common.testCaseStudio"), path: "/studio" },
+{ icon: PlayCircle, label: t("common.testExecutionRuns"), path: "/runs" },
     { icon: Sparkles, label: t("common.llmSuggestions"), path: "/suggestions" },
     { icon: Settings2, label: t("common.environments"), path: "/environments" },
-    { icon: PlayCircle, label: t("common.testExecutionRuns"), path: "/runs" },
+    
     {
       icon: AlertCircle,
       label: t("common.failureExplanation"),
@@ -114,6 +128,27 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       path: "/billing",
     },
   ];
+
+  const isPathActive = (basePath: string) => {
+    const currentPath = location.pathname;
+
+    // Exact match first.
+    if (currentPath === basePath) {
+      return true;
+    }
+
+    // Keep parent tab active for nested routes.
+    if (currentPath.startsWith(`${basePath}/`)) {
+      return true;
+    }
+
+    // Project detail route is singular: /project/:id, while menu item is /projects.
+    if (basePath === "/projects" && currentPath.startsWith("/project/")) {
+      return true;
+    }
+
+    return false;
+  };
 
   return (
     <aside
@@ -208,7 +243,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
 
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar font-sans text-sm font-medium tracking-tight">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = isPathActive(item.path);
           return (
             <Link
               key={item.path}

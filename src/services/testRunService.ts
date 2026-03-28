@@ -48,7 +48,7 @@ export interface TestRunsResponse {
 export interface StartTestRunRequest {
   testSuiteId: string;
   environmentId?: string;
-  testCaseIds?: string[]; // Optional: run specific test cases only
+  selectedTestCaseIds?: string[]; // Optional: run specific test cases only
 }
 
 const testRunService = {
@@ -69,10 +69,14 @@ const testRunService = {
   getTestRunsByTestSuite: async (
     testSuiteId: string,
     pageNumber: number = 1,
-    pageSize: number = 20
+    pageSize: number = 20,
+    status?: string
   ): Promise<TestRunsResponse> => {
+    const params: any = { pageNumber, pageSize };
+    if (status) params.status = status;
+
     return await apiService.get<TestRunsResponse>(`/test-suites/${testSuiteId}/test-runs`, {
-      params: { pageNumber, pageSize },
+      params,
     });
   },
 
@@ -83,7 +87,10 @@ const testRunService = {
 
   // Start a new test run
   startTestRun: async (data: StartTestRunRequest): Promise<TestRun> => {
-    return await apiService.post<TestRun>('/test-runs', data);
+    return await apiService.post<TestRun>(`/test-suites/${data.testSuiteId}/test-runs`, {
+      environmentId: data.environmentId,
+      selectedTestCaseIds: data.selectedTestCaseIds,
+    });
   },
 
   // Cancel a running test run

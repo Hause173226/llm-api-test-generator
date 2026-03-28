@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dashboardService, DashboardMetrics, ActivityItem, TopEndpoint } from '../services/dashboardService';
 
-export const useDashboard = () => {
+export const useDashboard = (projectId?: string) => {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     activeProjects: 0,
     totalEndpoints: 0,
@@ -19,9 +19,9 @@ export const useDashboard = () => {
       setError(null);
 
       const [metricsData, activityData, endpointsData] = await Promise.all([
-        dashboardService.getMetrics(),
-        dashboardService.getRecentActivity(),
-        dashboardService.getTopEndpoints(),
+        dashboardService.getMetrics(projectId),
+        dashboardService.getRecentActivity(projectId),
+        dashboardService.getTopEndpoints(projectId),
       ]);
 
       setMetrics(metricsData);
@@ -37,7 +37,7 @@ export const useDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [projectId]);
 
   return {
     metrics,

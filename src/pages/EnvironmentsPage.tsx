@@ -37,13 +37,6 @@ export default function EnvironmentsPage() {
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
 
-  // Use first project by default
-  React.useEffect(() => {
-    if (projects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(projects[0].id);
-    }
-  }, [projects]);
-
   const {
     environments,
     loading,
@@ -92,7 +85,7 @@ export default function EnvironmentsPage() {
     }
 
     const success = await createEnvironment({
-      projectId: selectedProjectId,
+      projectId: projectId,
       ...formData,
     });
 
@@ -269,17 +262,6 @@ export default function EnvironmentsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="px-4 py-3 rounded-xl bg-surface-container-low dark:bg-surface-container-high text-on-surface font-bold text-sm border-none focus:ring-4 focus:ring-primary-fixed"
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-6 py-3 rounded-xl bg-primary text-on-primary font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"

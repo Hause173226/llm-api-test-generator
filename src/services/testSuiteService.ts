@@ -29,6 +29,7 @@ export interface CreateTestSuiteRequest {
   selectedEndpointIds: string[];
   endpointBusinessContexts?: Record<string, string>;
   globalBusinessRules?: string;
+  rowVersion?: string;
 }
 
 export interface GenerateTestSuiteRequest {
@@ -100,14 +101,30 @@ class TestSuiteService {
   }
 
   async updateTestSuite(
+    projectId: string,
     suiteId: string,
     data: Partial<CreateTestSuiteRequest>
   ): Promise<TestSuite> {
-    return await apiService.put<TestSuite>(`/test-suites/${suiteId}`, data);
+    // Backend expects PascalCase
+    const payload = {
+      Name: data.name,
+      Description: data.description || '',
+      ApiSpecId: data.apiSpecId,
+      GenerationType: data.generationType || 'Auto',
+      SelectedEndpointIds: data.selectedEndpointIds || [],
+      EndpointBusinessContexts: data.endpointBusinessContexts || {},
+      GlobalBusinessRules: data.globalBusinessRules || '',
+      RowVersion: data.rowVersion,
+    };
+    
+    return await apiService.put<TestSuite>(
+      `/projects/${projectId}/test-suites/${suiteId}`,
+      payload
+    );
   }
 
-  async deleteTestSuite(suiteId: string): Promise<void> {
-    await apiService.delete(`/test-suites/${suiteId}`);
+  async deleteTestSuite(projectId: string, suiteId: string, rowVersion: string): Promise<void> {
+    await apiService.delete(`/projects/${projectId}/test-suites/${suiteId}?rowVersion=${encodeURIComponent(rowVersion)}`);
   }
 
   async executeTestSuite(
