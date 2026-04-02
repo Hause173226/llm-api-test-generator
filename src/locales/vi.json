@@ -234,7 +234,33 @@
     "actions": {
       "view": "Xem Báo cáo"
     },
-    "pagination": "Hiển thị {{current}} trên {{total}} Lượt chạy"
+    "pagination": "Hiển thị {{current}} trên {{total}} Lượt chạy",
+    "autoAnalysis": {
+      "title": "Phân tích LLM Tự động",
+      "toggle": "Phân tích LLM Tự động",
+      "suggestions": {
+        "title": "Gợi ý từ LLM",
+        "running": "Đang tạo gợi ý từ LLM...",
+        "success": "Đã tạo gợi ý từ LLM thành công",
+        "error": "Không thể tạo gợi ý",
+        "cancelled": "Đã hủy tạo gợi ý"
+      },
+      "explanations": {
+        "title": "Giải thích Lỗi",
+        "running": "Đang giải thích {{completed}}/{{total}} lỗi...",
+        "success": "Đã hoàn thành tất cả giải thích lỗi",
+        "partial": "Đã hoàn thành {{completed}}/{{total}} giải thích ({{failed}} thất bại)",
+        "error": "Không thể giải thích lỗi",
+        "cancelled": "Đã hủy giải thích lỗi"
+      },
+      "buttons": {
+        "cancel": "Hủy",
+        "retry": "Thử lại",
+        "dismiss": "Đóng",
+        "viewSuggestions": "Xem Gợi ý",
+        "viewResults": "Xem Kết quả"
+      }
+    }
   },
   "reports": {
     "title": "Phân tích & Báo cáo",

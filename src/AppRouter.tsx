@@ -13,13 +13,11 @@ import EndpointsPage from "./pages/EndpointsPage";
 import TestSuitesPage from "./pages/TestSuitesPage";
 import TestSuiteDetailPage from "./pages/TestSuiteDetailPage";
 import GeneratingTestCasesPage from "./pages/GeneratingTestCasesPage";
-import TestCasesListPage from "./pages/TestCasesListPage";
 import TestCasesHubPage from "./pages/TestCasesHubPage";
 import TestCaseStudioPage from "./pages/TestCaseStudioPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
 import EnvironmentsPage from "./pages/EnvironmentsPage";
 import TestRunsPage from "./pages/TestRunsPage";
-import FailureExplanationPage from "./pages/FailureExplanationPage";
 import ReportsPage from "./pages/ReportsPage";
 import BillingPage from "./pages/BillingPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
@@ -102,14 +100,6 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/test-suites/:suiteId/test-cases"
-          element={
-            <ProtectedRoute>
-              <TestCasesListPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/test-suites/:suiteId/test-cases/:testCaseId"
           element={
             <ProtectedRoute>
@@ -146,14 +136,6 @@ export default function AppRouter() {
           element={
             <ProtectedRoute>
               <TestRunsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/failure-explanation"
-          element={
-            <ProtectedRoute>
-              <FailureExplanationPage />
             </ProtectedRoute>
           }
         />

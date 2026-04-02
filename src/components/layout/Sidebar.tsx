@@ -11,7 +11,6 @@ import {
   Sparkles,
   Settings2,
   PlayCircle,
-  AlertCircle,
   BarChart3,
   CreditCard,
   HelpCircle,
@@ -35,6 +34,16 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
+  const getProjectCreatedAt = (project: any): number => {
+    const rawDate =
+      project?.createdDateTime ||
+      project?.createdAt ||
+      project?.CreatedDateTime ||
+      project?.CreatedAt;
+    const timestamp = rawDate ? new Date(rawDate).getTime() : 0;
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  };
+
   // Fetch projects on mount to validate selected project
   useEffect(() => {
     fetchProjects();
@@ -54,6 +63,9 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       const projectList = data.items || [];
       setProjects(projectList);
 
+      const hasPersistedSelection = !!localStorage.getItem("selectedProject");
+      let shouldAutoSelectNewest = !selectedProject && !hasPersistedSelection;
+
       // Validate selected project only once here
       if (selectedProject) {
         const projectExists = projectList.some(
@@ -65,6 +77,17 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
             selectedProject.id,
           );
           clearSelectedProject();
+          shouldAutoSelectNewest = true;
+        }
+      }
+
+      if (shouldAutoSelectNewest && projectList.length > 0) {
+        const newestProject = [...projectList].sort(
+          (a, b) => getProjectCreatedAt(b) - getProjectCreatedAt(a),
+        )[0];
+
+        if (newestProject) {
+          handleSelectProject(newestProject);
         }
       }
     } catch (err) {
@@ -112,15 +135,9 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       path: "/endpoints",
     },
     { icon: Layers, label: t("common.testSuites"), path: "/test-suites" },
-{ icon: PlayCircle, label: t("common.testExecutionRuns"), path: "/runs" },
+    { icon: PlayCircle, label: t("common.testExecutionRuns"), path: "/runs" },
     { icon: Sparkles, label: t("common.llmSuggestions"), path: "/suggestions" },
     { icon: Settings2, label: t("common.environments"), path: "/environments" },
-    
-    {
-      icon: AlertCircle,
-      label: t("common.failureExplanation"),
-      path: "/failure-explanation",
-    },
     { icon: BarChart3, label: t("common.reports"), path: "/reports" },
     {
       icon: CreditCard,
@@ -179,7 +196,10 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
           <div className="relative">
             <button
               onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors"
+              className={cn(
+                "w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors",
+                selectedProject && "pr-10",
+              )}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <FolderOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -187,20 +207,22 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
                   {selectedProject ? selectedProject.name : "Select Project"}
                 </span>
               </div>
-              {selectedProject ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    clearSelectedProject();
-                  }}
-                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-                >
-                  <X className="w-3 h-3 text-slate-400" />
-                </button>
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-              )}
+              <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
             </button>
+
+            {selectedProject && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearSelectedProject();
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+                aria-label="Clear selected project"
+              >
+                <X className="w-3 h-3 text-slate-400" />
+              </button>
+            )}
 
             {/* Dropdown */}
             {isProjectDropdownOpen && (

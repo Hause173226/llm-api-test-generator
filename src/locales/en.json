@@ -234,7 +234,33 @@
     "actions": {
       "view": "View Report"
     },
-    "pagination": "Showing {{current}} of {{total}} Runs"
+    "pagination": "Showing {{current}} of {{total}} Runs",
+    "autoAnalysis": {
+      "title": "Auto LLM Analysis",
+      "toggle": "Auto LLM Analysis",
+      "suggestions": {
+        "title": "LLM Suggestions",
+        "running": "Generating LLM suggestions...",
+        "success": "LLM suggestions generated successfully",
+        "error": "Failed to generate suggestions",
+        "cancelled": "Suggestions generation cancelled"
+      },
+      "explanations": {
+        "title": "Failure Explanations",
+        "running": "Explaining {{completed}}/{{total}} failures...",
+        "success": "All failure explanations completed",
+        "partial": "Completed {{completed}}/{{total}} explanations ({{failed}} failed)",
+        "error": "Failed to explain failures",
+        "cancelled": "Failure explanations cancelled"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "retry": "Retry",
+        "dismiss": "Dismiss",
+        "viewSuggestions": "View Suggestions",
+        "viewResults": "View Results"
+      }
+    }
   },
   "reports": {
     "title": "Analytics & Reports",
