@@ -16,6 +16,10 @@ export interface TestRun {
   triggeredBy: string;
   results?: TestRunResult[];
   createdAt: string;
+  updatedAt?: string;
+  runNumber?: number;
+  resultsExpireAt?: string;
+  hasDetailedResults?: boolean;
 }
 
 export interface TestRunResult {
@@ -27,6 +31,39 @@ export interface TestRunResult {
   actualResponse?: any;
   expectedResponse?: any;
   assertions?: AssertionResult[];
+}
+
+export interface TestCaseRunDetail {
+  testCaseId: string;
+  endpointId?: string;
+  name: string;
+  orderIndex: number;
+  status: string;
+  httpStatusCode?: number;
+  durationMs: number;
+  resolvedUrl?: string;
+  requestHeaders: Record<string, string>;
+  responseHeaders: Record<string, string>;
+  responseBodyPreview?: string;
+  failureReasons: Array<{ code?: string; message?: string }>;
+  extractedVariables: Record<string, string>;
+  dependencyIds: string[];
+  skippedBecauseDependencyIds: string[];
+  statusCodeMatched?: boolean;
+  schemaMatched?: boolean;
+  headerChecksPassed?: boolean;
+  bodyContainsPassed?: boolean;
+  bodyNotContainsPassed?: boolean;
+  jsonPathChecksPassed?: boolean;
+  responseTimePassed?: boolean;
+}
+
+export interface TestRunDetailResponse {
+  run?: TestRun;
+  resultsSource?: string;
+  executedAt?: string;
+  resolvedEnvironmentName?: string;
+  cases: TestCaseRunDetail[];
 }
 
 export interface AssertionResult {
@@ -45,6 +82,177 @@ export interface TestRunsResponse {
   totalPages: number;
 }
 
+interface BackendTestRun {
+  id: string;
+  testSuiteId: string;
+  projectId?: string;
+  status: string;
+  startedAt?: string;
+  completedAt?: string;
+  totalTests?: number;
+  passedCount?: number;
+  failedCount?: number;
+  skippedCount?: number;
+  durationMs?: number;
+  environmentId?: string;
+  triggeredBy?: string;
+  createdAt?: string;
+  createdDateTime?: string;
+  updatedDateTime?: string;
+  runNumber?: number;
+  hasDetailedResults?: boolean;
+  resultsExpireAt?: string;
+}
+
+interface BackendPagedRuns {
+  items?: BackendTestRun[];
+  totalCount?: number;
+  totalItems?: number;
+  pageNumber?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
+}
+
+interface BackendTestCaseRunDetail {
+  testCaseId?: string;
+  endpointId?: string;
+  name?: string;
+  orderIndex?: number;
+  status?: string;
+  httpStatusCode?: number;
+  durationMs?: number;
+  resolvedUrl?: string;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
+  responseBodyPreview?: string;
+  failureReasons?: Array<{ code?: string; message?: string }>;
+  extractedVariables?: Record<string, string>;
+  dependencyIds?: string[];
+  skippedBecauseDependencyIds?: string[];
+  statusCodeMatched?: boolean;
+  schemaMatched?: boolean;
+  headerChecksPassed?: boolean;
+  bodyContainsPassed?: boolean;
+  bodyNotContainsPassed?: boolean;
+  jsonPathChecksPassed?: boolean;
+  responseTimePassed?: boolean;
+}
+
+interface BackendTestRunDetail {
+  run?: BackendTestRun;
+  resultsSource?: string;
+  executedAt?: string;
+  resolvedEnvironmentName?: string;
+  cases?: BackendTestCaseRunDetail[];
+}
+
+const normalizeStatus = (status?: string): TestRun['status'] => {
+  const value = (status || '').toLowerCase();
+  if (value === 'completed' || value === 'running' || value === 'pending' || value === 'failed' || value === 'cancelled') {
+    return value;
+  }
+  return 'failed';
+};
+
+const mapBackendRun = (item: BackendTestRun): TestRun => ({
+  id: item.id,
+  testSuiteId: item.testSuiteId,
+  projectId: item.projectId || '',
+  status: normalizeStatus(item.status),
+  startedAt: item.startedAt,
+  completedAt: item.completedAt,
+  totalTests: item.totalTests ?? 0,
+  passedTests: item.passedCount ?? 0,
+  failedTests: item.failedCount ?? 0,
+  skippedTests: item.skippedCount ?? 0,
+  duration: item.durationMs,
+  environmentId: item.environmentId,
+  triggeredBy: item.triggeredBy || 'system',
+  createdAt: item.createdDateTime || item.createdAt || item.startedAt || new Date().toISOString(),
+  updatedAt: item.updatedDateTime,
+  runNumber: item.runNumber,
+  resultsExpireAt: item.resultsExpireAt,
+  hasDetailedResults: item.hasDetailedResults,
+  results: undefined,
+});
+
+const mapBackendTestCaseRunDetail = (
+  detail: BackendTestCaseRunDetail,
+): TestCaseRunDetail => ({
+  testCaseId: (detail as any).testCaseId || (detail as any).TestCaseId || '',
+  endpointId: (detail as any).endpointId || (detail as any).EndpointId,
+  name: (detail as any).name || (detail as any).Name || 'Unnamed test case',
+  orderIndex: (detail as any).orderIndex ?? (detail as any).OrderIndex ?? 0,
+  status: (detail as any).status || (detail as any).Status || 'Unknown',
+  httpStatusCode: (detail as any).httpStatusCode ?? (detail as any).HttpStatusCode,
+  durationMs: (detail as any).durationMs ?? (detail as any).DurationMs ?? 0,
+  resolvedUrl: (detail as any).resolvedUrl || (detail as any).ResolvedUrl,
+  requestHeaders: (detail as any).requestHeaders || (detail as any).RequestHeaders || {},
+  responseHeaders: (detail as any).responseHeaders || (detail as any).ResponseHeaders || {},
+  responseBodyPreview: (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,
+  failureReasons: (detail as any).failureReasons || (detail as any).FailureReasons || [],
+  extractedVariables: (detail as any).extractedVariables || (detail as any).ExtractedVariables || {},
+  dependencyIds: (detail as any).dependencyIds || (detail as any).DependencyIds || [],
+  skippedBecauseDependencyIds:
+    (detail as any).skippedBecauseDependencyIds ||
+    (detail as any).SkippedBecauseDependencyIds ||
+    [],
+  statusCodeMatched: (detail as any).statusCodeMatched ?? (detail as any).StatusCodeMatched,
+  schemaMatched: (detail as any).schemaMatched ?? (detail as any).SchemaMatched,
+  headerChecksPassed: (detail as any).headerChecksPassed ?? (detail as any).HeaderChecksPassed,
+  bodyContainsPassed: (detail as any).bodyContainsPassed ?? (detail as any).BodyContainsPassed,
+  bodyNotContainsPassed:
+    (detail as any).bodyNotContainsPassed ?? (detail as any).BodyNotContainsPassed,
+  jsonPathChecksPassed:
+    (detail as any).jsonPathChecksPassed ?? (detail as any).JsonPathChecksPassed,
+  responseTimePassed: (detail as any).responseTimePassed ?? (detail as any).ResponseTimePassed,
+});
+
+const mapBackendRunDetail = (response: BackendTestRunDetail): TestRunDetailResponse => ({
+  run: (response as any)?.run
+    ? mapBackendRun((response as any).run)
+    : (response as any)?.Run
+      ? mapBackendRun((response as any).Run)
+      : undefined,
+  resultsSource:
+    (response as any)?.resultsSource ?? (response as any)?.ResultsSource,
+  executedAt: (response as any)?.executedAt ?? (response as any)?.ExecutedAt,
+  resolvedEnvironmentName:
+    (response as any)?.resolvedEnvironmentName ??
+    (response as any)?.ResolvedEnvironmentName,
+  cases: Array.isArray((response as any)?.cases)
+    ? (response as any).cases.map(mapBackendTestCaseRunDetail)
+    : Array.isArray((response as any)?.Cases)
+      ? (response as any).Cases.map(mapBackendTestCaseRunDetail)
+      : [],
+});
+
+const mapBackendPagedRuns = (
+  response: BackendPagedRuns | BackendTestRun[],
+  fallbackPageNumber: number,
+  fallbackPageSize: number,
+): TestRunsResponse => {
+  if (Array.isArray(response)) {
+    return {
+      items: response.map(mapBackendRun),
+      totalCount: response.length,
+      pageNumber: fallbackPageNumber,
+      pageSize: fallbackPageSize,
+      totalPages: 1,
+    };
+  }
+
+  const rawItems = Array.isArray(response?.items) ? response.items : [];
+  return {
+    items: rawItems.map(mapBackendRun),
+    totalCount: response?.totalCount ?? response?.totalItems ?? rawItems.length,
+    pageNumber: response?.pageNumber ?? response?.page ?? fallbackPageNumber,
+    pageSize: response?.pageSize ?? fallbackPageSize,
+    totalPages: response?.totalPages ?? 1,
+  };
+};
+
 export interface StartTestRunRequest {
   testSuiteId: string;
   environmentId?: string;
@@ -62,7 +270,8 @@ const testRunService = {
     const params: any = { pageNumber, pageSize };
     if (status) params.status = status;
 
-    return await apiService.get<TestRunsResponse>(`/projects/${projectId}/test-runs`, { params });
+    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(`/projects/${projectId}/test-runs`, { params });
+    return mapBackendPagedRuns(response, pageNumber, pageSize);
   },
 
   // Get test runs for a specific test suite
@@ -75,9 +284,10 @@ const testRunService = {
     const params: any = { pageNumber, pageSize };
     if (status) params.status = status;
 
-    return await apiService.get<TestRunsResponse>(`/test-suites/${testSuiteId}/test-runs`, {
+    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(`/test-suites/${testSuiteId}/test-runs`, {
       params,
     });
+    return mapBackendPagedRuns(response, pageNumber, pageSize);
   },
 
   // Get test run by ID
@@ -99,8 +309,14 @@ const testRunService = {
   },
 
   // Get test run results
-  getTestRunResults: async (testRunId: string): Promise<TestRunResult[]> => {
-    return await apiService.get<TestRunResult[]>(`/test-runs/${testRunId}/results`);
+  getTestRunResults: async (
+    testSuiteId: string,
+    testRunId: string,
+  ): Promise<TestRunDetailResponse> => {
+    const response = await apiService.get<BackendTestRunDetail>(
+      `/test-suites/${testSuiteId}/test-runs/${testRunId}/results`,
+    );
+    return mapBackendRunDetail(response || {});
   },
 
   // Get test run statistics

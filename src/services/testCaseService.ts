@@ -48,9 +48,38 @@ const testCaseService = {
     pageNumber: number = 1,
     pageSize: number = 50
   ): Promise<TestCasesResponse> => {
-    return await apiService.get<TestCasesResponse>(`/test-suites/${testSuiteId}/test-cases`, {
+    const response = await apiService.get<any>(`/test-suites/${testSuiteId}/test-cases`, {
       params: { pageNumber, pageSize },
     });
+
+    // Backend shape can be either raw array or paged object.
+    if (Array.isArray(response)) {
+      return {
+        items: response,
+        totalCount: response.length,
+        pageNumber,
+        pageSize,
+        totalPages: 1,
+      };
+    }
+
+    if (response && Array.isArray(response.items)) {
+      return {
+        items: response.items,
+        totalCount: response.totalCount ?? response.items.length,
+        pageNumber: response.pageNumber ?? pageNumber,
+        pageSize: response.pageSize ?? pageSize,
+        totalPages: response.totalPages ?? 1,
+      };
+    }
+
+    return {
+      items: [],
+      totalCount: 0,
+      pageNumber,
+      pageSize,
+      totalPages: 0,
+    };
   },
 
   // Get test case by ID

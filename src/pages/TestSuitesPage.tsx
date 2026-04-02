@@ -184,6 +184,7 @@ export default function TestSuitesPage() {
 
       // Create and approve proposal immediately after suite creation
       if (newSuite && newSuite.id) {
+        let isOrderApproved = false;
         try {
           console.log("Creating proposal for suite:", newSuite.id);
           // Create proposal
@@ -214,6 +215,7 @@ export default function TestSuitesPage() {
               },
             );
             console.log("Proposal approved successfully");
+            isOrderApproved = true;
           } else {
             console.error("No proposalId found in response:", proposal);
           }
@@ -222,6 +224,40 @@ export default function TestSuitesPage() {
           showErrorToast(
             "Suite created but failed to approve order. Please approve manually.",
           );
+        }
+
+        if (isOrderApproved) {
+          try {
+            await apiService.post(
+              `/test-suites/${newSuite.id}/llm-suggestions/generate`,
+              {
+                specificationId: selectedSpecId,
+                forceRefresh: false,
+              },
+            );
+          } catch (suggestionErr: any) {
+            const statusCode =
+              suggestionErr?.status ?? suggestionErr?.response?.status;
+            const message = String(
+              suggestionErr?.message ||
+                suggestionErr?.response?.data?.message ||
+                "",
+            );
+            const alreadyHasPendingSuggestions =
+              statusCode === 400 &&
+              (message.includes("ForceRefresh=true") ||
+                message.includes("suggestion preview"));
+
+            if (!alreadyHasPendingSuggestions) {
+              console.error(
+                "Failed to auto-generate LLM suggestions:",
+                suggestionErr,
+              );
+              showErrorToast(
+                "Suite created and order approved, but auto-generate LLM suggestions failed. You can generate manually in LLM Suggestion tab.",
+              );
+            }
+          }
         }
       }
 
@@ -278,8 +314,18 @@ export default function TestSuitesPage() {
     navigate(`/test-runs/new?suiteId=${suiteId}`);
   };
 
-  const handleViewDetails = (suite: any) => {
-    navigate(`/test-suites/${suite.id}`);
+  const handleOpenSuite = (suite: any) => {
+    const params = new URLSearchParams();
+    if (projectId) {
+      params.set("projectId", projectId);
+    }
+    params.set("tab", "testcases");
+
+    const target = params.toString()
+      ? `/test-suites/${suite.id}?${params.toString()}`
+      : `/test-suites/${suite.id}`;
+
+    navigate(target);
   };
 
   const handleViewTestCases = (suite: any) => {
@@ -497,18 +543,11 @@ export default function TestSuitesPage() {
                   <div className="px-6 py-4 bg-surface-container-low/50 dark:bg-slate-800/50 border-t border-outline-variant/10 dark:border-slate-700 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleViewTestCases(suite)}
-                        className="px-3 py-2 bg-white dark:bg-slate-700 text-primary dark:text-indigo-400 font-bold text-xs rounded-lg shadow-sm border border-primary/10 dark:border-indigo-900/30 flex items-center gap-2 hover:bg-primary dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white transition-all"
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        View Test Cases
-                      </button>
-                      <button
-                        onClick={() => handleViewDetails(suite)}
+                        onClick={() => handleOpenSuite(suite)}
                         className="px-3 py-2 bg-white dark:bg-slate-700 text-on-surface dark:text-slate-300 font-bold text-xs rounded-lg shadow-sm border border-outline-variant/20 dark:border-slate-600 flex items-center gap-2 hover:bg-surface-container dark:hover:bg-slate-600 transition-all"
                       >
                         <Settings className="w-3 h-3" />
-                        View Details
+                        Open
                       </button>
                       <button
                         onClick={() => {

@@ -82,6 +82,16 @@ export default function ProjectManagementPage() {
     try {
       setIsSubmitting(true);
       const newProject = await createProject(formData);
+
+      if (newProject?.id) {
+        setGlobalSelectedProject({
+          id: newProject.id,
+          name: newProject.name,
+          description: newProject.description,
+          isActive: (newProject as any).isActive ?? true,
+        });
+      }
+
       showSuccessToast("Project created successfully");
       setIsCreateModalOpen(false);
       setFormData({ name: "", description: "", specType: "", specFile: null });
