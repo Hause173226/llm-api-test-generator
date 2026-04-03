@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
-import { useProjects } from "../hooks/useProjects";
+import { useProject } from "../contexts/ProjectContext";
 import { useTestSuites } from "../hooks/useTestSuites";
 import { apiService } from "../services/apiService";
 import testRunService, {
@@ -28,12 +28,11 @@ interface FailureExplanationModel {
 export default function SuggestionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { projects } = useProjects();
+  const { selectedProject } = useProject();
 
-  const projectIdFromQuery = searchParams.get("projectId") || "";
   const suiteIdFromQuery = searchParams.get("suiteId") || "";
+  const selectedProjectId = selectedProject?.id || "";
 
-  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedSuiteId, setSelectedSuiteId] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
   const [runs, setRuns] = useState<TestRun[]>([]);
@@ -53,17 +52,6 @@ export default function SuggestionsPage() {
 
   const { testSuites, isLoading: isLoadingSuites } =
     useTestSuites(selectedProjectId);
-
-  useEffect(() => {
-    if (projectIdFromQuery) {
-      setSelectedProjectId(projectIdFromQuery);
-      return;
-    }
-
-    if (!selectedProjectId && projects.length > 0) {
-      setSelectedProjectId(projects[0].id);
-    }
-  }, [projectIdFromQuery, projects, selectedProjectId]);
 
   useEffect(() => {
     if (!testSuites.length) {
@@ -295,28 +283,7 @@ export default function SuggestionsPage() {
           </button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-              Project
-            </label>
-            <select
-              value={selectedProjectId}
-              onChange={(e) => {
-                setSelectedProjectId(e.target.value);
-                setSelectedSuiteId("");
-              }}
-              className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface"
-            >
-              <option value="">Select project...</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
               Test Suite
@@ -355,6 +322,12 @@ export default function SuggestionsPage() {
             </select>
           </div>
         </div>
+
+        {!selectedProjectId && (
+          <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant">
+            Please select a project from the sidebar to inspect run details.
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <button

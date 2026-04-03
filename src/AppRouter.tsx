@@ -4,6 +4,10 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
+import ProductPage from "./pages/ProductPage";
+import IntelligencePage from "./pages/IntelligencePage";
+import EnterprisePage from "./pages/EnterprisePage";
+import PricingPage from "./pages/PricingPage";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProjectManagementPage from "./pages/ProjectManagementPage";
@@ -30,6 +34,10 @@ export default function AppRouter() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/product" element={<ProductPage />} />
+        <Route path="/intelligence" element={<IntelligencePage />} />
+        <Route path="/enterprise" element={<EnterprisePage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
