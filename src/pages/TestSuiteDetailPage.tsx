@@ -17,6 +17,7 @@ import { cn } from "../lib/utils";
 import {
   handleError,
   showErrorToast,
+  showInfoToast,
   showSuccessToast,
 } from "../utils/errorHandler";
 import { testSuiteService } from "../services/testSuiteService";
@@ -64,7 +65,11 @@ export default function TestSuiteDetailPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
+  const [testCaseSearchTerm, setTestCaseSearchTerm] = useState("");
+  const [testCaseFilterMethod, setTestCaseFilterMethod] = useState("");
   const [activeTab, setActiveTab] = useState<SuiteTab>("details");
+  const hasAnyTestCases =
+    Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
 
   useEffect(() => {
     if (
@@ -72,14 +77,29 @@ export default function TestSuiteDetailPage() {
       tabFromQuery === "details" ||
       tabFromQuery === "suggestions"
     ) {
-      setActiveTab(tabFromQuery);
+      if (tabFromQuery === "testcases" && !hasAnyTestCases) {
+        setActiveTab("details");
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", "details");
+        setSearchParams(params, { replace: true });
+      } else {
+        setActiveTab(tabFromQuery as SuiteTab);
+      }
     }
-  }, [tabFromQuery]);
+  }, [tabFromQuery, hasAnyTestCases]);
 
   const changeTab = (tab: SuiteTab) => {
-    setActiveTab(tab);
+    const nextTab = tab === "testcases" && !hasAnyTestCases ? "details" : tab;
+
+    if (tab === "testcases" && !hasAnyTestCases) {
+      showInfoToast(
+        "Chua co test case. Vui long tao test case trong tab Details.",
+      );
+    }
+
+    setActiveTab(nextTab);
     const params = new URLSearchParams(searchParams);
-    params.set("tab", tab);
+    params.set("tab", nextTab);
     setSearchParams(params, { replace: true });
   };
 
@@ -469,6 +489,30 @@ export default function TestSuiteDetailPage() {
     }
   };
 
+  const getTestCaseMethod = (testCase: TestCase): string => {
+    const method = String((testCase as any).method || "").toUpperCase();
+    return method || "GET";
+  };
+
+  const filteredTestCases = testCases.filter((testCase) => {
+    const keyword = testCaseSearchTerm.trim().toLowerCase();
+    const method = getTestCaseMethod(testCase);
+    const testType = String((testCase as any).testType || "").toLowerCase();
+
+    const matchesSearch =
+      !keyword ||
+      testCase.name?.toLowerCase().includes(keyword) ||
+      testCase.description?.toLowerCase().includes(keyword) ||
+      testCase.path?.toLowerCase().includes(keyword) ||
+      method.toLowerCase().includes(keyword) ||
+      testType.includes(keyword);
+
+    const matchesMethod =
+      !testCaseFilterMethod || method === testCaseFilterMethod;
+
+    return matchesSearch && matchesMethod;
+  });
+
   const filteredEndpoints = endpoints.filter((endpoint) => {
     const keyword = searchTerm.trim().toLowerCase();
     const matchesSearch =
@@ -575,18 +619,6 @@ export default function TestSuiteDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => changeTab("testcases")}
-            className={cn(
-              "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
-              activeTab === "testcases"
-                ? "bg-primary text-white"
-                : "bg-surface-container-high dark:bg-slate-800 text-on-surface",
-            )}
-          >
-            Test Cases
-          </button>
-          <button
-            type="button"
             onClick={() => changeTab("details")}
             className={cn(
               "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
@@ -596,6 +628,18 @@ export default function TestSuiteDetailPage() {
             )}
           >
             Details
+          </button>
+          <button
+            type="button"
+            onClick={() => changeTab("testcases")}
+            className={cn(
+              "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
+              activeTab === "testcases"
+                ? "bg-primary text-white"
+                : "bg-surface-container-high dark:bg-slate-800 text-on-surface",
+            )}
+          >
+            Test Cases
           </button>
           <button
             type="button"
@@ -615,7 +659,7 @@ export default function TestSuiteDetailPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-on-surface">
-                Test Cases ({testCases.length})
+                Test Cases ({filteredTestCases.length}/{testCases.length})
               </h2>
               <div className="flex items-center gap-2">
                 <button
@@ -641,30 +685,87 @@ export default function TestSuiteDetailPage() {
               </div>
             </div>
 
+            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
+              <div className="relative flex-1 min-w-[300px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                <input
+                  className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
+                  placeholder="Search test cases..."
+                  type="text"
+                  value={testCaseSearchTerm}
+                  onChange={(e) => setTestCaseSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
+                  Method
+                </span>
+                {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map(
+                  (method) => (
+                    <button
+                      key={method}
+                      onClick={() =>
+                        setTestCaseFilterMethod(method === "ALL" ? "" : method)
+                      }
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
+                        (method === "ALL" && !testCaseFilterMethod) ||
+                          method === testCaseFilterMethod
+                          ? "bg-primary dark:bg-indigo-600 text-on-primary"
+                          : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
+                      )}
+                    >
+                      {method}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+
             {isLoadingTestCases ? (
               <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading test cases...
               </div>
-            ) : testCases.length === 0 ? (
+            ) : filteredTestCases.length === 0 ? (
               <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant">
-                No test cases found for this suite.
+                No test cases match current search/filter.
               </div>
             ) : (
-              <div className="space-y-2">
-                {testCases.map((testCase) => (
+              <div className="space-y-3">
+                {filteredTestCases.map((testCase) => (
                   <div
                     key={testCase.id}
-                    className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800"
+                    className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-on-surface">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider",
+                              getMethodColor(getTestCaseMethod(testCase)),
+                            )}
+                          >
+                            {getTestCaseMethod(testCase)}
+                          </span>
+                          {(testCase as any).testType && (
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-surface-container-high dark:bg-slate-800 text-on-surface-variant uppercase tracking-wider">
+                              {(testCase as any).testType}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold text-on-surface truncate">
                           {testCase.name}
                         </p>
-                        <p className="text-xs text-on-surface-variant mt-1">
-                          {testCase.method} {testCase.path}
+                        <p className="text-xs text-on-surface-variant mt-1 truncate">
+                          {getTestCaseMethod(testCase)} {testCase.path}
                         </p>
+                        {testCase.description && (
+                          <p className="text-xs text-on-surface-variant mt-1 line-clamp-1">
+                            {testCase.description}
+                          </p>
+                        )}
                       </div>
                       <button
                         onClick={() =>

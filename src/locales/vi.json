@@ -636,6 +636,139 @@
       "terms": "Điều khoản Dịch vụ"
     }
   },
+  "marketing": {
+    "product": {
+      "title": "Sản phẩm",
+      "subtitle": "Nền tảng all-in-one cho discovery, generation, execution và reporting trong kiểm thử API.",
+      "capabilities": {
+        "discovery": {
+          "title": "API Discovery",
+          "desc": "Đọc spec và tự động lập bản đồ endpoint."
+        },
+        "studio": {
+          "title": "Case Studio",
+          "desc": "Quản lý test case theo suite, loại và mức ưu tiên."
+        },
+        "runs": {
+          "title": "Execution Runs",
+          "desc": "Chạy test hàng loạt theo môi trường và lịch trình."
+        },
+        "gate": {
+          "title": "Quality Gate",
+          "desc": "Theo dõi pass/fail và ngăn regression trước release."
+        }
+      },
+      "checklist": [
+        "Quản lý dự án và thông số API theo vòng đời đầy đủ",
+        "Sinh test case tự động từ endpoint + context nghiệp vụ",
+        "Chạy test theo test run và theo dõi kết quả chi tiết",
+        "Gợi ý scenario từ AI để mở rộng độ phủ nhanh"
+      ],
+      "steps": {
+        "label": "Quy trình 3 bước",
+        "items": [
+          "Kết nối spec và chuẩn hóa endpoint",
+          "Generate test + review suggestion",
+          "Execute run và phân tích kết quả"
+        ]
+      }
+    },
+    "intelligence": {
+      "title": "Trí tuệ",
+      "subtitle": "AI hỗ trợ đề xuất test scenario, phân tích thất bại và tăng tốc vòng phản hồi cho đội QA/Dev.",
+      "features": {
+        "suggestions": {
+          "title": "LLM Suggestions",
+          "desc": "Đề xuất Boundary/Negative theo sequence endpoint."
+        },
+        "governance": {
+          "title": "Prompt Governance",
+          "desc": "Prompt/rules/format được quản lý tập trung từ BE."
+        },
+        "feedback": {
+          "title": "Execution Feedback",
+          "desc": "Phân tích failure tự động để tối ưu test theo vòng lặp."
+        }
+      },
+      "pipeline": {
+        "label": "AI Pipeline",
+        "items": [
+          "Thu thập context",
+          "Build prompt",
+          "Generate suggestion",
+          "Lưu feedback để học"
+        ]
+      },
+      "notes": [
+        "Failure explanation tự động từ run result",
+        "Hỗ trợ callback async cho pipeline generate"
+      ]
+    },
+    "enterprise": {
+      "title": "Doanh nghiệp",
+      "subtitle": "Đáp ứng nhu cầu scale lớn với bảo mật, phân quyền và khả năng triển khai linh hoạt.",
+      "features": {
+        "identity": {
+          "title": "Identity & Access",
+          "desc": "SSO, RBAC và phân quyền chi tiết theo đội nhóm."
+        },
+        "compliance": {
+          "title": "Compliance",
+          "desc": "Audit trails và policy controls cho quy trình chuẩn hóa."
+        },
+        "deployment": {
+          "title": "Deployment",
+          "desc": "Cloud, hybrid hoặc on-prem theo yêu cầu hạ tầng."
+        }
+      },
+      "governance": {
+        "label": "Quản trị cấp doanh nghiệp",
+        "items": [
+          "Quản lý workspace nhiều team trên cùng tổ chức",
+          "Audit log đầy đủ cho thay đổi quan trọng",
+          "Kiểm soát truy cập theo role và project",
+          "Hỗ trợ quy trình review/approval trước khi generate"
+        ]
+      }
+    },
+    "pricing": {
+      "title": "Bảng giá",
+      "subtitle": "Lựa chọn gói phù hợp, mở rộng theo tốc độ phát triển của team.",
+      "popular": "Phổ biến",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "price": "$0",
+          "desc": "Cá nhân và nhóm nhỏ bắt đầu nhanh",
+          "features": [
+            "Tạo project và suite cơ bản",
+            "Quản lý test case thủ công",
+            "Báo cáo run tiêu chuẩn"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "$49",
+          "desc": "Tự động hóa đầy đủ cho team phát triển",
+          "features": [
+            "Generate test bằng AI",
+            "LLM suggestion + failure explanation",
+            "Workflow callback và pipeline nâng cao"
+          ]
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "price": "Liên hệ",
+          "desc": "Gói riêng cho nhu cầu bảo mật và compliance",
+          "features": [
+            "SSO + RBAC theo tổ chức",
+            "Audit logs và governance",
+            "Hybrid / on-prem deployment"
+          ]
+        }
+      }
+    }
+  },
   "auth": {
     "welcomeBack": "Chào mừng trở lại",
     "registerAccount": "Đăng ký tài khoản",

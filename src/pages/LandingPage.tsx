@@ -57,30 +57,30 @@ export default function LandingPage() {
           </div>
 
           <div className="hidden md:flex items-center gap-10">
-            <a
-              href="#"
+            <Link
+              to="/product"
               className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
             >
               {t("landing.nav.product")}
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/intelligence"
               className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
             >
               {t("landing.nav.intelligence")}
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/enterprise"
               className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
             >
               {t("landing.nav.enterprise")}
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/pricing"
               className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
             >
               {t("landing.nav.pricing")}
-            </a>
+            </Link>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
