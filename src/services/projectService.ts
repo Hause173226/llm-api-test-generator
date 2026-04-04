@@ -32,7 +32,7 @@ class ProjectService {
     search?: string
   ): Promise<ProjectListResponse> {
     const params = new URLSearchParams({
-      pageNumber: page.toString(),
+      page: page.toString(),
       pageSize: pageSize.toString(),
       ...(search && { search }),
     });

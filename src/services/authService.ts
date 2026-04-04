@@ -28,6 +28,8 @@ export interface RegisterRequest {
   fullName: string;
   email: string;
   password: string;
+  /** Must match Password; backend expects JSON property `confirmPassword` → ConfirmPassword */
+  confirmPassword: string;
 }
 
 export interface RegisterResponse {
@@ -53,7 +55,12 @@ class AuthService {
   }
 
   async register(data: RegisterRequest): Promise<RegisterResponse> {
-    return await apiService.post<RegisterResponse>('/auth/register', data);
+    return await apiService.post<RegisterResponse>('/auth/register', {
+      email: data.email,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      fullName: data.fullName,
+    });
   }
 
   async logout(): Promise<void> {

@@ -57,6 +57,11 @@ class ApiService {
             errorMessage = errorData.message || 'Invalid email or password';
           } else if (response.status === 400) {
             errorMessage = errorData.message || 'Invalid request. Please check your input.';
+          } else if (response.status === 403) {
+            errorMessage =
+              errorData.message ||
+              errorData.detail ||
+              'Forbidden: your account may be missing required permissions (e.g. Permission:GetProjects). Ask an admin to assign the correct role or permissions.';
           } else if (response.status === 404) {
             errorMessage = errorData.message || 'Resource not found';
           } else if (response.status === 500) {

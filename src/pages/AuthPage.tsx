@@ -82,7 +82,12 @@ export default function AuthPage() {
           return;
         }
 
-        await register(formData.fullName, formData.email, formData.password);
+        await register(
+          formData.fullName,
+          formData.email,
+          formData.password,
+          formData.confirmPassword,
+        );
         showSuccessToast(
           "Registration successful! Please check your email to verify your account.",
         );
