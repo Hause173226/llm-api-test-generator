@@ -58,7 +58,7 @@ export default function TestCasesHubPage() {
   };
 
   const handleSelectSuite = (suiteId: string) => {
-    navigate(`/test-suites/${suiteId}/test-cases`);
+    navigate(`/test-suites/${suiteId}?tab=testcases`);
   };
 
   const formatDate = (dateString: string) => {

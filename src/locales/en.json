@@ -234,7 +234,33 @@
     "actions": {
       "view": "View Report"
     },
-    "pagination": "Showing {{current}} of {{total}} Runs"
+    "pagination": "Showing {{current}} of {{total}} Runs",
+    "autoAnalysis": {
+      "title": "Auto LLM Analysis",
+      "toggle": "Auto LLM Analysis",
+      "suggestions": {
+        "title": "LLM Suggestions",
+        "running": "Generating LLM suggestions...",
+        "success": "LLM suggestions generated successfully",
+        "error": "Failed to generate suggestions",
+        "cancelled": "Suggestions generation cancelled"
+      },
+      "explanations": {
+        "title": "Failure Explanations",
+        "running": "Explaining {{completed}}/{{total}} failures...",
+        "success": "All failure explanations completed",
+        "partial": "Completed {{completed}}/{{total}} explanations ({{failed}} failed)",
+        "error": "Failed to explain failures",
+        "cancelled": "Failure explanations cancelled"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "retry": "Retry",
+        "dismiss": "Dismiss",
+        "viewSuggestions": "View Suggestions",
+        "viewResults": "View Results"
+      }
+    }
   },
   "reports": {
     "title": "Analytics & Reports",
@@ -608,6 +634,139 @@
       "rights": "© 2026 TestFlow Intelligence Platform. All rights reserved.",
       "privacy": "Privacy Policy",
       "terms": "Terms of Service"
+    }
+  },
+  "marketing": {
+    "product": {
+      "title": "Product",
+      "subtitle": "An all-in-one platform for discovery, generation, execution, and reporting in API testing.",
+      "capabilities": {
+        "discovery": {
+          "title": "API Discovery",
+          "desc": "Parse specs and map endpoints automatically."
+        },
+        "studio": {
+          "title": "Case Studio",
+          "desc": "Manage test cases by suite, type, and priority."
+        },
+        "runs": {
+          "title": "Execution Runs",
+          "desc": "Run tests in bulk across environments and schedules."
+        },
+        "gate": {
+          "title": "Quality Gate",
+          "desc": "Track pass/fail trends and block regressions pre-release."
+        }
+      },
+      "checklist": [
+        "Project and API spec lifecycle management",
+        "Automatic test case generation from endpoint and business context",
+        "Run-based execution with detailed test results",
+        "AI scenario suggestions to expand coverage quickly"
+      ],
+      "steps": {
+        "label": "3-step flow",
+        "items": [
+          "Connect specs and normalize endpoints",
+          "Generate tests and review suggestions",
+          "Execute runs and analyze results"
+        ]
+      }
+    },
+    "intelligence": {
+      "title": "Intelligence",
+      "subtitle": "AI-assisted scenario suggestion and failure analysis to accelerate QA and developer feedback loops.",
+      "features": {
+        "suggestions": {
+          "title": "LLM Suggestions",
+          "desc": "Boundary/Negative suggestions from endpoint sequence."
+        },
+        "governance": {
+          "title": "Prompt Governance",
+          "desc": "Prompt/rules/format centrally governed from backend."
+        },
+        "feedback": {
+          "title": "Execution Feedback",
+          "desc": "Automated failure analysis to continuously improve test quality."
+        }
+      },
+      "pipeline": {
+        "label": "AI Pipeline",
+        "items": [
+          "Collect context",
+          "Build prompt",
+          "Generate suggestions",
+          "Store feedback loop"
+        ]
+      },
+      "notes": [
+        "Automated failure explanations from run results",
+        "Async callback support for generation pipelines"
+      ]
+    },
+    "enterprise": {
+      "title": "Enterprise",
+      "subtitle": "Built for scale with security, access governance, and flexible deployment options.",
+      "features": {
+        "identity": {
+          "title": "Identity & Access",
+          "desc": "SSO, RBAC, and granular team-based permissions."
+        },
+        "compliance": {
+          "title": "Compliance",
+          "desc": "Audit trails and policy controls for standardized workflows."
+        },
+        "deployment": {
+          "title": "Deployment",
+          "desc": "Cloud, hybrid, or on-prem based on infrastructure requirements."
+        }
+      },
+      "governance": {
+        "label": "Enterprise governance",
+        "items": [
+          "Multi-team workspace management within one organization",
+          "Complete audit logs for critical changes",
+          "Role- and project-level access controls",
+          "Review/approval workflows before generation"
+        ]
+      }
+    },
+    "pricing": {
+      "title": "Pricing",
+      "subtitle": "Choose a plan that matches your team and scale as you grow.",
+      "popular": "Popular",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "price": "$0",
+          "desc": "Quick start for individuals and small teams",
+          "features": [
+            "Basic project and suite setup",
+            "Manual test case management",
+            "Standard run reports"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "$49",
+          "desc": "Full automation for product teams",
+          "features": [
+            "AI-powered test generation",
+            "LLM suggestions and failure explanations",
+            "Advanced callback workflow pipelines"
+          ]
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "price": "Contact",
+          "desc": "Custom package for security and compliance",
+          "features": [
+            "Organization-wide SSO + RBAC",
+            "Audit logs and governance controls",
+            "Hybrid / on-prem deployment"
+          ]
+        }
+      }
     }
   },
   "auth": {

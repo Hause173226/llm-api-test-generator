@@ -157,8 +157,10 @@ export default function ProjectDetailedViewPage() {
       ? latestSpecParseStatusRaw.toLowerCase()
       : "pending";
 
-  const isSpecParsing = hasSpecifications && latestSpecParseStatus === "pending";
-  const isSpecParseFailed = hasSpecifications && latestSpecParseStatus === "failed";
+  const isSpecParsing =
+    hasSpecifications && latestSpecParseStatus === "pending";
+  const isSpecParseFailed =
+    hasSpecifications && latestSpecParseStatus === "failed";
   const isSpecParsed = hasSpecifications && latestSpecParseStatus === "success";
 
   const totalEndpoints = getProjectEndpointCount(project);
@@ -212,9 +214,7 @@ export default function ProjectDetailedViewPage() {
                 Last Run
               </p>
               <p className="text-xl font-black text-on-surface">
-                {lastRunAt
-                  ? new Date(lastRunAt).toLocaleDateString()
-                  : "Never"}
+                {lastRunAt ? new Date(lastRunAt).toLocaleDateString() : "Never"}
               </p>
             </div>
           </div>
@@ -277,7 +277,9 @@ export default function ProjectDetailedViewPage() {
                         Latest Specification
                       </span>
                       <span className="text-on-surface font-bold">
-                        {latestSpecification?.name || latestSpecification?.Name || "N/A"}
+                        {latestSpecification?.name ||
+                          latestSpecification?.Name ||
+                          "N/A"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-3 border-b border-outline-variant/10">
@@ -310,9 +312,7 @@ export default function ProjectDetailedViewPage() {
                       </span>
                       <span className="text-on-surface font-bold">
                         {latestSpecCreatedAt
-                          ? new Date(
-                              latestSpecCreatedAt,
-                            ).toLocaleDateString()
+                          ? new Date(latestSpecCreatedAt).toLocaleDateString()
                           : "N/A"}
                       </span>
                     </div>
@@ -391,8 +391,8 @@ export default function ProjectDetailedViewPage() {
                     Specification Parse Failed
                   </p>
                   <p className="text-sm text-on-surface-variant mb-6 max-w-md mx-auto">
-                    The uploaded specification could not be parsed. Please review
-                    the file and upload again.
+                    The uploaded specification could not be parsed. Please
+                    review the file and upload again.
                   </p>
                   <button
                     onClick={() => navigate(`/specifications?projectId=${id}`)}

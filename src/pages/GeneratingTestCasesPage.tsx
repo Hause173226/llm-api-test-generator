@@ -5,18 +5,32 @@ import MainLayout from "../components/layout/MainLayout";
 import { apiService } from "../services/apiService";
 import { handleError, showErrorToast } from "../utils/errorHandler";
 
+interface ApiState {
+  status: "idle" | "generating" | "success" | "error";
+  progress: number;
+  currentStep: string;
+  errorMessage: string;
+}
+
 export default function GeneratingTestCasesPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const suiteId = searchParams.get("suiteId");
-  const specId = searchParams.get("specId");
 
-  const [status, setStatus] = useState<"generating" | "success" | "error">(
-    "generating",
-  );
-  const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState("Initializing...");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [happyPathState, setHappyPathState] = useState<ApiState>({
+    status: "idle",
+    progress: 0,
+    currentStep: "",
+    errorMessage: "",
+  });
+
+  const [boundaryNegativeState, setBoundaryNegativeState] = useState<ApiState>({
+    status: "idle",
+    progress: 0,
+    currentStep: "",
+    errorMessage: "",
+  });
+
   const hasAutoStartedRef = useRef(false);
   const isGeneratingRef = useRef(false);
 
@@ -27,7 +41,7 @@ export default function GeneratingTestCasesPage() {
     }
 
     if (suiteId) {
-      navigate(`/test-suites/${suiteId}`);
+      navigate(`/test-suites/${suiteId}?tab=testcases`);
       return;
     }
 
@@ -35,7 +49,7 @@ export default function GeneratingTestCasesPage() {
   };
 
   useEffect(() => {
-    if (!suiteId || !specId) {
+    if (!suiteId) {
       showErrorToast("Missing required parameters");
       goBackInTab();
       return;
@@ -49,221 +63,408 @@ export default function GeneratingTestCasesPage() {
     hasAutoStartedRef.current = true;
 
     generateTestCases();
-  }, [suiteId, specId]);
+  }, [suiteId]);
+
+  const extractErrorMessage = (error: any): string => {
+    if (error.response?.data?.detail) return error.response.data.detail;
+    if (error.response?.data?.message) return error.response.data.message;
+    if (error.message) return error.message;
+    return "Unknown error";
+  };
+
+  const executeUnifiedGeneration = async () => {
+    try {
+      setHappyPathState((prev) => ({
+        ...prev,
+        status: "generating",
+        progress: 25,
+        currentStep: "Analyzing endpoints...",
+      }));
+      setBoundaryNegativeState((prev) => ({
+        ...prev,
+        status: "generating",
+        progress: 25,
+        currentStep: "Analyzing endpoints...",
+      }));
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await apiService.post(`/test-suites/${suiteId}/generate-tests`);
+
+      setHappyPathState((prev) => ({
+        ...prev,
+        progress: 70,
+        currentStep: "LLM generating mixed test cases...",
+      }));
+      setBoundaryNegativeState((prev) => ({
+        ...prev,
+        progress: 70,
+        currentStep: "LLM generating mixed test cases...",
+      }));
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      setHappyPathState((prev) => ({
+        ...prev,
+        progress: 100,
+        currentStep: "Unified generation complete!",
+        status: "success",
+      }));
+      setBoundaryNegativeState((prev) => ({
+        ...prev,
+        progress: 100,
+        currentStep: "Unified generation complete!",
+        status: "success",
+      }));
+    } catch (error: any) {
+      console.error("Unified generation failed:", error);
+      const errorMsg = extractErrorMessage(error);
+      setHappyPathState((prev) => ({
+        ...prev,
+        status: "error",
+        errorMessage: errorMsg,
+      }));
+      setBoundaryNegativeState((prev) => ({
+        ...prev,
+        status: "error",
+        errorMessage: errorMsg,
+      }));
+      throw error;
+    }
+  };
 
   const generateTestCases = async () => {
-    if (isGeneratingRef.current) {
-      return;
-    }
+    if (isGeneratingRef.current) return;
 
     try {
       isGeneratingRef.current = true;
-      setStatus("generating");
-      setProgress(10);
-      setCurrentStep("Preparing test suite...");
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setProgress(20);
-      setCurrentStep("Analyzing API endpoints...");
+      // Initialize both states to generating
+      setHappyPathState({
+        status: "generating",
+        progress: 10,
+        currentStep: "Preparing...",
+        errorMessage: "",
+      });
+      setBoundaryNegativeState({
+        status: "generating",
+        progress: 10,
+        currentStep: "Preparing...",
+        errorMessage: "",
+      });
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setProgress(30);
-      setCurrentStep("Sending request to LLM...");
+      // Execute APIs sequentially to avoid optimistic concurrency conflicts on TestSuite updates.
+      let unifiedSuccess = false;
 
-      // Call API to generate test cases
-      const response = await apiService.post(
-        `/test-suites/${suiteId}/test-cases/generate-happy-path`,
-        {
-          SpecificationId: specId,
-          ForceRegenerate: searchParams.get("regenerate") === "true",
-        },
-      );
+      try {
+        await executeUnifiedGeneration();
+        unifiedSuccess = true;
+      } catch {
+        unifiedSuccess = false;
+      }
 
-      setProgress(60);
-      setCurrentStep("LLM is generating test cases...");
-
-      // Poll for completion (simplified - you might want to use SignalR or polling)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setProgress(80);
-      setCurrentStep("Finalizing test cases...");
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProgress(100);
-      setCurrentStep("Test cases generated successfully!");
-      setStatus("success");
-
-      // Navigate to test cases list page after a short delay
-      setTimeout(() => {
-        navigate(`/test-suites/${suiteId}/test-cases`);
-      }, 1500);
+      if (unifiedSuccess) {
+        // Both succeeded - auto-redirect
+        setTimeout(() => {
+          navigate(`/test-suites/${suiteId}?tab=testcases`);
+        }, 1500);
+      }
+      // If partial success or both failed, states are already set by individual functions
     } catch (err: any) {
-      console.error("Failed to generate test cases:", err);
-      console.error("Error detail:", err.response?.data);
-      setStatus("error");
-      const errorMsg =
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        err.message ||
-        "Unknown error";
-      setErrorMessage(errorMsg);
+      console.error("Generation error:", err);
     } finally {
       isGeneratingRef.current = false;
     }
   };
 
-  const handleRetry = () => {
-    setStatus("generating");
-    setProgress(0);
-    setErrorMessage("");
-    generateTestCases();
+  const retryHappyPath = async () => {
+    setHappyPathState({
+      status: "generating",
+      progress: 0,
+      currentStep: "Retrying...",
+      errorMessage: "",
+    });
+
+    try {
+      await executeUnifiedGeneration();
+    } catch (error) {
+      // Error already handled in executeUnifiedGeneration
+    }
+  };
+
+  const retryBoundaryNegative = async () => {
+    setBoundaryNegativeState({
+      status: "generating",
+      progress: 0,
+      currentStep: "Retrying...",
+      errorMessage: "",
+    });
+
+    try {
+      await executeUnifiedGeneration();
+    } catch (error) {
+      // Error already handled in executeUnifiedGeneration
+    }
+  };
+
+  const handleContinue = () => {
+    navigate(`/test-suites/${suiteId}?tab=testcases`);
   };
 
   const handleGoBack = () => {
     goBackInTab();
   };
 
+  const getOverallStatus = ():
+    | "generating"
+    | "success"
+    | "error"
+    | "partial" => {
+    const happyDone =
+      happyPathState.status === "success" || happyPathState.status === "error";
+    const boundaryDone =
+      boundaryNegativeState.status === "success" ||
+      boundaryNegativeState.status === "error";
+
+    if (!happyDone || !boundaryDone) return "generating";
+    if (
+      happyPathState.status === "success" &&
+      boundaryNegativeState.status === "success"
+    )
+      return "success";
+    if (
+      happyPathState.status === "error" &&
+      boundaryNegativeState.status === "error"
+    )
+      return "error";
+    return "partial";
+  };
+
+  const overallStatus = getOverallStatus();
+  const showContinueButton =
+    happyPathState.status === "success" ||
+    boundaryNegativeState.status === "success";
+
   return (
     <MainLayout title="Generating Test Cases">
       <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="max-w-2xl w-full mx-auto">
+        <div className="max-w-4xl w-full mx-auto">
           <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-br from-primary to-primary-container dark:from-indigo-600 dark:to-indigo-800 p-8 text-center">
               <div className="w-20 h-20 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
-                {status === "generating" && (
+                {overallStatus === "generating" && (
                   <Sparkles className="w-10 h-10 text-white animate-pulse" />
                 )}
-                {status === "success" && (
+                {overallStatus === "success" && (
                   <CheckCircle2 className="w-10 h-10 text-white" />
                 )}
-                {status === "error" && (
+                {(overallStatus === "error" || overallStatus === "partial") && (
                   <AlertTriangle className="w-10 h-10 text-white" />
                 )}
               </div>
               <h1 className="text-3xl font-bold text-white mb-2">
-                {status === "generating" && "Generating Test Cases"}
-                {status === "success" && "Generation Complete!"}
-                {status === "error" && "Generation Failed"}
+                {overallStatus === "generating" && "Generating Test Cases"}
+                {overallStatus === "success" && "Generation Complete!"}
+                {overallStatus === "partial" && "Partial Success"}
+                {overallStatus === "error" && "Generation Failed"}
               </h1>
               <p className="text-white/80">
-                {status === "generating" &&
+                {overallStatus === "generating" &&
                   "AI is creating comprehensive test cases for your endpoints"}
-                {status === "success" &&
-                  "Your test cases are ready. Redirecting..."}
-                {status === "error" && "Something went wrong during generation"}
+                {overallStatus === "success" &&
+                  "All test cases generated successfully. Redirecting..."}
+                {overallStatus === "partial" &&
+                  "Some test cases generated successfully"}
+                {overallStatus === "error" && "Test case generation failed"}
               </p>
             </div>
 
             {/* Content */}
             <div className="p-8">
-              {status === "generating" && (
-                <div className="space-y-6">
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-on-surface">
-                        {currentStep}
+              <div className="space-y-6">
+                {/* Happy Path Progress Section */}
+                <div className="bg-surface-container dark:bg-slate-800 p-6 rounded-xl border border-outline-variant/10 dark:border-slate-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-on-surface flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-emerald-500" />
+                      Happy Path Test Cases
+                    </h3>
+                    {happyPathState.status === "generating" && (
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-semibold rounded-full">
+                        Generating...
                       </span>
-                      <span className="font-bold text-primary dark:text-indigo-400">
-                        {progress}%
+                    )}
+                    {happyPathState.status === "success" && (
+                      <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Complete
                       </span>
-                    </div>
-                    <div className="h-3 bg-surface-container dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-primary-container dark:from-indigo-600 dark:to-indigo-400 transition-all duration-500 ease-out"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
+                    )}
+                    {happyPathState.status === "error" && (
+                      <span className="px-3 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-semibold rounded-full flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Failed
+                      </span>
+                    )}
                   </div>
 
-                  {/* Loading Animation */}
-                  <div className="flex items-center justify-center py-8">
-                    <div className="relative">
-                      <Loader2 className="w-16 h-16 text-primary dark:text-indigo-400 animate-spin" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-8 h-8 bg-primary/20 dark:bg-indigo-900/30 rounded-full animate-ping" />
+                  {happyPathState.status === "generating" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-on-surface-variant">
+                          {happyPathState.currentStep}
+                        </span>
+                        <span className="font-bold text-primary dark:text-indigo-400">
+                          {happyPathState.progress}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-surface-container-high dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                          style={{ width: `${happyPathState.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Info Cards */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-surface-container-low dark:bg-slate-800 p-4 rounded-xl text-center">
-                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                        Step
-                      </p>
-                      <p className="text-2xl font-black text-on-surface">
-                        {Math.floor(progress / 25) + 1}/4
+                  {happyPathState.status === "success" && (
+                    <div className="text-center py-4">
+                      <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+                      <p className="text-sm text-on-surface-variant">
+                        {happyPathState.currentStep}
                       </p>
                     </div>
-                    <div className="bg-surface-container-low dark:bg-slate-800 p-4 rounded-xl text-center">
-                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                        Status
-                      </p>
-                      <p className="text-sm font-bold text-primary dark:text-indigo-400">
-                        Processing
-                      </p>
-                    </div>
-                    <div className="bg-surface-container-low dark:bg-slate-800 p-4 rounded-xl text-center">
-                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                        ETA
-                      </p>
-                      <p className="text-2xl font-black text-on-surface">
-                        ~{Math.ceil((100 - progress) / 20)}m
-                      </p>
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Tips */}
-                  <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
-                    <p className="text-sm text-amber-800 dark:text-amber-400">
-                      💡 <span className="font-bold">Tip:</span> This process
-                      may take a few minutes depending on the number of
-                      endpoints. You can safely close this page and check back
-                      later.
-                    </p>
-                  </div>
+                  {happyPathState.status === "error" && (
+                    <div className="space-y-3">
+                      <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-lg border border-rose-200 dark:border-rose-900/30">
+                        <p className="text-sm text-rose-800 dark:text-rose-400">
+                          {happyPathState.errorMessage}
+                        </p>
+                      </div>
+                      <button
+                        onClick={retryHappyPath}
+                        className="w-full px-4 py-2 bg-primary dark:bg-indigo-600 text-white font-semibold rounded-lg hover:bg-primary/90 dark:hover:bg-indigo-500 transition-all"
+                      >
+                        Retry Happy Path
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
 
-              {status === "success" && (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                {/* Boundary/Negative Progress Section */}
+                <div className="bg-surface-container dark:bg-slate-800 p-6 rounded-xl border border-outline-variant/10 dark:border-slate-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-on-surface flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-amber-500" />
+                      Boundary/Negative Test Cases
+                    </h3>
+                    {boundaryNegativeState.status === "generating" && (
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-semibold rounded-full">
+                        Generating...
+                      </span>
+                    )}
+                    {boundaryNegativeState.status === "success" && (
+                      <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Complete
+                      </span>
+                    )}
+                    {boundaryNegativeState.status === "error" && (
+                      <span className="px-3 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-semibold rounded-full flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Failed
+                      </span>
+                    )}
                   </div>
-                  <p className="text-lg text-on-surface mb-6">
-                    Test cases have been generated successfully!
-                  </p>
-                  <div className="flex items-center justify-center gap-2 text-sm text-on-surface-variant">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Redirecting to test cases...</span>
-                  </div>
+
+                  {boundaryNegativeState.status === "generating" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-on-surface-variant">
+                          {boundaryNegativeState.currentStep}
+                        </span>
+                        <span className="font-bold text-primary dark:text-indigo-400">
+                          {boundaryNegativeState.progress}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-surface-container-high dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500"
+                          style={{
+                            width: `${boundaryNegativeState.progress}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+                      </div>
+                    </div>
+                  )}
+
+                  {boundaryNegativeState.status === "success" && (
+                    <div className="text-center py-4">
+                      <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+                      <p className="text-sm text-on-surface-variant">
+                        {boundaryNegativeState.currentStep}
+                      </p>
+                    </div>
+                  )}
+
+                  {boundaryNegativeState.status === "error" && (
+                    <div className="space-y-3">
+                      <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-lg border border-rose-200 dark:border-rose-900/30">
+                        <p className="text-sm text-rose-800 dark:text-rose-400">
+                          {boundaryNegativeState.errorMessage}
+                        </p>
+                      </div>
+                      <button
+                        onClick={retryBoundaryNegative}
+                        className="w-full px-4 py-2 bg-primary dark:bg-indigo-600 text-white font-semibold rounded-lg hover:bg-primary/90 dark:hover:bg-indigo-500 transition-all"
+                      >
+                        Retry Boundary/Negative
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
 
-              {status === "error" && (
-                <div className="space-y-6">
-                  <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-xl border border-rose-200 dark:border-rose-900/30">
-                    <p className="text-sm text-rose-800 dark:text-rose-400">
-                      {errorMessage}
-                    </p>
-                  </div>
-                  <div className="flex gap-3 justify-center">
+                {/* Action Buttons */}
+                {overallStatus !== "generating" && (
+                  <div className="flex gap-3 justify-center pt-4">
                     <button
-                      onClick={handleGoBack}
+                      onClick={goBackInTab}
                       className="px-6 py-3 bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold rounded-xl hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all"
                     >
                       Go Back
                     </button>
-                    <button
-                      onClick={handleRetry}
-                      className="px-6 py-3 bg-primary dark:bg-indigo-600 text-white font-semibold rounded-xl hover:bg-primary/90 dark:hover:bg-indigo-500 transition-all"
-                    >
-                      Try Again
-                    </button>
+                    {showContinueButton && (
+                      <button
+                        onClick={handleContinue}
+                        className="px-6 py-3 bg-primary dark:bg-indigo-600 text-white font-semibold rounded-xl hover:bg-primary/90 dark:hover:bg-indigo-500 transition-all"
+                      >
+                        Continue to Test Cases
+                      </button>
+                    )}
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Tips */}
+                {overallStatus === "generating" && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
+                    <p className="text-sm text-amber-800 dark:text-amber-400">
+                      💡 <span className="font-bold">Tip:</span> Unified
+                      generation is running once for all types (HappyPath,
+                      Boundary, Negative). This may take a few minutes depending
+                      on the number of endpoints.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -4,6 +4,10 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
+import ProductPage from "./pages/ProductPage";
+import IntelligencePage from "./pages/IntelligencePage";
+import EnterprisePage from "./pages/EnterprisePage";
+import PricingPage from "./pages/PricingPage";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProjectManagementPage from "./pages/ProjectManagementPage";
@@ -13,13 +17,11 @@ import EndpointsPage from "./pages/EndpointsPage";
 import TestSuitesPage from "./pages/TestSuitesPage";
 import TestSuiteDetailPage from "./pages/TestSuiteDetailPage";
 import GeneratingTestCasesPage from "./pages/GeneratingTestCasesPage";
-import TestCasesListPage from "./pages/TestCasesListPage";
 import TestCasesHubPage from "./pages/TestCasesHubPage";
 import TestCaseStudioPage from "./pages/TestCaseStudioPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
 import EnvironmentsPage from "./pages/EnvironmentsPage";
 import TestRunsPage from "./pages/TestRunsPage";
-import FailureExplanationPage from "./pages/FailureExplanationPage";
 import ReportsPage from "./pages/ReportsPage";
 import BillingPage from "./pages/BillingPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
@@ -32,6 +34,10 @@ export default function AppRouter() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/product" element={<ProductPage />} />
+        <Route path="/intelligence" element={<IntelligencePage />} />
+        <Route path="/enterprise" element={<EnterprisePage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -102,14 +108,6 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/test-suites/:suiteId/test-cases"
-          element={
-            <ProtectedRoute>
-              <TestCasesListPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/test-suites/:suiteId/test-cases/:testCaseId"
           element={
             <ProtectedRoute>
@@ -146,14 +144,6 @@ export default function AppRouter() {
           element={
             <ProtectedRoute>
               <TestRunsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/failure-explanation"
-          element={
-            <ProtectedRoute>
-              <FailureExplanationPage />
             </ProtectedRoute>
           }
         />

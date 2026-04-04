@@ -169,6 +169,25 @@ export const handleError = (
     errorMessage = error.message || errorMessage;
   }
 
+  // Hide raw technical stack traces from end users.
+  const isTechnicalMessage =
+    /microsoft\.|entityframework|npgsql|stack trace|\sat\s[A-Za-z0-9_.]+\(/i.test(
+      errorMessage,
+    ) || errorMessage.length > 300;
+
+  if (isTechnicalMessage) {
+    const statusCode =
+      error?.statusCode || error?.response?.status || error?.status || 500;
+
+    if (statusCode === 404) {
+      errorMessage = "Khong tim thay du lieu. Vui long thu lai.";
+    } else if (statusCode === 400) {
+      errorMessage = "Du lieu chua hop le. Vui long kiem tra va thu lai.";
+    } else {
+      errorMessage = "He thong dang ban. Vui long thu lai sau.";
+    }
+  }
+
   showErrorToast(errorMessage);
 
   // Navigate to billing if subscription error detected

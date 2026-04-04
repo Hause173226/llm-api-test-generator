@@ -31,6 +31,7 @@ import {
   showSuccessToast,
 } from "../utils/errorHandler";
 import { testSuiteService } from "../services/testSuiteService";
+import { apiService } from "../services/apiService";
 
 export default function EndpointsPage() {
   const { t } = useTranslation();
@@ -232,8 +233,8 @@ export default function EndpointsPage() {
 
       // Create and approve proposal immediately after suite creation
       if (newSuite && newSuite.id) {
+        let isOrderApproved = false;
         try {
-          const { apiService } = await import("../services/apiService");
           console.log("Creating proposal for suite:", newSuite.id);
 
           // Create proposal
@@ -265,6 +266,7 @@ export default function EndpointsPage() {
               },
             );
             console.log("Proposal approved successfully");
+            isOrderApproved = true;
           } else {
             console.error("No proposalId found in response:", proposal);
           }
@@ -273,6 +275,40 @@ export default function EndpointsPage() {
           showErrorToast(
             "Suite created but failed to approve order. Please approve manually.",
           );
+        }
+
+        if (isOrderApproved) {
+          try {
+            await apiService.post(
+              `/test-suites/${newSuite.id}/llm-suggestions/generate`,
+              {
+                specificationId: selectedSpecId,
+                forceRefresh: false,
+              },
+            );
+          } catch (suggestionErr: any) {
+            const statusCode =
+              suggestionErr?.status ?? suggestionErr?.response?.status;
+            const message = String(
+              suggestionErr?.message ||
+                suggestionErr?.response?.data?.message ||
+                "",
+            );
+            const alreadyHasPendingSuggestions =
+              statusCode === 400 &&
+              (message.includes("ForceRefresh=true") ||
+                message.includes("suggestion preview"));
+
+            if (!alreadyHasPendingSuggestions) {
+              console.error(
+                "Failed to auto-generate LLM suggestions:",
+                suggestionErr,
+              );
+              showErrorToast(
+                "Suite created and order approved, but auto-generate LLM suggestions failed. You can generate manually in LLM Suggestion tab.",
+              );
+            }
+          }
         }
       }
 
