@@ -26,6 +26,7 @@ export default function LandingPage() {
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
+  const [splineReady, setSplineReady] = useState(false);
 
   useEffect(() => {
     if (isDark) {
@@ -37,6 +38,11 @@ export default function LandingPage() {
     }
   }, [isDark]);
 
+  // Defer Spline load until after first paint
+  useEffect(() => {
+    const timer = setTimeout(() => setSplineReady(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
   const toggleLanguage = () => {
     const newLang = i18n.language === "en" ? "vi" : "en";
     i18n.changeLanguage(newLang);
@@ -116,7 +122,7 @@ export default function LandingPage() {
             </Link>
             <Link
               to="/register"
-              className="px-6 py-2.5 bg-on-surface dark:bg-on-surface-variant text-surface dark:text-on-surface rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-on-surface/10"
+              className="px-6 py-2.5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold text-sm hover:scale-105 hover:bg-indigo-700 dark:hover:bg-indigo-400 active:scale-95 transition-all shadow-xl shadow-indigo-600/20"
             >
               {t("landing.nav.getStarted")}
             </Link>
@@ -126,7 +132,7 @@ export default function LandingPage() {
 
       {/* Hero: copy left, Spline 3D right (stacked on small screens) */}
       <section className="relative pt-20 pb-20 lg:pb-24 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-primary/5 rounded-full blur-[80px] -z-10 pointer-events-none" />
         <div className="absolute top-[18%] -right-8 lg:right-0 w-[28rem] h-0 rotate-[-30deg] shadow-[0_0_700px_15px_rgba(255,255,255,0.12)] dark:shadow-[0_0_500px_12px_rgba(195,192,255,0.15)] -z-10 pointer-events-none hidden lg:block" />
 
         <div className="max-w-7xl mx-auto px-6">
@@ -146,10 +152,10 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-4 sm:gap-6 pt-2">
                 <Link
                   to="/register"
-                  className="w-full sm:w-auto px-10 py-5 bg-primary text-on-primary rounded-2xl font-bold text-lg shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
+                  className="w-full sm:w-auto px-10 py-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 dark:hover:bg-indigo-400 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group whitespace-nowrap"
                 >
                   {t("landing.hero.cta")}
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform shrink-0" />
                 </Link>
                 <button
                   type="button"
@@ -162,7 +168,7 @@ export default function LandingPage() {
             </div>
 
             <div className="relative w-full flex justify-center lg:justify-end lg:-mr-[8%] xl:-mr-[10%] min-w-0">
-              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/15 via-transparent to-secondary/10 rounded-[40px] blur-3xl scale-110 opacity-80" />
+              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/15 via-transparent to-secondary/10 rounded-[40px] blur-2xl scale-110 opacity-80" />
               {/* Clip viewport only (no card frame); position hides Spline badge corner */}
               <div className="relative w-full max-w-[540px] lg:max-w-none lg:min-w-0 h-[min(48vh,380px)] sm:h-[min(54vh,440px)] lg:h-[min(72vh,560px)] xl:h-[min(78vh,620px)] overflow-hidden">
                 <img
@@ -172,14 +178,21 @@ export default function LandingPage() {
                   className="pointer-events-none absolute inset-0 z-0 h-full w-full select-none object-cover object-right-top opacity-90 dark:opacity-50"
                 />
                 <div className="absolute inset-0 z-10 overflow-hidden">
-                  <spline-viewer
-                    url={SPLINE_SCENE_URL}
-                    className="pointer-events-auto absolute block max-w-none
-                      h-[90%] w-[90%] left-[4%] -top-[0%] 
-                      sm:h-[102%] sm:w-[102%] sm:left-[5%] sm:-top-[0%]
-                      lg:h-[106%] lg:w-[106%] lg:left-[7%] lg:-top-[0%]
-                      xl:h-[110%] xl:w-[110%] xl:left-[9%] xl:-top-[0%]"
-                  />
+                  {splineReady ? (
+                    // @ts-ignore
+                    <spline-viewer
+                      url={SPLINE_SCENE_URL}
+                      className="pointer-events-auto absolute block max-w-none
+                        h-[90%] w-[90%] left-[4%] -top-[0%] 
+                        sm:h-[102%] sm:w-[102%] sm:left-[5%] sm:-top-[0%]
+                        lg:h-[106%] lg:w-[106%] lg:left-[7%] lg:-top-[0%]
+                        xl:h-[110%] xl:w-[110%] xl:left-[9%] xl:-top-[0%]"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -315,7 +328,7 @@ export default function LandingPage() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <Link
             to="/register"
-            className="w-full sm:w-auto px-12 py-6 bg-primary text-on-primary rounded-2xl font-bold text-xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+            className="w-full sm:w-auto px-12 py-6 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-xl shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 dark:hover:bg-indigo-400 hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
           >
             {t("landing.cta.button")}
           </Link>

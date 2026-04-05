@@ -194,7 +194,7 @@ export default function ProjectManagementPage() {
               onClick={refetch}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
             >
-              Try Again
+              {t("projects.tryAgain")}
             </button>
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function ProjectManagementPage() {
             </button>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all active:scale-95"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-semibold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <PlusCircle className="w-5 h-5" />
               {t("projects.createButton")}
@@ -276,56 +276,36 @@ export default function ProjectManagementPage() {
                   </tr>
                 ) : projects.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-8 py-12 text-center text-on-surface-variant"
-                    >
-                      No projects found
+                    <td colSpan={5} className="px-8 py-12 text-center text-on-surface-variant">
+                      {t("projects.noProjectsFound")}
                     </td>
                   </tr>
                 ) : (
                   projects.map((project) => {
                     const SpecIcon = getSpecIcon(project.activeSpecName || "");
                     return (
-                      <tr
-                        key={project.id}
-                        className="hover:bg-surface-container-lowest dark:hover:bg-slate-800/50 transition-colors group"
-                      >
+                      <tr key={project.id} className="hover:bg-surface-container-lowest dark:hover:bg-slate-800/50 transition-colors group">
                         <td className="px-8 py-8">
-                          <Link
-                            to={`/project/${project.id}`}
-                            onClick={() => handleSelectProject(project)}
-                            className="text-base font-semibold text-on-surface block hover:text-primary dark:hover:text-indigo-400 transition-colors cursor-pointer"
-                          >
+                          <Link to={`/project/${project.id}`} onClick={() => handleSelectProject(project)} className="text-base font-semibold text-on-surface block hover:text-primary dark:hover:text-indigo-400 transition-colors cursor-pointer">
                             {project.name}
                           </Link>
-                          <span className="text-xs text-on-surface-variant">
-                            {project.description}
-                          </span>
+                          <span className="text-xs text-on-surface-variant">{project.description}</span>
                         </td>
                         <td className="px-8 py-8">
                           <div className="flex items-center gap-2">
                             <SpecIcon className="w-4 h-4 text-primary dark:text-indigo-400" />
                             <span className="text-on-surface-variant font-medium text-sm">
-                              {project.activeSpecName || "No specification"}
+                              {project.activeSpecName || t("projects.noSpec")}
                             </span>
                           </div>
                         </td>
                         <td className="px-8 py-8">
-                          <span className="text-on-surface-variant text-sm">
-                            {formatDate(project.lastRunAt)}
-                          </span>
+                          <span className="text-on-surface-variant text-sm">{formatDate(project.lastRunAt)}</span>
                         </td>
                         <td className="px-8 py-8">
-                          <span
-                            className={cn(
-                              "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter",
-                              project.isActive
-                                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400"
-                                : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400",
-                            )}
-                          >
-                            {project.isActive ? "Active" : "Archived"}
+                          <span className={cn("inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter",
+                            project.isActive ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400")}>
+                            {project.isActive ? t("projects.status.active") : t("projects.status.archived")}
                           </span>
                         </td>
                         <td className="px-8 py-8 text-right">
@@ -367,28 +347,25 @@ export default function ProjectManagementPage() {
           {/* Pagination Footer */}
           <footer className="px-8 py-6 border-t border-outline-variant/20 dark:border-slate-800 flex items-center justify-between bg-surface-container-low dark:bg-slate-900">
             <p className="text-sm font-medium text-on-surface-variant">
-              Showing{" "}
-              {projects.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-              {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
-              projects
+              {t("projects.pagination", {
+                from: projects.length > 0 ? (currentPage - 1) * pageSize + 1 : 0,
+                to: Math.min(currentPage * pageSize, totalCount),
+                total: totalCount,
+              })}
             </p>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1 || isLoading}
-                className="px-6 py-2 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold rounded-lg hover:bg-primary-fixed dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1 || isLoading} className="px-6 py-2 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold rounded-lg hover:bg-primary-fixed dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="text-sm font-medium text-on-surface">
-                Page {currentPage} of {totalPages || 1}
+                {t("projects.page", { current: currentPage, total: totalPages || 1 })}
               </span>
               <button
                 onClick={() =>
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
                 disabled={currentPage >= totalPages || isLoading}
-                className="px-6 py-2 bg-primary dark:bg-indigo-600 text-on-primary font-semibold rounded-lg hover:bg-primary-container dark:hover:bg-indigo-500 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-semibold rounded-lg hover:bg-primary-container dark:hover:bg-indigo-500 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -430,7 +407,7 @@ export default function ProjectManagementPage() {
             <button
               onClick={handleCreateProject}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("projects.modal.confirm")}
@@ -490,42 +467,16 @@ export default function ProjectManagementPage() {
       {/* Edit Project Modal */}
       <Modal
         isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedProject(null);
-          setFormData({
-            name: "",
-            description: "",
-            specType: "",
-            specFile: null,
-          });
-        }}
-        title="Edit Project"
+        onClose={() => { setIsEditModalOpen(false); setSelectedProject(null); setFormData({ name: "", description: "", specType: "", specFile: null }); }}
+        title={t("projects.editModal.title")}
         footer={
           <>
-            <button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setSelectedProject(null);
-                setFormData({
-                  name: "",
-                  description: "",
-                  specType: "",
-                  specFile: null,
-                });
-              }}
-              disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
-            >
-              Cancel
+            <button onClick={() => { setIsEditModalOpen(false); setSelectedProject(null); setFormData({ name: "", description: "", specType: "", specFile: null }); }} disabled={isSubmitting} className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50">
+              {t("projects.editModal.cancel")}
             </button>
-            <button
-              onClick={handleUpdateProject}
-              disabled={isSubmitting}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
+            <button onClick={handleUpdateProject} disabled={isSubmitting} className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Update
+              {t("projects.editModal.confirm")}
             </button>
           </>
         }
@@ -533,29 +484,15 @@ export default function ProjectManagementPage() {
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Project Name
+              {t("projects.editModal.nameLabel")}
             </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-            />
+            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description
+              {t("projects.editModal.descriptionLabel")}
             </label>
-            <textarea
-              rows={3}
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-            />
+            <textarea rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface" />
           </div>
         </div>
       </Modal>
@@ -563,42 +500,26 @@ export default function ProjectManagementPage() {
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedProject(null);
-        }}
-        title="Delete Project"
+        onClose={() => { setIsDeleteModalOpen(false); setSelectedProject(null); }}
+        title={t("projects.deleteModal.title")}
         footer={
           <>
-            <button
-              onClick={() => {
-                setIsDeleteModalOpen(false);
-                setSelectedProject(null);
-              }}
-              disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
-            >
-              Cancel
+            <button onClick={() => { setIsDeleteModalOpen(false); setSelectedProject(null); }} disabled={isSubmitting} className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50">
+              {t("projects.deleteModal.cancel")}
             </button>
-            <button
-              onClick={handleDeleteProject}
-              disabled={isSubmitting}
-              className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
+            <button onClick={handleDeleteProject} disabled={isSubmitting} className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t("projects.deleteModal.confirm")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-on-surface">
-            Are you sure you want to delete{" "}
-            <span className="font-bold">{selectedProject?.name}</span>?
+            {t("projects.deleteModal.message", { name: selectedProject?.name })}
           </p>
           <p className="text-sm text-on-surface-variant">
-            This action cannot be undone. All test suites, test cases, and
-            results associated with this project will be permanently deleted.
+            {t("projects.deleteModal.warning")}
           </p>
         </div>
       </Modal>

@@ -518,9 +518,9 @@ export default function TestRunsPage() {
     avgDuration:
       testRuns.length > 0
         ? formatDuration(
-            testRuns.reduce((sum, r) => sum + (r.duration || 0), 0) /
-              testRuns.length,
-          )
+          testRuns.reduce((sum, r) => sum + (r.duration || 0), 0) /
+          testRuns.length,
+        )
         : "N/A",
   };
 
@@ -573,11 +573,11 @@ export default function TestRunsPage() {
               <RefreshCw
                 className={cn("w-5 h-5", isLoading && "animate-spin")}
               />
-              Refresh
+              {t("testRuns.refresh")}
             </button>
             <button
               onClick={() => setIsStartModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-5 py-2.5 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <Play className="w-5 h-5" />
               {t("testRuns.runNew")}
@@ -587,7 +587,7 @@ export default function TestRunsPage() {
 
         <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
           <p className="text-sm text-on-surface-variant">
-            Viewing runs for suite{" "}
+            {t("testRuns.viewingRunsFor")}{" "}
             <span className="font-bold text-on-surface">
               {activeSuiteName || "N/A"}
             </span>
@@ -598,7 +598,7 @@ export default function TestRunsPage() {
             className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface font-medium focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all"
           >
             {testSuites.length === 0 ? (
-              <option value="">No test suites available</option>
+              <option value="">{t("testRuns.noSuitesAvailable")}</option>
             ) : (
               testSuites.map((suite) => (
                 <option key={suite.id} value={suite.id}>
@@ -617,7 +617,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Total Runs
+                {t("testRuns.stats.total")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.total}
@@ -630,7 +630,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Passed
+                {t("testRuns.stats.success")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.passed}
@@ -643,7 +643,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Failed
+                {t("testRuns.stats.failures")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.failed}
@@ -656,7 +656,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Avg Duration
+                {t("testRuns.stats.duration")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.avgDuration}
@@ -671,7 +671,7 @@ export default function TestRunsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input
               className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
-              placeholder="Search test runs..."
+              placeholder={t("testRuns.searchPlaceholder")}
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -708,10 +708,10 @@ export default function TestRunsPage() {
               <thead>
                 <tr className="bg-surface-container-low/50 dark:bg-slate-800/50">
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Run ID
+                    {t("testRuns.table.id")}
                   </th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Test Suite
+                    {t("testRuns.table.suite")}
                   </th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Status
@@ -740,7 +740,7 @@ export default function TestRunsPage() {
                       colSpan={6}
                       className="px-8 py-12 text-center text-on-surface-variant"
                     >
-                      No test runs found
+                      {t("testRuns.noRunsFound")}
                     </td>
                   </tr>
                 ) : (
@@ -977,26 +977,26 @@ export default function TestRunsPage() {
                                                   </p>
                                                   {testCase.failureReasons
                                                     ?.length > 0 && (
-                                                    <div>
-                                                      <p className="font-semibold text-rose-600 dark:text-rose-400">
-                                                        Failure Reasons:
-                                                      </p>
-                                                      {testCase.failureReasons.map(
-                                                        (reason, index) => (
-                                                          <p
-                                                            key={`${testCase.testCaseId}-${index}`}
-                                                          >
-                                                            -{" "}
-                                                            {(reason.code ||
-                                                              "") +
-                                                              (reason.message
-                                                                ? `: ${reason.message}`
-                                                                : "")}
-                                                          </p>
-                                                        ),
-                                                      )}
-                                                    </div>
-                                                  )}
+                                                      <div>
+                                                        <p className="font-semibold text-rose-600 dark:text-rose-400">
+                                                          Failure Reasons:
+                                                        </p>
+                                                        {testCase.failureReasons.map(
+                                                          (reason, index) => (
+                                                            <p
+                                                              key={`${testCase.testCaseId}-${index}`}
+                                                            >
+                                                              -{" "}
+                                                              {(reason.code ||
+                                                                "") +
+                                                                (reason.message
+                                                                  ? `: ${reason.message}`
+                                                                  : "")}
+                                                            </p>
+                                                          ),
+                                                        )}
+                                                      </div>
+                                                    )}
                                                   {testCase.responseBodyPreview && (
                                                     <div>
                                                       <p className="font-semibold text-on-surface">

@@ -240,8 +240,8 @@ export default function TestSuitesPage() {
               suggestionErr?.status ?? suggestionErr?.response?.status;
             const message = String(
               suggestionErr?.message ||
-                suggestionErr?.response?.data?.message ||
-                "",
+              suggestionErr?.response?.data?.message ||
+              "",
             );
             const alreadyHasPendingSuggestions =
               statusCode === 400 &&
@@ -401,11 +401,11 @@ export default function TestSuitesPage() {
               <RefreshCw
                 className={cn("w-5 h-5", isLoading && "animate-spin")}
               />
-              Refresh
+              {t("testSuites.refresh")}
             </button>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-6 py-3 rounded-xl bg-gradient-to-br from-primary to-primary-container dark:from-indigo-600 dark:to-indigo-800 text-on-primary font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-6 py-3 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <Plus className="w-5 h-5" />
               {t("testSuites.createButton")}
@@ -419,7 +419,7 @@ export default function TestSuitesPage() {
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-on-surface-variant" />
               <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                Filter by API Spec
+                {t("testSuites.filterBySpec")}
               </span>
             </div>
             <select
@@ -428,7 +428,7 @@ export default function TestSuitesPage() {
               className="flex-1 max-w-md px-4 py-2 bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-sm text-on-surface font-medium"
             >
               <option value="">
-                All API Specifications ({testSuites.length})
+                {t("testSuites.allSpecs", { count: testSuites.length })}
               </option>
               {Object.values(specificationsMap).map((spec) => {
                 const count = testSuites.filter(
@@ -454,19 +454,17 @@ export default function TestSuitesPage() {
           <div className="bg-surface-container-lowest dark:bg-slate-900 p-12 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-center">
             <Layers className="w-16 h-16 text-on-surface-variant mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-on-surface mb-2">
-              {filterSpecId ? "No test suites found" : "No test suites yet"}
+              {filterSpecId ? t("testSuites.noSuitesFiltered") : t("testSuites.noSuitesYet")}
             </h3>
             <p className="text-on-surface-variant mb-6">
-              {filterSpecId
-                ? "Try selecting a different API specification"
-                : "Create your first test suite to get started"}
+              {filterSpecId ? t("testSuites.tryDifferentSpec") : t("testSuites.createFirst")}
             </p>
             {!filterSpecId && (
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-all"
+                className="px-6 py-3 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white rounded-xl font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                Create Test Suite
+                {t("testSuites.createSuite")}
               </button>
             )}
           </div>
@@ -516,14 +514,14 @@ export default function TestSuitesPage() {
                           </p>
                         )}
                       <p className="text-xs text-on-surface-variant font-medium mt-1">
-                        Created {formatDate(suite.createdDateTime)}
+                        {t("testSuites.createdAt", { time: formatDate(suite.createdDateTime) })}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-4 pt-2">
                       <div className="flex-1 bg-surface-container-low dark:bg-slate-800 p-3 rounded-xl text-center">
                         <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                          Endpoints
+                          {t("testSuites.endpoints")}
                         </p>
                         <p className="text-lg font-black text-on-surface">
                           {suite.selectedEndpointCount || 0}
@@ -531,7 +529,7 @@ export default function TestSuitesPage() {
                       </div>
                       <div className="flex-1 bg-surface-container-low dark:bg-slate-800 p-3 rounded-xl text-center">
                         <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                          Test Cases
+                          {t("testSuites.testCases")}
                         </p>
                         <p className="text-lg font-black text-on-surface">
                           {suite.testCaseCount || 0}
@@ -547,7 +545,7 @@ export default function TestSuitesPage() {
                         className="px-3 py-2 bg-white dark:bg-slate-700 text-on-surface dark:text-slate-300 font-bold text-xs rounded-lg shadow-sm border border-outline-variant/20 dark:border-slate-600 flex items-center gap-2 hover:bg-surface-container dark:hover:bg-slate-600 transition-all"
                       >
                         <Settings className="w-3 h-3" />
-                        Open
+                        {t("testSuites.open")}
                       </button>
                       <button
                         onClick={() => {
@@ -618,7 +616,7 @@ export default function TestSuitesPage() {
                 !selectedSpecId ||
                 selectedEndpointIds.length === 0
               }
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("testSuites.modal.confirm")}
@@ -643,42 +641,25 @@ export default function TestSuitesPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description (Optional)
+              {t("testSuites.modal.descLabel")}
             </label>
-            <textarea
-              rows={3}
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="Brief description of this test suite"
-            />
+            <textarea rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface" placeholder={t("testSuites.modal.descPlaceholder")} />
           </div>
 
           {/* API Specification Selector */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              API Specification
+              {t("testSuites.modal.apiSpecLabel")}
             </label>
             {isLoadingSpecs ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
               </div>
             ) : (
-              <select
-                value={selectedSpecId}
-                onChange={(e) => {
-                  setSelectedSpecId(e.target.value);
-                  setSelectedEndpointIds([]);
-                }}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              >
-                <option value="">Select an API specification</option>
+              <select value={selectedSpecId} onChange={(e) => { setSelectedSpecId(e.target.value); setSelectedEndpointIds([]); }} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface">
+                <option value="">{t("testSuites.modal.apiSpecPlaceholder")}</option>
                 {specifications.map((spec) => (
-                  <option key={spec.id} value={spec.id}>
-                    {spec.name}
-                  </option>
+                  <option key={spec.id} value={spec.id}>{spec.name}</option>
                 ))}
               </select>
             )}
@@ -689,16 +670,11 @@ export default function TestSuitesPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                  Select Endpoints ({selectedEndpointIds.length} selected)
+                  {t("testSuites.modal.endpointsLabel", { count: selectedEndpointIds.length })}
                 </label>
                 {availableEndpoints.length > 0 && (
-                  <button
-                    onClick={toggleAllEndpoints}
-                    className="text-xs font-bold text-primary dark:text-indigo-400 hover:underline"
-                  >
-                    {selectedEndpointIds.length === availableEndpoints.length
-                      ? "Deselect All"
-                      : "Select All"}
+                  <button onClick={toggleAllEndpoints} className="text-xs font-bold text-primary dark:text-indigo-400 hover:underline">
+                    {selectedEndpointIds.length === availableEndpoints.length ? t("testSuites.modal.deselectAll") : t("testSuites.modal.selectAll")}
                   </button>
                 )}
               </div>
@@ -708,7 +684,7 @@ export default function TestSuitesPage() {
                 </div>
               ) : availableEndpoints.length === 0 ? (
                 <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                  No endpoints found in this specification
+                  {t("testSuites.modal.noEndpoints")}
                 </div>
               ) : (
                 <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
@@ -718,7 +694,7 @@ export default function TestSuitesPage() {
                       className={cn(
                         "flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-b-0",
                         selectedEndpointIds.includes(endpoint.id) &&
-                          "bg-primary/5 dark:bg-indigo-900/20",
+                        "bg-primary/5 dark:bg-indigo-900/20",
                       )}
                     >
                       <div className="relative flex items-center justify-center">
@@ -733,15 +709,15 @@ export default function TestSuitesPage() {
                         className={cn(
                           "px-2 py-1 rounded text-xs font-bold min-w-[60px] text-center",
                           endpoint.method === "GET" &&
-                            "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
+                          "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
                           endpoint.method === "POST" &&
-                            "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+                          "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
                           endpoint.method === "PUT" &&
-                            "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+                          "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
                           endpoint.method === "DELETE" &&
-                            "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
+                          "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
                           endpoint.method === "PATCH" &&
-                            "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
+                          "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
                         )}
                       >
                         {endpoint.method}

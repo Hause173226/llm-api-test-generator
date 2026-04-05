@@ -457,7 +457,7 @@ export default function GeneratingTestCasesPage() {
                 {overallStatus === "generating" && (
                   <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
                     <p className="text-sm text-amber-800 dark:text-amber-400">
-                      💡 <span className="font-bold">Tip:</span> Unified
+                      💡 <span className="font-bold">{t("common.tip")}:</span> Unified
                       generation is running once for all types (HappyPath,
                       Boundary, Negative). This may take a few minutes depending
                       on the number of endpoints.

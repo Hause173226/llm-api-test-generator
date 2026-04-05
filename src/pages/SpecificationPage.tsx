@@ -227,17 +227,10 @@ export default function SpecificationPage() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <p className="text-on-surface font-bold text-lg mb-2">
-              No Project Selected
-            </p>
-            <p className="text-on-surface-variant mb-6">
-              Please select a project from the sidebar or go to Projects page
-            </p>
-            <Link
-              to="/projects"
-              className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 inline-block"
-            >
-              Go to Projects
+            <p className="text-on-surface font-bold text-lg mb-2">{t("specifications.noProjectSelected")}</p>
+            <p className="text-on-surface-variant mb-6">{t("specifications.noProjectMsg")}</p>
+            <Link to="/projects" className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 inline-block">
+              {t("specifications.goToProjects")}
             </Link>
           </div>
         </div>
@@ -265,7 +258,7 @@ export default function SpecificationPage() {
               {project.name}
             </Link>
             <ChevronRight className="w-4 h-4 text-on-surface-variant" />
-            <span className="text-on-surface-variant">Specifications</span>
+            <span className="text-on-surface-variant">{t("common.apiSpecifications")}</span>
           </div>
         )}
 
@@ -313,7 +306,7 @@ export default function SpecificationPage() {
                   </span>
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-4">
-                  <button className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-8 py-4 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all flex items-center gap-2">
+                  <button className="bg-primary dark:bg-indigo-600 text-on-primary dark:text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
                     <Plus className="w-5 h-5" />
                     {t("specifications.upload.button")}
                   </button>
@@ -407,11 +400,8 @@ export default function SpecificationPage() {
                   </tr>
                 ) : !specifications || specifications.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-6 py-12 text-center text-on-surface-variant"
-                    >
-                      No specifications uploaded yet
+                    <td colSpan={5} className="px-6 py-12 text-center text-on-surface-variant">
+                      {t("specifications.noSpecsYet")}
                     </td>
                   </tr>
                 ) : (
@@ -432,7 +422,7 @@ export default function SpecificationPage() {
                                 {spec.name}
                               </div>
                               <div className="text-[10px] text-on-surface-variant">
-                                Modified {formatDate(spec.updatedAt)}
+                                {t("specifications.modifiedAt", { time: formatDate(spec.updatedAt) })}
                               </div>
                             </div>
                           </div>
@@ -483,93 +473,42 @@ export default function SpecificationPage() {
             file: null,
           });
         }}
-        title="Upload Specification"
+        title={t("specifications.uploadModal.title")}
         footer={
           <>
-            <button
-              onClick={() => {
-                setIsUploadModalOpen(false);
-                setUploadForm({
-                  name: "",
-                  description: "",
-                  type: "openapi",
-                  file: null,
-                });
-              }}
-              disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
-            >
-              Cancel
+            <button onClick={() => { setIsUploadModalOpen(false); setUploadForm({ name: "", description: "", type: "openapi", file: null }); }} disabled={isSubmitting} className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50">
+              {t("specifications.uploadModal.cancel")}
             </button>
-            <button
-              onClick={handleUpload}
-              disabled={isSubmitting || !uploadForm.file}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
+            <button onClick={handleUpload} disabled={isSubmitting || !uploadForm.file} className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Upload
+              {t("specifications.uploadModal.upload")}
             </button>
           </>
         }
       >
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Name
-            </label>
-            <input
-              type="text"
-              value={uploadForm.name}
-              onChange={(e) =>
-                setUploadForm({ ...uploadForm, name: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="My API Specification"
-            />
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t("specifications.uploadModal.nameLabel")}</label>
+            <input type="text" value={uploadForm.name} onChange={(e) => setUploadForm({ ...uploadForm, name: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface" placeholder={t("specifications.uploadModal.namePlaceholder")} />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description (Optional)
-            </label>
-            <textarea
-              rows={3}
-              value={uploadForm.description}
-              onChange={(e) =>
-                setUploadForm({ ...uploadForm, description: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="Brief description of this specification"
-            />
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t("specifications.uploadModal.descLabel")}</label>
+            <textarea rows={3} value={uploadForm.description} onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface" placeholder={t("specifications.uploadModal.descPlaceholder")} />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Type
-            </label>
-            <select
-              value={uploadForm.type}
-              onChange={(e) =>
-                setUploadForm({ ...uploadForm, type: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
-            >
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t("specifications.uploadModal.typeLabel")}</label>
+            <select value={uploadForm.type} onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface">
               <option value="openapi">OpenAPI Specification</option>
               <option value="postman">Postman Collection</option>
               <option value="graphql">GraphQL Schema</option>
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              File
-            </label>
-            <input
-              type="file"
-              accept=".json,.yaml,.yml"
-              onChange={handleFileChange}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
-            />
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t("specifications.uploadModal.fileLabel")}</label>
+            <input type="file" accept=".json,.yaml,.yml" onChange={handleFileChange} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90" />
             {uploadForm.file && (
               <p className="text-xs text-on-surface-variant">
-                Selected: {uploadForm.file.name}
+                {t("specifications.uploadModal.selectedFile", { name: uploadForm.file.name })}
               </p>
             )}
           </div>
@@ -579,42 +518,26 @@ export default function SpecificationPage() {
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedSpec(null);
-        }}
-        title="Delete Specification"
+        onClose={() => { setIsDeleteModalOpen(false); setSelectedSpec(null); }}
+        title={t("specifications.deleteModal.title")}
         footer={
           <>
-            <button
-              onClick={() => {
-                setIsDeleteModalOpen(false);
-                setSelectedSpec(null);
-              }}
-              disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
-            >
-              Cancel
+            <button onClick={() => { setIsDeleteModalOpen(false); setSelectedSpec(null); }} disabled={isSubmitting} className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50">
+              {t("specifications.deleteModal.cancel")}
             </button>
-            <button
-              onClick={handleDelete}
-              disabled={isSubmitting}
-              className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
+            <button onClick={handleDelete} disabled={isSubmitting} className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t("specifications.deleteModal.confirm")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-on-surface">
-            Are you sure you want to delete{" "}
-            <span className="font-bold">{selectedSpec?.name}</span>?
+            {t("specifications.deleteModal.message", { name: selectedSpec?.name })}
           </p>
           <p className="text-sm text-on-surface-variant">
-            This action cannot be undone. All endpoints extracted from this
-            specification will also be removed.
+            {t("specifications.deleteModal.warning")}
           </p>
         </div>
       </Modal>

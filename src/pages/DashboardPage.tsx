@@ -59,7 +59,7 @@ export default function DashboardPage() {
               onClick={refetch}
               className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
             >
-              Try Again
+              {t("dashboard.tryAgain")}
             </button>
           </div>
         </div>
@@ -78,15 +78,10 @@ export default function DashboardPage() {
               {user?.fullName && `, ${user.fullName}`}
             </h1>
             <p className="text-on-surface-variant max-w-lg">
-              Autonomous testing is currently monitoring{" "}
-              <span className="text-primary font-semibold">
-                {metrics.activeProjects} active projects
-              </span>{" "}
-              with an overall pass rate of{" "}
-              <span className="text-emerald-600 font-semibold">
-                {metrics.passRate.toFixed(1)}%
-              </span>
-              .
+              {t("dashboard.monitoringMsg", {
+                count: metrics.activeProjects,
+                rate: metrics.passRate.toFixed(1),
+              })}
             </p>
           </div>
           <div className="flex gap-3">
@@ -98,14 +93,14 @@ export default function DashboardPage() {
               <RefreshCw
                 className={cn("w-5 h-5", isLoading && "animate-spin")}
               />
-              Refresh
+              {t("dashboard.refresh")}
             </button>
             <button
               onClick={() => navigate("/projects")}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-primary to-primary-container text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-5 py-2.5 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <Plus className="w-5 h-5" />
-              New Project
+              {t("dashboard.newProject")}
             </button>
           </div>
         </section>
@@ -159,7 +154,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
-                  Monthly Test Runs
+                  {t("dashboard.monthlyTestRuns")}
                 </p>
                 <h3 className="text-3xl font-bold text-on-surface">
                   {metrics.monthlyTestRuns.toLocaleString()}
@@ -174,7 +169,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
-                  Pass Rate
+                  {t("dashboard.passRate")}
                 </p>
                 <h3 className="text-3xl font-bold text-on-surface">
                   {metrics.passRate.toFixed(1)}%
@@ -233,7 +228,7 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <p className="text-sm text-on-surface-variant text-center py-4">
-                  No recent activity
+                  {t("dashboard.noRecentActivity")}
                 </p>
               )}
             </div>
@@ -243,16 +238,16 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 bg-surface-container-lowest dark:bg-slate-900 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800 overflow-hidden">
             <div className="px-8 py-6">
               <h3 className="text-xl font-bold text-on-surface">
-                Top API Endpoints
+                {t("dashboard.topApiEndpoints")}
               </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="text-xs uppercase tracking-widest text-on-surface-variant border-b border-slate-50 dark:border-slate-800">
-                    <th className="px-8 py-4 font-bold">Endpoint</th>
-                    <th className="px-8 py-4 font-bold">Method</th>
-                
+                    <th className="px-8 py-4 font-bold">{t("common.endpoint")}</th>
+                    <th className="px-8 py-4 font-bold">{t("common.method")}</th>
+
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50/50 dark:divide-slate-800/50">
@@ -283,7 +278,7 @@ export default function DashboardPage() {
                             {endpoint.method}
                           </span>
                         </td>
-                 
+
                       </tr>
                     ))
                   ) : (
@@ -292,7 +287,7 @@ export default function DashboardPage() {
                         colSpan={5}
                         className="px-8 py-8 text-center text-on-surface-variant"
                       >
-                        No endpoints found
+                        {t("dashboard.noEndpointsFound")}
                       </td>
                     </tr>
                   )}

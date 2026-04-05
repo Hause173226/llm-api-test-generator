@@ -141,22 +141,6 @@
   letter-spacing: -0.01em;
 }
 
-/* Dark mode toast text colors */
-.dark [role="status"],
-.dark [role="alert"] {
-  color: #f1f5f9 !important; /* Light slate for dark mode */
-}
-
-/* Success toast in dark mode */
-.dark [data-hot-toast][data-type="success"] {
-  color: #e0e7ff !important; /* Light indigo for dark mode */
-}
-
-/* Error toast in dark mode */
-.dark [data-hot-toast][data-type="error"] {
-  color: #fecaca !important; /* Light red for dark mode */
-}
-
 @keyframes slideInDown {
   from {
     opacity: 0;

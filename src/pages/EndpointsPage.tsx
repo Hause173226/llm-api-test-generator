@@ -291,8 +291,8 @@ export default function EndpointsPage() {
               suggestionErr?.status ?? suggestionErr?.response?.status;
             const message = String(
               suggestionErr?.message ||
-                suggestionErr?.response?.data?.message ||
-                "",
+              suggestionErr?.response?.data?.message ||
+              "",
             );
             const alreadyHasPendingSuggestions =
               statusCode === 400 &&
@@ -359,7 +359,7 @@ export default function EndpointsPage() {
   };
 
   const getStatusText = (isActive: boolean) => {
-    return isActive ? "Active" : "Inactive";
+    return isActive ? t("endpoints.statusActive") : t("endpoints.statusInactive");
   };
 
   const getStatusColor = (isActive: boolean) => {
@@ -412,7 +412,7 @@ export default function EndpointsPage() {
                 className="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg"
               >
                 <Plus className="w-5 h-5" />
-                Create Test Suite ({selectedEndpoints.size})
+                {t("endpoints.createSuiteBtn", { count: selectedEndpoints.size })}
               </button>
             )}
             <button
@@ -495,18 +495,19 @@ export default function EndpointsPage() {
                 className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-2 focus:ring-primary/20"
               />
               <span className="text-sm font-medium text-on-surface">
-                Select All
+                {t("endpoints.selectAll")}
               </span>
             </label>
             <p className="text-sm text-on-surface-variant">
-              Showing{" "}
-              {endpoints.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-              {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
-              endpoints
+              {t("endpoints.showing", {
+                from: endpoints.length > 0 ? (currentPage - 1) * pageSize + 1 : 0,
+                to: Math.min(currentPage * pageSize, totalCount),
+                total: totalCount,
+              })}
             </p>
           </div>
           <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest bg-surface-container-low dark:bg-slate-800 px-3 py-1 rounded-full">
-            {endpoints.filter((e) => e.isActive).length} Active
+            {t("endpoints.activeCount", { count: endpoints.filter((e) => e.isActive).length })}
           </span>
         </div>
 
@@ -518,7 +519,7 @@ export default function EndpointsPage() {
             </div>
           ) : endpoints.length === 0 ? (
             <div className="bg-surface-container-lowest dark:bg-slate-900 p-12 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-center">
-              <p className="text-on-surface-variant">No endpoints found</p>
+              <p className="text-on-surface-variant">{t("common.noEndpointsFound")}</p>
             </div>
           ) : (
             endpoints.map((endpoint) => (

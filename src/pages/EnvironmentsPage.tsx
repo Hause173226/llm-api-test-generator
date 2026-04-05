@@ -264,7 +264,7 @@ export default function EnvironmentsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 rounded-xl bg-primary text-on-primary font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-6 py-3 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary dark:text-white font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <Plus className="w-5 h-5" />
               {t("environments.add")}

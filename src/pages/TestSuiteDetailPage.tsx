@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Sparkles,
@@ -42,6 +43,7 @@ interface SuiteSuggestionModel {
 type SuiteTab = "testcases" | "details" | "suggestions";
 
 export default function TestSuiteDetailPage() {
+  const { t } = useTranslation();
   const { suiteId } = useParams<{ suiteId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -563,7 +565,7 @@ export default function TestSuiteDetailPage() {
     return (
       <MainLayout title="Test Suite Details">
         <div className="text-center py-20">
-          <p className="text-on-surface-variant">Test suite not found</p>
+          <p className="text-on-surface-variant">{t("common.testSuiteNotFound")}</p>
         </div>
       </MainLayout>
     );
@@ -580,7 +582,7 @@ export default function TestSuiteDetailPage() {
               className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mb-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-semibold">Back</span>
+              <span className="text-sm font-semibold">{t("common.back")}</span>
             </button>
             <h1 className="text-4xl font-bold tracking-tight text-on-surface">
               {suite.name}

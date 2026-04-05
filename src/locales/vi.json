@@ -19,7 +19,21 @@
     "softwareStudent": "Sinh viên Kỹ thuật Phần mềm",
     "logOut": "Đăng xuất",
     "switchToLightMode": "Chuyển sang chế độ sáng",
-    "switchToDarkMode": "Chuyển sang chế độ tối"
+    "switchToDarkMode": "Chuyển sang chế độ tối",
+    "loading": "Đang tải...",
+    "back": "Quay lại",
+    "notFound": "Không tìm thấy",
+    "testSuiteNotFound": "Không tìm thấy bộ kiểm thử",
+    "testCaseNotFound": "Không tìm thấy kịch bản kiểm thử",
+    "noEndpointsFound": "Không tìm thấy điểm cuối nào",
+    "endpoint": "Điểm cuối",
+    "method": "Phương thức",
+    "tip": "Mẹo",
+    "generate": "Tạo",
+    "generating": "Đang tạo...",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "create": "Tạo"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -30,7 +44,16 @@
     "testCoverage": "Độ bao phủ Kiểm thử",
     "recentActivity": "Hoạt động Gần đây",
     "systemHealth": "Sức khỏe Hệ thống",
-    "activeServices": "Dịch vụ Đang hoạt động"
+    "activeServices": "Dịch vụ Đang hoạt động",
+    "monthlyTestRuns": "Lượt chạy kiểm thử hàng tháng",
+    "passRate": "Tỷ lệ vượt qua",
+    "monitoringMsg": "Hệ thống đang giám sát {{count}} dự án đang hoạt động với tỷ lệ vượt qua tổng thể là {{rate}}%.",
+    "refresh": "Làm mới",
+    "newProject": "Dự án mới",
+    "topApiEndpoints": "Điểm cuối API hàng đầu",
+    "noRecentActivity": "Không có hoạt động gần đây",
+    "noEndpointsFound": "Không tìm thấy điểm cuối",
+    "tryAgain": "Thử lại"
   },
   "help": {
     "title": "Trung tâm Trợ giúp và Hỗ trợ",
@@ -97,6 +120,35 @@
       "status": "Trạng thái Hiện tại",
       "actions": "Thao tác"
     },
+    "status": {
+      "active": "Đang hoạt động",
+      "archived": "Đã lưu trữ"
+    },
+    "noSpec": "Chưa có đặc tả",
+    "noProjectsFound": "Không tìm thấy dự án",
+    "pagination": "Hiển thị {{from}} đến {{to}} trong {{total}} dự án",
+    "page": "Trang {{current}} / {{total}}",
+    "tryAgain": "Thử lại",
+    "editModal": {
+      "title": "Chỉnh sửa Dự án",
+      "nameLabel": "Tên Dự án",
+      "descriptionLabel": "Mô tả",
+      "cancel": "Hủy",
+      "confirm": "Cập nhật"
+    },
+    "deleteModal": {
+      "title": "Xóa Dự án",
+      "confirm": "Xóa",
+      "cancel": "Hủy",
+      "message": "Bạn có chắc muốn xóa <1>{{name}}</1>?",
+      "warning": "Hành động này không thể hoàn tác. Tất cả bộ kiểm thử, kịch bản và kết quả liên quan đến dự án này sẽ bị xóa vĩnh viễn."
+    },
+    "toast": {
+      "fillRequired": "Vui lòng điền đầy đủ các trường bắt buộc",
+      "createSuccess": "Tạo dự án thành công",
+      "updateSuccess": "Cập nhật dự án thành công",
+      "deleteSuccess": "Xóa dự án thành công"
+    },
     "modal": {
       "title": "Tạo Dự án Mới",
       "nameLabel": "Tên Pháp lý của Dự án",
@@ -112,6 +164,37 @@
   "specifications": {
     "title": "Đặc tả API",
     "subtitle": "Điều phối tài liệu kỹ thuật của bạn thông qua khung vẽ thông minh của chúng tôi. Tải lên, quản lý và xác thực các lược đồ của bạn với độ chính xác biên tập.",
+    "noProjectSelected": "Chưa chọn Dự án",
+    "noProjectMsg": "Vui lòng chọn dự án từ thanh bên hoặc đến trang Dự án",
+    "goToProjects": "Đến trang Dự án",
+    "noSpecsYet": "Chưa có đặc tả nào được tải lên",
+    "tryAgain": "Thử lại",
+    "modifiedAt": "Sửa đổi {{time}}",
+    "uploadModal": {
+      "title": "Tải lên Đặc tả",
+      "nameLabel": "Tên",
+      "namePlaceholder": "Đặc tả API của tôi",
+      "descLabel": "Mô tả (Tùy chọn)",
+      "descPlaceholder": "Mô tả ngắn về đặc tả này",
+      "typeLabel": "Loại",
+      "fileLabel": "Tệp",
+      "selectedFile": "Đã chọn: {{name}}",
+      "cancel": "Hủy",
+      "upload": "Tải lên"
+    },
+    "deleteModal": {
+      "title": "Xóa Đặc tả",
+      "message": "Bạn có chắc muốn xóa <1>{{name}}</1>?",
+      "warning": "Hành động này không thể hoàn tác. Tất cả các điểm cuối được trích xuất từ đặc tả này cũng sẽ bị xóa.",
+      "cancel": "Hủy",
+      "confirm": "Xóa"
+    },
+    "parseStatus": {
+      "success": "Thành công",
+      "parsing": "Đang phân tích...",
+      "failed": "Thất bại",
+      "unknown": "Không xác định"
+    },
     "upload": {
       "title": "Kéo và Thả các Tệp Đặc tả API vào đây",
       "formats": "Định dạng hỗ trợ:",
@@ -149,6 +232,13 @@
     "syncButton": "Đồng bộ Điểm cuối",
     "searchPlaceholder": "Tìm kiếm theo đường dẫn hoặc mô tả...",
     "methodLabel": "Phương thức:",
+    "selectAll": "Chọn tất cả",
+    "showing": "Hiển thị {{from}} đến {{to}} trong {{total}} điểm cuối",
+    "activeCount": "{{count}} Đang hoạt động",
+    "createSuiteBtn": "Tạo Bộ kiểm thử ({{count}})",
+    "statusActive": "Đang hoạt động",
+    "statusInactive": "Không hoạt động",
+    "tryAgain": "Thử lại",
     "table": {
       "status": "Trạng thái",
       "latency": "Độ trễ",
@@ -162,8 +252,20 @@
     "createButton": "Tạo Bộ mới",
     "suiteId": "ID:",
     "endpoints": "Điểm cuối",
+    "testCases": "Kịch bản kiểm thử",
     "generation": "Tạo mới",
     "runButton": "Chạy Bộ",
+    "refresh": "Làm mới",
+    "filterBySpec": "Lọc theo Đặc tả API",
+    "allSpecs": "Tất cả Đặc tả API ({{count}})",
+    "noSuitesFiltered": "Không tìm thấy bộ kiểm thử",
+    "noSuitesYet": "Chưa có bộ kiểm thử nào",
+    "tryDifferentSpec": "Thử chọn một đặc tả API khác",
+    "createFirst": "Tạo bộ kiểm thử đầu tiên để bắt đầu",
+    "createSuite": "Tạo Bộ Kiểm thử",
+    "createdAt": "Tạo lúc {{time}}",
+    "open": "Mở",
+    "tryAgain": "Thử lại",
     "addNew": {
       "title": "Thêm Bộ Kiểm thử Mới",
       "subtitle": "Tạo một bộ sưu tập các điểm cuối tùy chỉnh"
@@ -174,12 +276,24 @@
       "confirm": "Xác nhận Tạo",
       "nameLabel": "Tên Tài liệu Bộ Kiểm thử",
       "namePlaceholder": "Nhập mã định danh bộ kiểm thử",
+      "descLabel": "Mô tả (Tùy chọn)",
+      "descPlaceholder": "Mô tả ngắn về bộ kiểm thử này",
+      "apiSpecLabel": "Đặc tả API",
+      "apiSpecPlaceholder": "Chọn một đặc tả API",
+      "endpointsLabel": "Chọn Điểm cuối ({{count}} đã chọn)",
+      "deselectAll": "Bỏ chọn tất cả",
+      "selectAll": "Chọn tất cả",
+      "noEndpoints": "Không tìm thấy điểm cuối trong đặc tả này",
       "envLabel": "Môi trường Kiểm thử",
       "envPlaceholder": "Chọn môi trường đích",
       "envDev": "Hộp cát Phát triển",
       "envStaging": "Môi trường Staging",
-      "envProd": "Môi trường Sản xuất",
-      "endpointsLabel": "Chọn các Điểm cuối API"
+      "envProd": "Môi trường Sản xuất"
+    },
+    "deleteModal": {
+      "title": "Xóa Bộ Kiểm thử",
+      "cancel": "Hủy",
+      "confirm": "Xóa"
     }
   },
   "testCaseStudio": {
@@ -209,17 +323,18 @@
     "subtitle": "Theo dõi và kiểm tra mọi lượt thực thi kiểm thử API trên tất cả các môi trường.",
     "downloadAudit": "Tải xuống Nhật ký Kiểm tra",
     "runNew": "Chạy Thực thi Mới",
+    "refresh": "Làm mới",
+    "viewingRunsFor": "Đang xem lượt chạy của bộ",
+    "noSuitesAvailable": "Không có bộ kiểm thử nào",
+    "noRunsFound": "Không tìm thấy lượt chạy kiểm thử",
+    "searchPlaceholder": "Tìm kiếm lượt chạy...",
+    "statusLabel": "Trạng thái",
+    "tryAgain": "Thử lại",
     "stats": {
       "total": "Tổng lượt chạy",
-      "success": "Tỷ lệ Thành công",
+      "success": "Vượt qua",
       "failures": "Thất bại",
-      "duration": "Thời lượng Trung bình"
-    },
-    "searchPlaceholder": "Tìm kiếm theo mã lượt chạy hoặc tên bộ...",
-    "range": {
-      "last7": "7 Ngày qua",
-      "last30": "30 Ngày qua",
-      "custom": "Phạm vi Tùy chỉnh"
+      "duration": "Thời lượng TB"
     },
     "table": {
       "id": "Mã Lượt chạy",
@@ -230,6 +345,11 @@
       "duration": "Thời lượng",
       "actions": "Hành động",
       "by": "Bởi"
+    },
+    "range": {
+      "last7": "7 Ngày qua",
+      "last30": "30 Ngày qua",
+      "custom": "Phạm vi Tùy chỉnh"
     },
     "actions": {
       "view": "Xem Báo cáo"
@@ -266,6 +386,13 @@
     "title": "Phân tích & Báo cáo",
     "subtitle": "Thông tin chi tiết về hiệu suất kiểm thử API và xu hướng độ tin cậy của bạn.",
     "exportPdf": "Xuất PDF",
+    "generate": "Tạo Báo cáo",
+    "export": "Xuất",
+    "dateRange": {
+      "last7Days": "7 Ngày qua",
+      "last30Days": "30 Ngày qua",
+      "last90Days": "90 Ngày qua"
+    },
     "metrics": {
       "passRate": "Tỷ lệ Vượt qua Tổng thể",
       "responseTime": "Thời gian Phản hồi Trung bình",
@@ -275,9 +402,17 @@
     "reliability": {
       "title": "Xu hướng Độ tin cậy",
       "subtitle": "Tỷ lệ phần trăm vượt qua hàng ngày trên tất cả các bộ",
+      "passRate": "Tỷ lệ vượt qua",
       "production": "Sản xuất",
       "staging": "Dàn dựng",
       "day": "Ngày"
+    },
+    "coverage": {
+      "title": "Độ bao phủ Kiểm thử",
+      "subtitle": "Phân tích độ bao phủ điểm cuối",
+      "covered": "Đã bao phủ",
+      "tested": "Đã kiểm thử",
+      "untested": "Chưa kiểm thử"
     },
     "distribution": {
       "title": "Phân bổ Thất bại",
@@ -292,6 +427,37 @@
       "fullLeaderboard": "Bảng xếp hạng Đầy đủ",
       "executions": "Lượt thực thi",
       "reliable": "Đáng tin cậy"
+    },
+    "generated": {
+      "title": "Báo cáo Đã tạo"
+    },
+    "empty": {
+      "title": "Chưa có báo cáo nào",
+      "desc": "Tạo báo cáo đầu tiên để xem thông tin chi tiết."
+    },
+    "form": {
+      "name": "Tên Báo cáo",
+      "type": "Loại Báo cáo",
+      "description": "Mô tả",
+      "startDate": "Ngày bắt đầu",
+      "endDate": "Ngày kết thúc"
+    },
+    "types": {
+      "testRun": "Lượt chạy kiểm thử",
+      "coverage": "Độ bao phủ",
+      "performance": "Hiệu suất",
+      "trend": "Xu hướng"
+    },
+    "errors": {
+      "missingName": "Vui lòng nhập tên báo cáo"
+    },
+    "success": {
+      "generated": "Tạo báo cáo thành công",
+      "deleted": "Đã xóa báo cáo",
+      "exported": "Đã xuất báo cáo"
+    },
+    "confirm": {
+      "delete": "Bạn có chắc muốn xóa báo cáo này không?"
     }
   },
   "environments": {
@@ -466,6 +632,27 @@
   },
   "suggestions": {
     "title": "Đề xuất từ LLM",
+    "pageTitle": "Chi tiết Lượt chạy & Giải thích Lỗi",
+    "pageSubtitle": "Xem chi tiết lượt chạy và giải thích lỗi cho các kịch bản thất bại.",
+    "backToRuns": "Quay lại Lượt chạy",
+    "selectSuite": "Chọn bộ kiểm thử...",
+    "selectRun": "Chọn lượt chạy...",
+    "selectProject": "Vui lòng chọn dự án từ thanh bên để xem chi tiết lượt chạy.",
+    "selectSuitePrompt": "Chọn một bộ kiểm thử để xem chi tiết thực thi.",
+    "loadingRuns": "Đang tải lượt chạy...",
+    "noRunsFound": "Không tìm thấy lượt chạy nào cho bộ này.",
+    "noRunsMsg": "Hãy thực thi bộ này trước, sau đó quay lại để xem giải thích.",
+    "loadingDetail": "Đang tải chi tiết lượt chạy...",
+    "runDetails": "Chi tiết Lượt chạy ({{count}} kịch bản)",
+    "cacheUnavailable": "Chi tiết kết quả lượt chạy hiện không còn trong cache, không thể tạo Giải thích Lỗi. Vui lòng chạy lại kiểm thử để tạo dữ liệu mới.",
+    "generateAll": "Tạo tất cả Giải thích",
+    "refresh": "Làm mới",
+    "generateExplanation": "Tạo Giải thích",
+    "getExisting": "Lấy Giải thích hiện có",
+    "possibleCauses": "Nguyên nhân có thể:",
+    "suggestedActions": "Hành động đề xuất:",
+    "noSummary": "Không có tóm tắt",
+    "noUrl": "Không có URL",
     "subtitle": "Công cụ trí tuệ tự trị của chúng tôi đã phân tích các đặc tả API và kết quả kiểm thử của bạn để xác định các lỗ hổng bao phủ và tối ưu hóa quan trọng.",
     "reAnalyze": "Phân tích lại Bộ kiểm thử",
     "metrics": {
@@ -497,6 +684,28 @@
   "billing": {
     "title": "Đăng ký & Thanh toán",
     "subtitle": "Quản lý gói dịch vụ, thông tin thanh toán và giới hạn sử dụng của bạn.",
+    "refresh": "Làm mới",
+    "tryAgain": "Thử lại",
+    "failedToLoad": "Không thể tải dữ liệu đăng ký",
+    "remaining": "còn lại",
+    "used": "đã dùng",
+    "resetsMonthly": "Đặt lại hàng tháng",
+    "noDescription": "Không có mô tả",
+    "noLimits": "Không có giới hạn",
+    "noPlans": "Không có gói nào",
+    "noPayments": "Chưa có lịch sử thanh toán",
+    "currentPlan": "Gói hiện tại",
+    "subscribe": "Đăng ký",
+    "limits": {
+      "maxProjects": "Số dự án tối đa",
+      "maxEndpoints": "Số endpoint/dự án",
+      "maxTestCases": "Số kịch bản/bộ",
+      "maxTestRuns": "Số lượt chạy/tháng",
+      "maxConcurrentRuns": "Số lượt chạy đồng thời",
+      "retentionDays": "Lưu trữ dữ liệu (ngày)",
+      "maxLlmCalls": "Số lần gọi LLM/tháng",
+      "maxStorage": "Dung lượng tối đa (MB)"
+    },
     "usage": {
       "testRuns": "Số lượt Chạy Kiểm thử Hàng tháng",
       "testRunsDesc": "Đã sử dụng {{percent}}% giới hạn hàng tháng của bạn",
@@ -515,39 +724,19 @@
       "starter": {
         "name": "Cơ bản",
         "desc": "Hoàn hảo cho các dự án nhỏ và nhà phát triển cá nhân.",
-        "features": [
-          "Tối đa 3 dự án",
-          "1.000 lượt chạy kiểm thử / tháng",
-          "Đề xuất AI cơ bản",
-          "Lưu trữ dữ liệu trong 24 giờ",
-          "Hỗ trợ cộng đồng"
-        ],
+        "features": ["Tối đa 3 dự án","1.000 lượt chạy kiểm thử / tháng","Đề xuất AI cơ bản","Lưu trữ dữ liệu trong 24 giờ","Hỗ trợ cộng đồng"],
         "button": "Gói hiện tại"
       },
       "professional": {
         "name": "Chuyên nghiệp",
         "desc": "Các tính năng nâng cao cho các nhóm đang phát triển và ứng dụng mở rộng.",
-        "features": [
-          "Không giới hạn dự án",
-          "50.000 lượt chạy kiểm thử / tháng",
-          "Suy luận LLM nâng cao",
-          "Lưu trữ dữ liệu trong 30 ngày",
-          "Hỗ trợ qua email ưu tiên",
-          "Môi trường tùy chỉnh"
-        ],
+        "features": ["Không giới hạn dự án","50.000 lượt chạy kiểm thử / tháng","Suy luận LLM nâng cao","Lưu trữ dữ liệu trong 30 ngày","Hỗ trợ qua email ưu tiên","Môi trường tùy chỉnh"],
         "button": "Nâng cấp lên Pro"
       },
       "enterprise": {
         "name": "Doanh nghiệp",
         "desc": "Bảo mật tối đa và hỗ trợ tận tâm cho các tổ chức lớn.",
-        "features": [
-          "Không giới hạn mọi thứ",
-          "Tùy chọn triển khai tại chỗ",
-          "Quản lý tài khoản tận tâm",
-          "Cam kết SLA",
-          "Đào tạo mô hình AI tùy chỉnh",
-          "SSO & Bảo mật Nâng cao"
-        ],
+        "features": ["Không giới hạn mọi thứ","Tùy chọn triển khai tại chỗ","Quản lý tài khoản tận tâm","Cam kết SLA","Đào tạo mô hình AI tùy chỉnh","SSO & Bảo mật Nâng cao"],
         "button": "Liên hệ bộ phận Bán hàng"
       }
     },
@@ -796,7 +985,7 @@
       "Bộ hồi quy tự chữa lành",
       "Điều phối đa môi trường"
     ],
-    "joinedBy": "Được tham gia bởi hơn 12k lập trình viên",
+    "joinedBy": "Được tin dùng bởi hơn 12k+ nhà phát triển",
     "passwordMismatch": "Mật khẩu xác nhận phải trùng với mật khẩu đã tạo.",
     "forgotTitle": "Khôi phục thông tin đăng nhập",
     "forgotSubtitle": "Nhập địa chỉ thư điện tử đã đăng ký để nhận liên kết đặt lại bảo mật.",

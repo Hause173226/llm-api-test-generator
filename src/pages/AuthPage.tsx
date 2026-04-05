@@ -313,7 +313,7 @@ export default function AuthPage() {
 
             <button
               disabled={isLoading}
-              className="w-full py-4 bg-primary text-on-primary rounded-2xl font-bold text-base shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full py-4 bg-primary dark:bg-indigo-600 text-on-primary dark:text-white rounded-2xl font-bold text-base shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isLoading ? (
                 <>
@@ -365,7 +365,7 @@ export default function AuthPage() {
         </div>
 
         {/* Right Side: Visual/Info */}
-        <div className="hidden lg:block bg-on-surface dark:bg-slate-950 p-16 relative overflow-hidden">
+        <div className="hidden lg:block bg-on-surface dark:bg-indigo-950 p-16 relative overflow-hidden">
           <div
             className="absolute top-0 right-0 w-full h-full opacity-20 pointer-events-none"
             style={{
@@ -375,19 +375,20 @@ export default function AuthPage() {
             }}
           ></div>
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/30 rounded-full blur-[100px]"></div>
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]"></div>
 
-          <div className="relative z-10 h-full flex flex-col justify-between text-surface">
+          <div className="relative z-10 h-full flex flex-col justify-between text-white">
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface/10 rounded-full border border-surface/10">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-widest">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/20">
+                <Sparkles className="w-4 h-4 text-indigo-300" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">
                   {t("auth.enterpriseReady")}
                 </span>
               </div>
-              <h2 className="text-4xl font-black tracking-tight leading-[0.95]">
+              <h2 className="text-4xl font-black tracking-tight leading-[0.95] text-white">
                 {t("auth.panelTitle")}
               </h2>
-              <p className="text-lg text-surface/70 font-medium leading-relaxed">
+              <p className="text-lg text-white/80 font-medium leading-relaxed">
                 {t("auth.panelDescription")}
               </p>
             </div>
@@ -397,22 +398,22 @@ export default function AuthPage() {
                 (item, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-4 bg-surface/5 p-4 rounded-2xl border border-surface/10"
+                    className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl border border-white/15"
                   >
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                    <span className="text-base font-bold">{item}</span>
+                    <CheckCircle2 className="w-5 h-5 text-indigo-300 shrink-0" />
+                    <span className="text-base font-bold text-white">{item}</span>
                   </div>
                 ),
               )}
             </div>
 
-            <div className="pt-8 border-t border-surface/10">
+            <div className="pt-8 border-t border-white/15">
               <div className="flex items-center gap-4">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
-                      className="w-10 h-10 rounded-full border-2 border-on-surface bg-surface-container overflow-hidden"
+                      className="w-10 h-10 rounded-full border-2 border-white/30 bg-indigo-800 overflow-hidden"
                     >
                       <img
                         src={`https://i.pravatar.cc/100?img=${i + 10}`}
@@ -421,7 +422,7 @@ export default function AuthPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] font-bold text-surface/60 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">
                   {t("auth.joinedBy")}
                 </p>
               </div>

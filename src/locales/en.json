@@ -19,7 +19,21 @@
     "softwareStudent": "Software Engineering Student",
     "logOut": "Log Out",
     "switchToLightMode": "Switch to Light Mode",
-    "switchToDarkMode": "Switch to Dark Mode"
+    "switchToDarkMode": "Switch to Dark Mode",
+    "loading": "Loading...",
+    "back": "Back",
+    "notFound": "Not found",
+    "testSuiteNotFound": "Test suite not found",
+    "testCaseNotFound": "Test case not found",
+    "noEndpointsFound": "No endpoints found",
+    "endpoint": "Endpoint",
+    "method": "Method",
+    "tip": "Tip",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -30,7 +44,16 @@
     "testCoverage": "Test Coverage",
     "recentActivity": "Recent Activity",
     "systemHealth": "System Health",
-    "activeServices": "Active Services"
+    "activeServices": "Active Services",
+    "monthlyTestRuns": "Monthly Test Runs",
+    "passRate": "Pass Rate",
+    "monitoringMsg": "Autonomous testing is currently monitoring {{count}} active projects with an overall pass rate of {{rate}}%.",
+    "refresh": "Refresh",
+    "newProject": "New Project",
+    "topApiEndpoints": "Top API Endpoints",
+    "noRecentActivity": "No recent activity",
+    "noEndpointsFound": "No endpoints found",
+    "tryAgain": "Try Again"
   },
   "help": {
     "title": "Help and Support Center",
@@ -97,6 +120,35 @@
       "status": "Current Status",
       "actions": "Actions"
     },
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "noSpec": "No specification",
+    "noProjectsFound": "No projects found",
+    "pagination": "Showing {{from}} to {{to}} of {{total}} projects",
+    "page": "Page {{current}} of {{total}}",
+    "tryAgain": "Try Again",
+    "editModal": {
+      "title": "Edit Project",
+      "nameLabel": "Project Name",
+      "descriptionLabel": "Description",
+      "cancel": "Cancel",
+      "confirm": "Update"
+    },
+    "deleteModal": {
+      "title": "Delete Project",
+      "confirm": "Delete",
+      "cancel": "Cancel",
+      "message": "Are you sure you want to delete <1>{{name}}</1>?",
+      "warning": "This action cannot be undone. All test suites, test cases, and results associated with this project will be permanently deleted."
+    },
+    "toast": {
+      "fillRequired": "Please fill in all required fields",
+      "createSuccess": "Project created successfully",
+      "updateSuccess": "Project updated successfully",
+      "deleteSuccess": "Project deleted successfully"
+    },
     "modal": {
       "title": "Create New Project",
       "nameLabel": "Project Legal Name",
@@ -112,6 +164,37 @@
   "specifications": {
     "title": "API Specifications",
     "subtitle": "Orchestrate your technical documentation through our intelligent canvas. Upload, manage, and validate your schemas with editorial precision.",
+    "noProjectSelected": "No Project Selected",
+    "noProjectMsg": "Please select a project from the sidebar or go to Projects page",
+    "goToProjects": "Go to Projects",
+    "noSpecsYet": "No specifications uploaded yet",
+    "tryAgain": "Try Again",
+    "modifiedAt": "Modified {{time}}",
+    "uploadModal": {
+      "title": "Upload Specification",
+      "nameLabel": "Name",
+      "namePlaceholder": "My API Specification",
+      "descLabel": "Description (Optional)",
+      "descPlaceholder": "Brief description of this specification",
+      "typeLabel": "Type",
+      "fileLabel": "File",
+      "selectedFile": "Selected: {{name}}",
+      "cancel": "Cancel",
+      "upload": "Upload"
+    },
+    "deleteModal": {
+      "title": "Delete Specification",
+      "message": "Are you sure you want to delete <1>{{name}}</1>?",
+      "warning": "This action cannot be undone. All endpoints extracted from this specification will also be removed.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "parseStatus": {
+      "success": "Success",
+      "parsing": "Parsing...",
+      "failed": "Failed",
+      "unknown": "Unknown"
+    },
     "upload": {
       "title": "Drag and Drop API Specification Files here",
       "formats": "Supported formats:",
@@ -149,6 +232,13 @@
     "syncButton": "Sync Endpoints",
     "searchPlaceholder": "Search by path or description...",
     "methodLabel": "Method:",
+    "selectAll": "Select All",
+    "showing": "Showing {{from}} to {{to}} of {{total}} endpoints",
+    "activeCount": "{{count}} Active",
+    "createSuiteBtn": "Create Test Suite ({{count}})",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "tryAgain": "Try Again",
     "table": {
       "status": "Status",
       "latency": "Latency",
@@ -162,8 +252,20 @@
     "createButton": "Create New Suite",
     "suiteId": "ID:",
     "endpoints": "Endpoints",
+    "testCases": "Test Cases",
     "generation": "Generation",
     "runButton": "Run Suite",
+    "refresh": "Refresh",
+    "filterBySpec": "Filter by API Spec",
+    "allSpecs": "All API Specifications ({{count}})",
+    "noSuitesFiltered": "No test suites found",
+    "noSuitesYet": "No test suites yet",
+    "tryDifferentSpec": "Try selecting a different API specification",
+    "createFirst": "Create your first test suite to get started",
+    "createSuite": "Create Test Suite",
+    "createdAt": "Created {{time}}",
+    "open": "Open",
+    "tryAgain": "Try Again",
     "addNew": {
       "title": "Add New Test Suite",
       "subtitle": "Create a custom collection of endpoints"
@@ -174,12 +276,24 @@
       "confirm": "Confirm Creation",
       "nameLabel": "Suite Document Name",
       "namePlaceholder": "Enter the test suite identifier",
+      "descLabel": "Description (Optional)",
+      "descPlaceholder": "Brief description of this test suite",
+      "apiSpecLabel": "API Specification",
+      "apiSpecPlaceholder": "Select an API specification",
+      "endpointsLabel": "Select Endpoints ({{count}} selected)",
+      "deselectAll": "Deselect All",
+      "selectAll": "Select All",
+      "noEndpoints": "No endpoints found in this specification",
       "envLabel": "Testing Environment",
       "envPlaceholder": "Select target environment",
       "envDev": "Development Sandbox",
       "envStaging": "Staging Environment",
-      "envProd": "Production Environment",
-      "endpointsLabel": "Select API Endpoints"
+      "envProd": "Production Environment"
+    },
+    "deleteModal": {
+      "title": "Delete Test Suite",
+      "cancel": "Cancel",
+      "confirm": "Delete"
     }
   },
   "testCaseStudio": {
@@ -209,17 +323,18 @@
     "subtitle": "Track and audit every API test execution across all environments.",
     "downloadAudit": "Download Audit Log",
     "runNew": "Run New Execution",
+    "refresh": "Refresh",
+    "viewingRunsFor": "Viewing runs for suite",
+    "noSuitesAvailable": "No test suites available",
+    "noRunsFound": "No test runs found",
+    "searchPlaceholder": "Search test runs...",
+    "statusLabel": "Status",
+    "tryAgain": "Try Again",
     "stats": {
       "total": "Total Runs",
-      "success": "Success Rate",
-      "failures": "Failures",
-      "duration": "Avg. Duration"
-    },
-    "searchPlaceholder": "Search by run ID or suite name...",
-    "range": {
-      "last7": "Last 7 Days",
-      "last30": "Last 30 Days",
-      "custom": "Custom Range"
+      "success": "Passed",
+      "failures": "Failed",
+      "duration": "Avg Duration"
     },
     "table": {
       "id": "Run ID",
@@ -230,6 +345,11 @@
       "duration": "Duration",
       "actions": "Actions",
       "by": "By"
+    },
+    "range": {
+      "last7": "Last 7 Days",
+      "last30": "Last 30 Days",
+      "custom": "Custom Range"
     },
     "actions": {
       "view": "View Report"
@@ -266,6 +386,13 @@
     "title": "Analytics & Reports",
     "subtitle": "Deep insights into your API testing performance and reliability trends.",
     "exportPdf": "Export PDF",
+    "generate": "Generate Report",
+    "export": "Export",
+    "dateRange": {
+      "last7Days": "Last 7 Days",
+      "last30Days": "Last 30 Days",
+      "last90Days": "Last 90 Days"
+    },
     "metrics": {
       "passRate": "Overall Pass Rate",
       "responseTime": "Avg. Response Time",
@@ -275,9 +402,17 @@
     "reliability": {
       "title": "Reliability Trend",
       "subtitle": "Daily pass rate percentage across all suites",
+      "passRate": "Pass Rate",
       "production": "Production",
       "staging": "Staging",
       "day": "Day"
+    },
+    "coverage": {
+      "title": "Test Coverage",
+      "subtitle": "Endpoint coverage breakdown",
+      "covered": "Covered",
+      "tested": "Tested",
+      "untested": "Untested"
     },
     "distribution": {
       "title": "Failure Distribution",
@@ -292,6 +427,37 @@
       "fullLeaderboard": "Full Leaderboard",
       "executions": "Executions",
       "reliable": "Reliable"
+    },
+    "generated": {
+      "title": "Generated Reports"
+    },
+    "empty": {
+      "title": "No reports yet",
+      "desc": "Generate your first report to see insights here."
+    },
+    "form": {
+      "name": "Report Name",
+      "type": "Report Type",
+      "description": "Description",
+      "startDate": "Start Date",
+      "endDate": "End Date"
+    },
+    "types": {
+      "testRun": "Test Run",
+      "coverage": "Coverage",
+      "performance": "Performance",
+      "trend": "Trend"
+    },
+    "errors": {
+      "missingName": "Please provide a report name"
+    },
+    "success": {
+      "generated": "Report generated successfully",
+      "deleted": "Report deleted",
+      "exported": "Report exported"
+    },
+    "confirm": {
+      "delete": "Are you sure you want to delete this report?"
     }
   },
   "environments": {
@@ -466,6 +632,27 @@
   },
   "suggestions": {
     "title": "LLM Suggestions",
+    "pageTitle": "Run Details & Failure Explanation",
+    "pageSubtitle": "View run details and explain failures for failed test cases.",
+    "backToRuns": "Back to Runs",
+    "selectSuite": "Select test suite...",
+    "selectRun": "Select test run...",
+    "selectProject": "Please select a project from the sidebar to inspect run details.",
+    "selectSuitePrompt": "Select a test suite to inspect execute details.",
+    "loadingRuns": "Loading test runs...",
+    "noRunsFound": "No test runs found for this suite.",
+    "noRunsMsg": "Execute this suite first, then come back for explanations.",
+    "loadingDetail": "Loading run details...",
+    "runDetails": "Run Details ({{count}} cases)",
+    "cacheUnavailable": "Run result details are no longer in cache (resultsSource=unavailable), so Failure Explanation cannot be generated. Please re-run the test to generate new data.",
+    "generateAll": "Generate All Explanations",
+    "refresh": "Refresh",
+    "generateExplanation": "Generate Explanation",
+    "getExisting": "Get Existing",
+    "possibleCauses": "Possible causes:",
+    "suggestedActions": "Suggested actions:",
+    "noSummary": "No summary",
+    "noUrl": "No resolved URL",
     "subtitle": "Our autonomous intelligence engine has analyzed your API specifications and test results to identify critical coverage gaps and optimizations.",
     "reAnalyze": "Re-Analyze Suite",
     "metrics": {
@@ -497,6 +684,28 @@
   "billing": {
     "title": "Subscription & Billing",
     "subtitle": "Manage your plan, billing information, and usage limits.",
+    "refresh": "Refresh",
+    "tryAgain": "Try Again",
+    "failedToLoad": "Failed to load subscription data",
+    "remaining": "remaining",
+    "used": "used",
+    "resetsMonthly": "Resets monthly",
+    "noDescription": "No description available",
+    "noLimits": "No limits specified",
+    "noPlans": "No plans available",
+    "noPayments": "No payment history yet",
+    "currentPlan": "Current Plan",
+    "subscribe": "Subscribe",
+    "limits": {
+      "maxProjects": "Max Projects",
+      "maxEndpoints": "Max Endpoints/Project",
+      "maxTestCases": "Max Test Cases/Suite",
+      "maxTestRuns": "Max Test Runs/Month",
+      "maxConcurrentRuns": "Max Concurrent Runs",
+      "retentionDays": "Data Retention (days)",
+      "maxLlmCalls": "Max LLM Calls/Month",
+      "maxStorage": "Max Storage (MB)"
+    },
     "usage": {
       "testRuns": "Monthly Test Runs",
       "testRunsDesc": "{{percent}}% of your monthly limit used",
@@ -515,39 +724,19 @@
       "starter": {
         "name": "Starter",
         "desc": "Perfect for small projects and individual developers.",
-        "features": [
-          "Up to 3 projects",
-          "1,000 test runs / month",
-          "Basic AI suggestions",
-          "24h data retention",
-          "Community support"
-        ],
+        "features": ["Up to 3 projects","1,000 test runs / month","Basic AI suggestions","24h data retention","Community support"],
         "button": "Current Plan"
       },
       "professional": {
         "name": "Professional",
         "desc": "Advanced features for growing teams and scaling apps.",
-        "features": [
-          "Unlimited projects",
-          "50,000 test runs / month",
-          "Advanced LLM reasoning",
-          "30-day data retention",
-          "Priority email support",
-          "Custom environments"
-        ],
+        "features": ["Unlimited projects","50,000 test runs / month","Advanced LLM reasoning","30-day data retention","Priority email support","Custom environments"],
         "button": "Upgrade to Pro"
       },
       "enterprise": {
         "name": "Enterprise",
         "desc": "Maximum security and dedicated support for large organizations.",
-        "features": [
-          "Unlimited everything",
-          "On-premise deployment option",
-          "Dedicated account manager",
-          "SLA guarantees",
-          "Custom AI model training",
-          "SSO & Advanced Security"
-        ],
+        "features": ["Unlimited everything","On-premise deployment option","Dedicated account manager","SLA guarantees","Custom AI model training","SSO & Advanced Security"],
         "button": "Contact Sales"
       }
     },

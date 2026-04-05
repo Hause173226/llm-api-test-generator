@@ -257,7 +257,7 @@ export default function TestCaseStudioPage() {
       <MainLayout title={t("testCaseStudio.title")}>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
           <AlertCircle className="w-12 h-12 text-error" />
-          <p className="text-on-surface-variant">Test case not found</p>
+          <p className="text-on-surface-variant">{t("common.testCaseNotFound")}</p>
         </div>
       </MainLayout>
     );
@@ -329,13 +329,13 @@ export default function TestCaseStudioPage() {
                     className={cn(
                       "px-2 py-0.5 text-[10px] font-black rounded",
                       testCase?.method === "GET" &&
-                        "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+                      "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
                       testCase?.method === "POST" &&
-                        "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
+                      "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
                       testCase?.method === "PUT" &&
-                        "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+                      "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
                       testCase?.method === "DELETE" &&
-                        "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
+                      "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
                     )}
                   >
                     {testCase?.method || "GET"}

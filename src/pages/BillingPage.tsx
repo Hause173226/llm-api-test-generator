@@ -25,7 +25,7 @@ export default function BillingPage() {
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
             <p className="text-on-surface-variant">
-              Failed to load subscription data
+              {t("billing.failedToLoad")}
             </p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function BillingPage() {
               onClick={refetch}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
             >
-              Try Again
+              {t("billing.tryAgain")}
             </button>
           </div>
         </div>
@@ -151,6 +151,45 @@ export default function BillingPage() {
     limitValue: 25000,
   };
 
+  // Map plan name từ API sang translation key
+  const getPlanName = (name: string) => {
+    const lower = name?.toLowerCase() || "";
+    if (lower.includes("free") || lower.includes("starter")) return t("billing.plans.starter.name");
+    if (lower.includes("pro") || lower.includes("professional")) return t("billing.plans.professional.name");
+    if (lower.includes("enterprise")) return t("billing.plans.enterprise.name");
+    return name;
+  };
+
+  const getPlanDesc = (name: string, fallbackDesc: string) => {
+    const lower = name?.toLowerCase() || "";
+    if (lower.includes("free") || lower.includes("starter")) return t("billing.plans.starter.desc");
+    if (lower.includes("pro") || lower.includes("professional")) return t("billing.plans.professional.desc");
+    if (lower.includes("enterprise")) return t("billing.plans.enterprise.desc");
+    return fallbackDesc || t("billing.noDescription");
+  };
+
+  const getLimitLabel = (limitType: string) => {
+    const map: Record<string, string> = {
+      MaxProjects: t("billing.limits.maxProjects"),
+      MaxEndpointsPerProject: t("billing.limits.maxEndpoints"),
+      MaxTestCasesPerSuite: t("billing.limits.maxTestCases"),
+      MaxTestRunsPerMonth: t("billing.limits.maxTestRuns"),
+      MaxConcurrentRuns: t("billing.limits.maxConcurrentRuns"),
+      RetentionDays: t("billing.limits.retentionDays"),
+      MaxLlmCallsPerMonth: t("billing.limits.maxLlmCalls"),
+      MaxLImCallsPerMonth: t("billing.limits.maxLlmCalls"),
+      MaxStorageMB: t("billing.limits.maxStorage"),
+    };
+    return map[limitType] || limitType;
+  };
+
+  const getBillingCycleLabel = (cycle: string) => {
+    const lower = cycle?.toLowerCase() || "";
+    if (lower === "monthly" || lower === "month") return t("billing.plans.monthly");
+    if (lower === "yearly" || lower === "year" || lower === "annual") return t("billing.plans.yearly");
+    return cycle;
+  };
+
   return (
     <MainLayout title={t("billing.title")}>
       <div className="space-y-10 pb-12">
@@ -169,7 +208,7 @@ export default function BillingPage() {
             className="px-5 py-2.5 rounded-xl bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-high dark:hover:bg-slate-700 transition-all disabled:opacity-50"
           >
             <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
-            Refresh
+            {t("billing.refresh")}
           </button>
         </header>
 
@@ -200,7 +239,7 @@ export default function BillingPage() {
               {Math.round(
                 (testRunsUsage.currentUsage / testRunsUsage.limitValue) * 100,
               )}
-              % used
+              % {t("billing.used")}
             </p>
           </div>
 
@@ -237,7 +276,7 @@ export default function BillingPage() {
             ) : (
               <p className="mt-2 text-xs text-on-surface-variant">
                 {projectsUsage.limitValue - projectsUsage.currentUsage}{" "}
-                remaining
+                {t("billing.remaining")}
               </p>
             )}
           </div>
@@ -264,7 +303,7 @@ export default function BillingPage() {
               ></div>
             </div>
             <p className="mt-2 text-xs text-on-surface-variant">
-              Resets monthly
+              {t("billing.resetsMonthly")}
             </p>
           </div>
         </section>
@@ -302,18 +341,18 @@ export default function BillingPage() {
 
                     <div className="mb-8">
                       <h3 className="text-xl font-bold text-on-surface mb-2">
-                        {plan.name}
+                        {getPlanName(plan.name)}
                       </h3>
                       <div className="flex items-baseline gap-1 mb-4">
                         <span className="text-4xl font-bold text-on-surface">
                           ${plan.price || 0}
                         </span>
                         <span className="text-on-surface-variant font-medium">
-                          /{plan.billingCycle?.toLowerCase() || "month"}
+                          /{getBillingCycleLabel(plan.billingCycle || "month")}
                         </span>
                       </div>
                       <p className="text-sm text-on-surface-variant leading-relaxed">
-                        {plan.description || "No description available"}
+                        {getPlanDesc(plan.name, plan.description)}
                       </p>
                     </div>
 
@@ -327,13 +366,13 @@ export default function BillingPage() {
                             <div className="mt-0.5 w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
                             </div>
-                            {limit.limitType}:{" "}
+                            {getLimitLabel(limit.limitType)}:{" "}
                             {limit.limitValue?.toLocaleString() || 0}
                           </li>
                         ))
                       ) : (
                         <li className="text-sm text-on-surface-variant">
-                          No limits specified
+                          {t("billing.noLimits")}
                         </li>
                       )}
                     </ul>
@@ -350,7 +389,7 @@ export default function BillingPage() {
                             : "bg-surface-container-high dark:bg-surface-container-highest text-on-surface hover:bg-surface-container-highest active:scale-[0.98]",
                       )}
                     >
-                      {isCurrentPlan ? "Current Plan" : "Subscribe"}
+                      {isCurrentPlan ? t("billing.currentPlan") : t("billing.subscribe")}
                       {!isCurrentPlan && <ArrowRight className="w-4 h-4" />}
                     </button>
                   </div>
@@ -358,7 +397,7 @@ export default function BillingPage() {
               })
             ) : (
               <div className="col-span-3 text-center py-12 text-on-surface-variant">
-                No plans available
+                {t("billing.noPlans")}
               </div>
             )}
           </div>
@@ -435,7 +474,7 @@ export default function BillingPage() {
                       colSpan={5}
                       className="px-8 py-12 text-center text-on-surface-variant"
                     >
-                      No payment history yet
+                      {t("billing.noPayments")}
                     </td>
                   </tr>
                 )}

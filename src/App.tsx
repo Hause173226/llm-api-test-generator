@@ -26,46 +26,46 @@ export default function App() {
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: "var(--md-sys-color-surface-container-low)",
-                  color: "#1e293b", // Dark slate for better readability
+                  background: "var(--color-surface-container-low)",
+                  color: "var(--color-on-surface)",
                   borderRadius: "16px",
                   padding: "16px 24px",
-                  fontWeight: "700", // Bolder
-                  fontSize: "15px", // Slightly larger
+                  fontWeight: "700",
+                  fontSize: "15px",
                   boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
-                  border: "1px solid var(--md-sys-color-outline-variant)",
+                  border: "1px solid var(--color-outline-variant)",
                   minWidth: "300px",
                   maxWidth: "500px",
                 },
                 success: {
                   duration: 3000,
                   style: {
-                    background: "var(--md-sys-color-primary-container)",
-                    color: "#1e293b", // Dark slate for better contrast
-                    border: "2px solid var(--md-sys-color-primary)",
+                    background: "var(--color-primary-container)",
+                    color: "var(--color-on-primary-container)",
+                    border: "2px solid var(--color-primary)",
                   },
                   iconTheme: {
-                    primary: "var(--md-sys-color-primary)",
-                    secondary: "white",
+                    primary: "var(--color-primary)",
+                    secondary: "var(--color-on-primary)",
                   },
                 },
                 error: {
                   duration: 5000,
                   style: {
-                    background: "var(--md-sys-color-error-container)",
-                    color: "#7f1d1d", // Dark red for better contrast
-                    border: "2px solid var(--md-sys-color-error)",
+                    background: "var(--color-error-container)",
+                    color: "var(--color-on-error-container)",
+                    border: "2px solid var(--color-error)",
                   },
                   iconTheme: {
-                    primary: "var(--md-sys-color-error)",
-                    secondary: "white",
+                    primary: "var(--color-error)",
+                    secondary: "var(--color-on-error)",
                   },
                 },
                 loading: {
                   style: {
-                    background: "var(--md-sys-color-surface-container-high)",
-                    color: "#1e293b", // Dark slate for better contrast
-                    border: "2px solid var(--md-sys-color-primary)",
+                    background: "var(--color-surface-container-high)",
+                    color: "var(--color-on-surface)",
+                    border: "2px solid var(--color-primary)",
                   },
                 },
               }}
