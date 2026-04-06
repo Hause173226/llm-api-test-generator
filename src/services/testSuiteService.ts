@@ -52,6 +52,22 @@ export interface ExecuteTestSuiteResponse {
   status: 'Running';
 }
 
+export interface ProposeOrderRequest {
+  specificationId: string;
+  selectedEndpointIds?: string[];
+  source?: 'Ai' | 'User' | 'System' | 'Imported';
+  reasoningNote?: string;
+}
+
+export interface OrderProposalResponse {
+  proposalId?: string;
+  ProposalId?: string;
+  rowVersion?: string;
+  RowVersion?: string;
+  status?: string;
+  Status?: string;
+}
+
 // Test Suite Service
 class TestSuiteService {
   async getTestSuites(projectId: string): Promise<TestSuite[]> {
@@ -87,6 +103,36 @@ class TestSuiteService {
     return await apiService.post<TestSuite>(
       `/projects/${projectId}/test-suites`,
       payload
+    );
+  }
+
+  async proposeOrder(
+    suiteId: string,
+    data: ProposeOrderRequest,
+  ): Promise<OrderProposalResponse> {
+    return await apiService.post<OrderProposalResponse>(
+      `/test-suites/${suiteId}/order-proposals`,
+      {
+        SpecificationId: data.specificationId,
+        SelectedEndpointIds: data.selectedEndpointIds || [],
+        Source: data.source || 'System',
+        ReasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
+      },
+    );
+  }
+
+  async approveOrder(
+    suiteId: string,
+    proposalId: string,
+    rowVersion?: string,
+    reviewNotes: string = 'Auto-approved after suite creation',
+  ): Promise<OrderProposalResponse> {
+    return await apiService.post<OrderProposalResponse>(
+      `/test-suites/${suiteId}/order-proposals/${proposalId}/approve`,
+      {
+        RowVersion: rowVersion,
+        ReviewNotes: reviewNotes,
+      },
     );
   }
 

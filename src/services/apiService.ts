@@ -1,6 +1,10 @@
 import { API_CONFIG, getAuthToken } from '../config/api';
 import { ApiError } from '../utils/errorHandler';
 
+interface ApiRequestOptions extends RequestInit {
+  params?: Record<string, string | number | boolean | null | undefined>;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -10,17 +14,25 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: ApiRequestOptions = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const { params, ...requestOptions } = options;
+    const queryString = params
+      ? new URLSearchParams(
+          Object.entries(params)
+            .filter(([, value]) => value !== undefined && value !== null)
+            .map(([key, value]) => [key, String(value)]),
+        ).toString()
+      : '';
+    const url = `${this.baseUrl}${endpoint}${queryString ? `${endpoint.includes('?') ? '&' : '?'}${queryString}` : ''}`;
     const token = getAuthToken();
 
     const config: RequestInit = {
-      ...options,
+      ...requestOptions,
       headers: {
         ...API_CONFIG.HEADERS,
         ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
+        ...requestOptions.headers,
       },
     };
 
@@ -117,8 +129,8 @@ class ApiService {
     }
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  async get<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {

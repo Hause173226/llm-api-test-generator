@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { testSuiteService, TestSuite } from '../services';
+import {
+  testSuiteService,
+  TestSuite,
+  CreateTestSuiteRequest,
+} from '../services/testSuiteService';
 import { handleError } from '../utils/errorHandler';
 
 export function useTestSuites(projectId: string) {
@@ -34,7 +38,7 @@ export function useTestSuites(projectId: string) {
     fetchTestSuites();
   }, [fetchTestSuites]);
 
-  const createTestSuite = async (data: { name: string; description?: string; environmentId?: string }) => {
+  const createTestSuite = async (data: CreateTestSuiteRequest) => {
     try {
       const newSuite = await testSuiteService.createTestSuite(projectId, data);
       await fetchTestSuites(); // Refresh list
@@ -46,7 +50,7 @@ export function useTestSuites(projectId: string) {
 
   const updateTestSuite = async (
     testSuiteId: string,
-    data: { name?: string; description?: string; isActive?: boolean }
+    data: Partial<CreateTestSuiteRequest>
   ) => {
     try {
       const updated = await testSuiteService.updateTestSuite(projectId, testSuiteId, data);
@@ -66,14 +70,8 @@ export function useTestSuites(projectId: string) {
     }
   };
 
-  const cloneTestSuite = async (testSuiteId: string, newName: string) => {
-    try {
-      const cloned = await testSuiteService.cloneTestSuite(projectId, testSuiteId, newName);
-      await fetchTestSuites(); // Refresh list
-      return cloned;
-    } catch (err) {
-      throw err;
-    }
+  const cloneTestSuite = async (_testSuiteId: string, _newName: string) => {
+    throw new Error('Clone test suite is not supported by current backend API.');
   };
 
   return {

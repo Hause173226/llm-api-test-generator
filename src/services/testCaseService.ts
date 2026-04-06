@@ -41,6 +41,59 @@ export interface CreateTestCaseRequest {
   assertions?: any[];
 }
 
+const normalizeTestCase = (item: any): TestCase => {
+  const request = item?.request || item?.Request || {};
+
+  return {
+    id: item?.id || item?.Id || item?.testCaseId || "",
+    testSuiteId: item?.testSuiteId || item?.TestSuiteId || "",
+    name: item?.name || item?.Name || "Unnamed test case",
+    description: item?.description || item?.Description || "",
+    endpointId: item?.endpointId || item?.EndpointId || "",
+    method:
+      item?.method ||
+      item?.Method ||
+      request?.httpMethod ||
+      request?.HttpMethod ||
+      "GET",
+    path:
+      item?.path ||
+      item?.Path ||
+      request?.url ||
+      request?.Url ||
+      "",
+    requestBody: item?.requestBody ?? item?.RequestBody ?? request?.body ?? request?.Body,
+    headers: item?.headers ?? item?.Headers ?? request?.headers ?? request?.Headers,
+    queryParams:
+      item?.queryParams ??
+      item?.QueryParams ??
+      request?.queryParams ??
+      request?.QueryParams,
+    expectedStatus:
+      item?.expectedStatus ??
+      item?.ExpectedStatus ??
+      item?.expectedStatusCode ??
+      item?.ExpectedStatusCode ??
+      200,
+    expectedResponse: item?.expectedResponse ?? item?.ExpectedResponse,
+    assertions: item?.assertions ?? item?.Assertions ?? [],
+    isActive: item?.isActive ?? item?.IsActive ?? true,
+    order: item?.order ?? item?.Order ?? item?.orderIndex ?? item?.OrderIndex ?? 0,
+    createdAt:
+      item?.createdAt ||
+      item?.CreatedAt ||
+      item?.createdDateTime ||
+      item?.CreatedDateTime ||
+      new Date().toISOString(),
+    updatedAt:
+      item?.updatedAt ||
+      item?.UpdatedAt ||
+      item?.updatedDateTime ||
+      item?.UpdatedDateTime ||
+      new Date().toISOString(),
+  };
+};
+
 const testCaseService = {
   // Get all test cases for a test suite
   getTestCases: async (
@@ -52,11 +105,11 @@ const testCaseService = {
       params: { pageNumber, pageSize },
     });
 
-    // Backend shape can be either raw array or paged object.
     if (Array.isArray(response)) {
+      const items = response.map((item) => normalizeTestCase(item));
       return {
-        items: response,
-        totalCount: response.length,
+        items,
+        totalCount: items.length,
         pageNumber,
         pageSize,
         totalPages: 1,
@@ -64,12 +117,24 @@ const testCaseService = {
     }
 
     if (response && Array.isArray(response.items)) {
+      const items = response.items.map((item: any) => normalizeTestCase(item));
       return {
-        items: response.items,
-        totalCount: response.totalCount ?? response.items.length,
-        pageNumber: response.pageNumber ?? pageNumber,
-        pageSize: response.pageSize ?? pageSize,
-        totalPages: response.totalPages ?? 1,
+        items,
+        totalCount: response.totalCount ?? response.TotalCount ?? items.length,
+        pageNumber: response.pageNumber ?? response.PageNumber ?? pageNumber,
+        pageSize: response.pageSize ?? response.PageSize ?? pageSize,
+        totalPages: response.totalPages ?? response.TotalPages ?? 1,
+      };
+    }
+
+    if (response && Array.isArray(response.Items)) {
+      const items = response.Items.map((item: any) => normalizeTestCase(item));
+      return {
+        items,
+        totalCount: response.totalCount ?? response.TotalCount ?? items.length,
+        pageNumber: response.pageNumber ?? response.PageNumber ?? pageNumber,
+        pageSize: response.pageSize ?? response.PageSize ?? pageSize,
+        totalPages: response.totalPages ?? response.TotalPages ?? 1,
       };
     }
 
@@ -84,12 +149,14 @@ const testCaseService = {
 
   // Get test case by ID
   getTestCaseById: async (testSuiteId: string, testCaseId: string): Promise<TestCase> => {
-    return await apiService.get<TestCase>(`/test-suites/${testSuiteId}/test-cases/${testCaseId}`);
+    const response = await apiService.get<any>(`/test-suites/${testSuiteId}/test-cases/${testCaseId}`);
+    return normalizeTestCase(response);
   },
 
   // Create test case
   createTestCase: async (data: CreateTestCaseRequest): Promise<TestCase> => {
-    return await apiService.post<TestCase>(`/test-suites/${data.testSuiteId}/test-cases`, data);
+    const response = await apiService.post<any>(`/test-suites/${data.testSuiteId}/test-cases`, data);
+    return normalizeTestCase(response);
   },
 
   // Update test case
@@ -98,10 +165,11 @@ const testCaseService = {
     testCaseId: string,
     data: Partial<TestCase>
   ): Promise<TestCase> => {
-    return await apiService.put<TestCase>(
+    const response = await apiService.put<any>(
       `/test-suites/${testSuiteId}/test-cases/${testCaseId}`,
       data
     );
+    return normalizeTestCase(response);
   },
 
   // Delete test case
@@ -119,9 +187,10 @@ const testCaseService = {
 
   // Clone test case
   cloneTestCase: async (testSuiteId: string, testCaseId: string): Promise<TestCase> => {
-    return await apiService.post<TestCase>(
+    const response = await apiService.post<any>(
       `/test-suites/${testSuiteId}/test-cases/${testCaseId}/clone`
     );
+    return normalizeTestCase(response);
   },
 
   // Run single test case

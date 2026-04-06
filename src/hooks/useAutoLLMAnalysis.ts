@@ -3,6 +3,7 @@ import { apiService } from "../services/apiService";
 import { signalRService } from "../services/signalrService";
 import testRunService, { TestRunDetailResponse, TestCaseRunDetail } from "../services/testRunService";
 import { testSuiteService } from "../services/testSuiteService";
+import testSuiteLlmSuggestionService from "../services/testSuiteLlmSuggestionService";
 import { showErrorToast } from "../utils/errorHandler";
 
 // State interfaces
@@ -122,10 +123,17 @@ export function useAutoLLMAnalysis(
       setState((prev) => ({ ...prev, suggestionsStatus: "running" }));
 
       try {
-        await apiService.post(
-          `/test-suites/${suiteId}/llm-suggestions/generate`,
-          { specificationId, forceRefresh: false }
-        );
+        await testSuiteLlmSuggestionService.generate(suiteId, {
+          specificationId,
+          forceRefresh: false,
+          algorithmProfile: {
+            useObservationConfirmationPrompting: true,
+            useDependencyAwareOrdering: true,
+            useSchemaRelationshipAnalysis: true,
+            useSemanticTokenMatching: true,
+            useFeedbackLoopContext: true,
+          },
+        });
 
         if (signal.aborted) {
           setState((prev) => ({ ...prev, suggestionsStatus: "cancelled" }));

@@ -144,11 +144,11 @@ export default function TopAppBar({
               </p>
             </div>
             <div className="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-sm">
-              {user?.avatar ? (
+              {user?.avatarUrl ? (
                 <img
                   alt="Profile"
                   className="w-full h-full object-cover"
-                  src={user.avatar}
+                  src={user.avatarUrl}
                   referrerPolicy="no-referrer"
                 />
               ) : (

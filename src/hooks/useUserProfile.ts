@@ -53,7 +53,7 @@ export const useUserProfile = () => {
     try {
       const result = await userService.uploadAvatar(file);
       if (profile) {
-        setProfile({ ...profile, avatar: result.avatarUrl });
+        setProfile({ ...profile, avatarUrl: result.avatarUrl });
       }
       return true;
     } catch (err) {
