@@ -18,6 +18,15 @@ import { useTranslation, Trans } from "react-i18next";
 import { useTestSuites } from "../hooks/useTestSuites";
 import { useProject } from "../contexts/ProjectContext";
 import { apiService } from "../services/apiService";
+
+type ProposalApiResponse = {
+  proposalId?: string;
+  ProposalId?: string;
+  rowVersion?: string;
+  RowVersion?: string;
+  status?: string;
+  Status?: string;
+};
 import { testSuiteService } from "../services/testSuiteService";
 import endpointService from "../services/endpointService";
 import { handleError } from "../utils/errorHandler";
@@ -116,7 +125,7 @@ export default function TestOrderGatePage() {
     }
 
     try {
-      const latestProposal = await apiService.get(
+      const latestProposal = await apiService.get<ProposalApiResponse>(
         `/test-suites/${selectedSuiteId}/order-proposals/latest`,
       );
 
@@ -127,7 +136,7 @@ export default function TestOrderGatePage() {
         latestProposal?.status || latestProposal?.Status || "";
 
       if (!proposalId) {
-        const createdProposal = await apiService.post(
+        const createdProposal = await apiService.post<ProposalApiResponse>(
           `/test-suites/${selectedSuiteId}/order-proposals`,
           {
             SpecificationId: suiteDetail.apiSpecId,
@@ -146,7 +155,7 @@ export default function TestOrderGatePage() {
         throw new Error("Cannot resolve proposalId for reorder operation.");
       }
 
-      const reordered = await apiService.put(
+      const reordered = await apiService.put<ProposalApiResponse>(
         `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/reorder`,
         {
           OrderedEndpointIds: localOrder,
@@ -303,7 +312,7 @@ export default function TestOrderGatePage() {
                 >
                   The LLM has analyzed your specification and identified{" "}
                   <span className="text-primary font-bold">
-                    {{ count: suiteEndpoints.length }} test cases
+                    {suiteEndpoints.length} test cases
                   </span>
                   .
                 </Trans>

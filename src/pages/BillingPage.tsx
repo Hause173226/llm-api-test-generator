@@ -75,11 +75,12 @@ export default function BillingPage() {
         await refetch();
       } else {
         // Try to find payment URL
+        const paymentDataAny = paymentData as any;
         const paymentUrl =
           paymentData.paymentUrl ||
-          paymentData.checkoutUrl ||
-          paymentData.url ||
-          (paymentData as any).paymentLink;
+          paymentDataAny.checkoutUrl ||
+          paymentDataAny.url ||
+          paymentDataAny.paymentLink;
 
         if (paymentUrl) {
           window.location.href = paymentUrl;

@@ -285,7 +285,9 @@ export default function ProjectManagementPage() {
                   </tr>
                 ) : (
                   projects.map((project) => {
-                    const SpecIcon = getSpecIcon(project.activeSpecName || "");
+                    const specLabel =
+                      project.specType || project.type || "No specification";
+                    const SpecIcon = getSpecIcon(specLabel);
                     return (
                       <tr
                         key={project.id}
@@ -307,7 +309,7 @@ export default function ProjectManagementPage() {
                           <div className="flex items-center gap-2">
                             <SpecIcon className="w-4 h-4 text-primary dark:text-indigo-400" />
                             <span className="text-on-surface-variant font-medium text-sm">
-                              {project.activeSpecName || "No specification"}
+                              {specLabel}
                             </span>
                           </div>
                         </td>

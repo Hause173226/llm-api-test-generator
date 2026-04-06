@@ -1,19 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { projectService } from '../services';
 import { handleError } from '../utils/errorHandler';
+import type { Project as ServiceProject } from '../services/projectService';
 
-export interface Project {
-  id: string;
-  name: string;
-  description: string;
-  specType: string;
+export interface Project extends ServiceProject {
+  specType?: string;
   specFileName?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   lastRunAt?: string;
-  isActive: boolean;
+  isActive?: boolean;
   totalEndpoints?: number;
   totalTestSuites?: number;
+  activeSpecName?: string;
 }
 
 export interface ProjectsResponse {
@@ -38,10 +37,11 @@ export function useProjects(pageNumber: number = 1, pageSize: number = 10, searc
       const response = await projectService.getProjects(pageNumber, pageSize, searchTerm);
       // Filter out archived projects - check both isActive and status fields
       const activeProjects = response.items.filter(p => {
+        const project = p as Project;
         // Check isActive boolean field
-        if (p.isActive === false) return false;
+        if (project.isActive === false) return false;
         // Check status string field (if exists)
-        if ((p as any).status?.toLowerCase() === 'archived') return false;
+        if ((project as any).status?.toLowerCase() === 'archived') return false;
         return true;
       });
       setProjects(activeProjects);
@@ -61,7 +61,11 @@ export function useProjects(pageNumber: number = 1, pageSize: number = 10, searc
 
   const createProject = async (data: { name: string; description: string; specType: string; specFile?: File }) => {
     try {
-      const newProject = await projectService.createProject(data);
+      const newProject = await projectService.createProject({
+        name: data.name,
+        description: data.description,
+        type: data.specType as 'REST' | 'GraphQL' | 'gRPC',
+      });
       await fetchProjects(); // Refresh list
       return newProject;
     } catch (err) {

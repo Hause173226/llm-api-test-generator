@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
-  Sparkles,
   GripVertical,
   Loader2,
   AlertTriangle,
@@ -10,9 +9,11 @@ import {
   Play,
   Search,
   RefreshCw,
+  CheckCircle2,
+  Check,
+  X,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
-import Modal from "../components/ui/Modal";
 import { cn } from "../lib/utils";
 import {
   handleError,
@@ -25,21 +26,39 @@ import endpointService from "../services/endpointService";
 import { apiService } from "../services/apiService";
 import { useProject } from "../contexts/ProjectContext";
 import testCaseService, { TestCase } from "../services/testCaseService";
+import testSuiteLlmSuggestionService, {
+  SuiteSuggestionModel,
+  SuiteSuggestionQuery,
+} from "../services/testSuiteLlmSuggestionService";
+import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel";
 
-interface SuiteSuggestionModel {
-  id: string;
-  suggestedName?: string;
-  suggestedDescription?: string;
-  testType?: string;
-  suggestionType?: string;
-  priority?: string;
-  reviewStatus?: string;
-  llmModel?: string;
-  tokensUsed?: number;
-  createdDateTime?: string;
-}
+type ProposalApiResponse = {
+  proposalId?: string;
+  ProposalId?: string;
+  rowVersion?: string;
+  RowVersion?: string;
+  status?: string;
+  Status?: string;
+};
 
 type SuiteTab = "testcases" | "details" | "suggestions";
+
+type LocalGenerationRun = {
+  id: string;
+  generatedAt: string;
+};
+
+type GenerationItem = {
+  id: string;
+  label: string;
+  generatedAt?: string;
+  totalSuggestions: number;
+  pendingSuggestions: number;
+  approvedSuggestions: number;
+  rejectedSuggestions: number;
+  supersededSuggestions: number;
+  testCaseIds: string[];
+};
 
 export default function TestSuiteDetailPage() {
   const { suiteId } = useParams<{ suiteId: string }>();
@@ -54,12 +73,22 @@ export default function TestSuiteDetailPage() {
   const [endpoints, setEndpoints] = useState<any[]>([]);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [suggestions, setSuggestions] = useState<SuiteSuggestionModel[]>([]);
+  const [allSuggestions, setAllSuggestions] = useState<SuiteSuggestionModel[]>(
+    [],
+  );
+  const [generationRuns, setGenerationRuns] = useState<LocalGenerationRun[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
-  const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
+  const [isBulkReviewingSuggestions, setIsBulkReviewingSuggestions] =
+    useState(false);
+  const [isLoadingSuggestionDetail, setIsLoadingSuggestionDetail] =
+    useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -68,8 +97,89 @@ export default function TestSuiteDetailPage() {
   const [testCaseSearchTerm, setTestCaseSearchTerm] = useState("");
   const [testCaseFilterMethod, setTestCaseFilterMethod] = useState("");
   const [activeTab, setActiveTab] = useState<SuiteTab>("details");
+  const [suggestionReviewStatusFilter, setSuggestionReviewStatusFilter] =
+    useState("Pending");
+  const [suggestionTestTypeFilter, setSuggestionTestTypeFilter] = useState("");
+  const [suggestionEndpointFilter, setSuggestionEndpointFilter] = useState("");
   const hasAnyTestCases =
     Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
+  const hasGeneratedSuggestions = allSuggestions.length > 0;
+  const isStep1Completed = !hasChanges && hasGeneratedSuggestions;
+
+  const generationStorageKey = suiteId
+    ? `suite-generation-runs:${suiteId}`
+    : "suite-generation-runs:unknown";
+
+  useEffect(() => {
+    if (!suiteId) {
+      setGenerationRuns([]);
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(generationStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      const items = Array.isArray(parsed)
+        ? parsed.filter(
+            (item) =>
+              item &&
+              typeof item.id === "string" &&
+              typeof item.generatedAt === "string",
+          )
+        : [];
+
+      setGenerationRuns(
+        items.sort(
+          (a: LocalGenerationRun, b: LocalGenerationRun) =>
+            new Date(a.generatedAt).getTime() -
+            new Date(b.generatedAt).getTime(),
+        ),
+      );
+    } catch {
+      setGenerationRuns([]);
+    }
+  }, [suiteId, generationStorageKey]);
+
+  const persistGenerationRuns = (nextRuns: LocalGenerationRun[]) => {
+    if (!suiteId) return;
+    localStorage.setItem(generationStorageKey, JSON.stringify(nextRuns));
+    setGenerationRuns(nextRuns);
+  };
+
+  const appendGenerationRun = (generatedAt: string) => {
+    if (!suiteId) return;
+
+    const run: LocalGenerationRun = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      generatedAt,
+    };
+
+    const nextRuns = [...generationRuns, run].sort(
+      (a, b) =>
+        new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime(),
+    );
+
+    persistGenerationRuns(nextRuns);
+  };
+
+  const getSuggestionFilters = (): SuiteSuggestionQuery => ({
+    reviewStatus: suggestionReviewStatusFilter || undefined,
+    testType: suggestionTestTypeFilter || undefined,
+    endpointId: suggestionEndpointFilter || undefined,
+  });
+
+  const applySuggestionToLocalState = (updated: SuiteSuggestionModel) => {
+    setSuggestions((prev) => {
+      const index = prev.findIndex((item) => item.id === updated.id);
+      if (index === -1) {
+        return [updated, ...prev];
+      }
+
+      const next = [...prev];
+      next[index] = { ...next[index], ...updated };
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (
@@ -77,6 +187,14 @@ export default function TestSuiteDetailPage() {
       tabFromQuery === "details" ||
       tabFromQuery === "suggestions"
     ) {
+      if (tabFromQuery === "suggestions" && !isStep1Completed) {
+        setActiveTab("details");
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", "details");
+        setSearchParams(params, { replace: true });
+        return;
+      }
+
       if (tabFromQuery === "testcases" && !hasAnyTestCases) {
         setActiveTab("details");
         const params = new URLSearchParams(searchParams);
@@ -86,7 +204,7 @@ export default function TestSuiteDetailPage() {
         setActiveTab(tabFromQuery as SuiteTab);
       }
     }
-  }, [tabFromQuery, hasAnyTestCases]);
+  }, [tabFromQuery, hasAnyTestCases, isStep1Completed]);
 
   const changeTab = (tab: SuiteTab) => {
     const nextTab = tab === "testcases" && !hasAnyTestCases ? "details" : tab;
@@ -165,18 +283,11 @@ export default function TestSuiteDetailPage() {
       }
 
       try {
-        setIsLoadingSuggestions(true);
-        const suggestionResponse = await apiService.get<SuiteSuggestionModel[]>(
-          `/test-suites/${suiteId}/llm-suggestions`,
-        );
-        setSuggestions(
-          Array.isArray(suggestionResponse) ? suggestionResponse : [],
-        );
+        await Promise.all([refreshSuggestions(), refreshAllSuggestions()]);
       } catch (suggestionErr) {
         console.warn("Failed to load LLM suggestions:", suggestionErr);
         setSuggestions([]);
-      } finally {
-        setIsLoadingSuggestions(false);
+        setAllSuggestions([]);
       }
 
       // Fetch endpoints if suite has them
@@ -194,53 +305,6 @@ export default function TestSuiteDetailPage() {
           .filter(Boolean);
 
         setEndpoints(orderedEndpoints);
-      }
-
-      // Auto-create and approve proposal if it doesn't exist yet
-      try {
-        // Try to get the latest proposal
-        let latestProposal;
-        try {
-          latestProposal = await apiService.get(
-            `/test-suites/${suiteId}/order-proposals/latest`,
-          );
-        } catch (err: any) {
-          // If 404, proposal doesn't exist yet, create it
-          if (err.status === 404) {
-            console.log("No proposal found, creating one...");
-            latestProposal = await apiService.post(
-              `/test-suites/${suiteId}/order-proposals`,
-              {
-                SpecificationId: suiteData.apiSpecId,
-                SelectedEndpointIds: suiteData.selectedEndpointIds || [],
-                Source: "User",
-                ReasoningNote: "Initial proposal created on page load",
-              },
-            );
-            console.log("Created initial proposal:", latestProposal);
-          } else {
-            throw err;
-          }
-        }
-
-        // Approve if not already approved
-        if (
-          latestProposal &&
-          latestProposal.proposalId &&
-          latestProposal.status !== "Approved"
-        ) {
-          await apiService.post(
-            `/test-suites/${suiteId}/order-proposals/${latestProposal.proposalId}/approve`,
-            {
-              RowVersion: latestProposal.rowVersion,
-              ReviewNotes: "Auto-approved on page load",
-            },
-          );
-          console.log("Order proposal auto-approved successfully");
-        }
-      } catch (approveErr) {
-        // Silently fail - user can still manually approve if needed
-        console.warn("Auto-approve on load failed:", approveErr);
       }
     } catch (err) {
       setError(handleError(err));
@@ -305,8 +369,8 @@ export default function TestSuiteDetailPage() {
     setHasChanges(true);
   };
 
-  const handleSaveOrder = async () => {
-    if (!suite || !projectId) return;
+  const handleSaveOrder = async (): Promise<boolean> => {
+    if (!suite || !projectId) return false;
 
     try {
       setIsSubmitting(true);
@@ -335,7 +399,7 @@ export default function TestSuiteDetailPage() {
       // Create and approve the order proposal
       try {
         // Step 1: Create a new proposal with the ordered endpoints
-        const newProposal = await apiService.post(
+        const newProposal = await apiService.post<ProposalApiResponse>(
           `/test-suites/${suite.id}/order-proposals`,
           {
             SpecificationId: suite.apiSpecId,
@@ -347,52 +411,84 @@ export default function TestSuiteDetailPage() {
 
         console.log("Created proposal:", newProposal);
 
-        if (newProposal && newProposal.proposalId) {
+        const proposalId = newProposal?.proposalId || newProposal?.ProposalId;
+        const proposalRowVersion =
+          newProposal?.rowVersion || newProposal?.RowVersion;
+
+        if (proposalId) {
           // Step 2: Approve the newly created proposal
           await apiService.post(
-            `/test-suites/${suite.id}/order-proposals/${newProposal.proposalId}/approve`,
+            `/test-suites/${suite.id}/order-proposals/${proposalId}/approve`,
             {
-              RowVersion: newProposal.rowVersion,
+              RowVersion: proposalRowVersion,
               ReviewNotes: "Auto-approved after order save",
             },
           );
           showSuccessToast("Order approved successfully");
+
+          try {
+            await testSuiteLlmSuggestionService.generate(suite.id, {
+              specificationId: suite.apiSpecId,
+              forceRefresh: true,
+            });
+            appendGenerationRun(new Date().toISOString());
+            showSuccessToast("AI preview regenerated after approval.");
+          } catch (suggestionErr: any) {
+            const statusCode =
+              suggestionErr?.status ?? suggestionErr?.response?.status;
+            const message = String(
+              suggestionErr?.message ||
+                suggestionErr?.response?.data?.message ||
+                "",
+            );
+            const alreadyHasPendingSuggestions =
+              statusCode === 400 &&
+              (message.includes("ForceRefresh=true") ||
+                message.includes("suggestion preview"));
+
+            if (!alreadyHasPendingSuggestions) {
+              console.error(
+                "Failed to auto-generate LLM suggestions after approval:",
+                suggestionErr,
+              );
+              showErrorToast(
+                "Order approved but AI preview generation failed.",
+              );
+            }
+          }
         }
       } catch (approveErr) {
         // If auto-approve fails, show a warning but don't fail the whole operation
         console.error("Auto-approve failed:", approveErr);
         showErrorToast(
-          "Order saved but approval failed. Please approve manually before generating test cases.",
+          "Order saved but approval failed. Please approve manually before AI review.",
         );
       }
 
       // Refresh data to ensure we have latest rowVersion
       await fetchData();
+      return true;
     } catch (err) {
       handleError(err);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleGenerateTestCases = async () => {
-    if (!suite || !projectId) return;
-
-    // Check if regenerating (already has test cases)
-    const isRegenerate = suite.testCaseCount > 0;
-
-    // Navigate to generating page with parameters
-    navigate(
-      `/test-suites/${suite.id}/generating?suiteId=${suite.id}&specId=${suite.apiSpecId}&regenerate=${isRegenerate}`,
-    );
+  const handleApproveOrderAndGoToReview = async () => {
+    const success = await handleSaveOrder();
+    if (success) {
+      changeTab("suggestions");
+    }
   };
 
   const handleRunTests = () => {
-    navigate(`/test-runs/new?suiteId=${suiteId}`);
+    navigate(`/runs?suiteId=${suiteId}`);
   };
 
-  const refreshTestCases = async () => {
-    if (!suiteId) return;
+  const refreshTestCases = async (): Promise<TestCase[]> => {
+    if (!suiteId) return [];
 
     try {
       setIsLoadingTestCases(true);
@@ -401,29 +497,49 @@ export default function TestSuiteDetailPage() {
         1,
         300,
       );
-      setTestCases(testCaseResponse.items || []);
+      const items = testCaseResponse.items || [];
+      setTestCases(items);
+      return items;
     } catch (err) {
       handleError(err);
+      return [];
     } finally {
       setIsLoadingTestCases(false);
     }
   };
 
-  const refreshSuggestions = async () => {
-    if (!suiteId) return;
+  const refreshSuggestions = async (): Promise<SuiteSuggestionModel[]> => {
+    if (!suiteId) return [];
 
     try {
       setIsLoadingSuggestions(true);
-      const suggestionResponse = await apiService.get<SuiteSuggestionModel[]>(
-        `/test-suites/${suiteId}/llm-suggestions`,
+      const suggestionResponse = await testSuiteLlmSuggestionService.list(
+        suiteId,
+        getSuggestionFilters(),
       );
-      setSuggestions(
+      const items = Array.isArray(suggestionResponse) ? suggestionResponse : [];
+      setSuggestions(items);
+      return items;
+    } catch (err) {
+      handleError(err);
+      return [];
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const refreshAllSuggestions = async () => {
+    if (!suiteId) return;
+
+    try {
+      const suggestionResponse =
+        await testSuiteLlmSuggestionService.list(suiteId);
+      setAllSuggestions(
         Array.isArray(suggestionResponse) ? suggestionResponse : [],
       );
     } catch (err) {
       handleError(err);
-    } finally {
-      setIsLoadingSuggestions(false);
+      setAllSuggestions([]);
     }
   };
 
@@ -437,13 +553,10 @@ export default function TestSuiteDetailPage() {
       setIsGeneratingSuggestions(true);
 
       try {
-        await apiService.post(
-          `/test-suites/${suiteId}/llm-suggestions/generate`,
-          {
-            specificationId: suite.apiSpecId,
-            forceRefresh,
-          },
-        );
+        await testSuiteLlmSuggestionService.generate(suiteId, {
+          specificationId: suite.apiSpecId,
+          forceRefresh,
+        });
       } catch (err: any) {
         const statusCode = err?.status ?? err?.response?.status;
         const message = String(
@@ -460,6 +573,8 @@ export default function TestSuiteDetailPage() {
       }
 
       await refreshSuggestions();
+      await refreshAllSuggestions();
+      appendGenerationRun(new Date().toISOString());
       showSuccessToast(
         forceRefresh
           ? "LLM suggestions regenerated successfully."
@@ -471,6 +586,268 @@ export default function TestSuiteDetailPage() {
       setIsGeneratingSuggestions(false);
     }
   };
+
+  const handleOpenSuggestionDetail = async (suggestionId: string) => {
+    if (!suiteId || !suggestionId) return;
+
+    try {
+      setIsLoadingSuggestionDetail(true);
+      const detail = await testSuiteLlmSuggestionService.detail(
+        suiteId,
+        suggestionId,
+      );
+      applySuggestionToLocalState(detail);
+      showSuccessToast("Loaded latest suggestion details.");
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsLoadingSuggestionDetail(false);
+    }
+  };
+
+  const getLatestSuggestion = async (suggestion: SuiteSuggestionModel) => {
+    if (suggestion.rowVersion) return suggestion;
+    if (!suiteId) return suggestion;
+
+    const detail = await testSuiteLlmSuggestionService.detail(
+      suiteId,
+      suggestion.id,
+    );
+    applySuggestionToLocalState(detail);
+    return detail;
+  };
+
+  const maybeAutoNavigateToTestCases = (
+    nextSuggestions: SuiteSuggestionModel[],
+    nextTestCases: TestCase[],
+  ) => {
+    if (activeTab !== "suggestions") return;
+
+    const hasPending = nextSuggestions.some(
+      (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
+    );
+    const hasCases =
+      nextTestCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
+
+    if (!hasPending && hasCases) {
+      changeTab("testcases");
+    }
+  };
+
+  const handleApproveSuggestion = async (
+    suggestion: SuiteSuggestionModel,
+    payload?: {
+      reviewNotes?: string;
+      modifiedContent: {
+        name?: string;
+        description?: string;
+        testType?: string;
+        priority?: string;
+        tags?: string[];
+      };
+    },
+  ) => {
+    if (!suiteId) return;
+
+    try {
+      setIsReviewingSuggestion(true);
+      const latest = await getLatestSuggestion(suggestion);
+
+      if (!latest.rowVersion) {
+        showErrorToast(
+          "Missing rowVersion for review. Please refresh and try again.",
+        );
+        return;
+      }
+
+      const result = await testSuiteLlmSuggestionService.review(
+        suiteId,
+        latest.id,
+        {
+          action: payload?.modifiedContent ? "Modify" : "Approve",
+          rowVersion: latest.rowVersion,
+          reviewNotes: payload?.reviewNotes,
+          modifiedContent: payload?.modifiedContent,
+        },
+      );
+
+      applySuggestionToLocalState(result);
+      showSuccessToast(
+        payload?.modifiedContent
+          ? "Edited suggestion approved successfully."
+          : "Suggestion approved successfully.",
+      );
+
+      const [nextSuggestions, , nextTestCases] = await Promise.all([
+        refreshSuggestions(),
+        refreshAllSuggestions(),
+        refreshTestCases(),
+      ]);
+      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsReviewingSuggestion(false);
+    }
+  };
+
+  const handleRejectSuggestion = async (
+    suggestion: SuiteSuggestionModel,
+    reviewNotes: string,
+  ): Promise<boolean> => {
+    if (!suiteId) return false;
+
+    try {
+      setIsReviewingSuggestion(true);
+      const latest = await getLatestSuggestion(suggestion);
+
+      if (!latest.rowVersion) {
+        showErrorToast(
+          "Missing rowVersion for review. Please refresh and try again.",
+        );
+        return false;
+      }
+
+      const result = await testSuiteLlmSuggestionService.review(
+        suiteId,
+        latest.id,
+        {
+          action: "Reject",
+          rowVersion: latest.rowVersion,
+          reviewNotes,
+        },
+      );
+
+      applySuggestionToLocalState(result);
+      showSuccessToast("Suggestion reviewed successfully.");
+      const [nextSuggestions, , nextTestCases] = await Promise.all([
+        refreshSuggestions(),
+        refreshAllSuggestions(),
+        refreshTestCases(),
+      ]);
+      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+      return true;
+    } catch (err) {
+      handleError(err);
+      return false;
+    } finally {
+      setIsReviewingSuggestion(false);
+    }
+  };
+
+  const handleBulkReview = async (action: "Approve" | "Reject") => {
+    if (!suiteId) return;
+
+    const hasFilteredSuggestions = suggestions.length > 0;
+    if (!hasFilteredSuggestions) {
+      showInfoToast("No suggestions available for current filters.");
+      return;
+    }
+
+    const reviewNotesInput =
+      action === "Reject"
+        ? window.prompt("Review notes are required for bulk reject:", "") || ""
+        : "";
+
+    if (action === "Reject" && !reviewNotesInput.trim()) {
+      showErrorToast("Review notes are required for bulk reject.");
+      return;
+    }
+
+    try {
+      setIsBulkReviewingSuggestions(true);
+      const result = await testSuiteLlmSuggestionService.bulkReview(suiteId, {
+        action,
+        reviewNotes: reviewNotesInput.trim() || undefined,
+        filterByTestType: suggestionTestTypeFilter || undefined,
+        filterByEndpointId: suggestionEndpointFilter || undefined,
+      });
+
+      showSuccessToast(
+        `${action} completed. Processed ${result?.processedCount || 0} suggestion(s).`,
+      );
+
+      const [nextSuggestions, , nextTestCases] = await Promise.all([
+        refreshSuggestions(),
+        refreshAllSuggestions(),
+        refreshTestCases(),
+      ]);
+      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsBulkReviewingSuggestions(false);
+    }
+  };
+
+  const clearSuggestionFilters = async () => {
+    setSuggestionReviewStatusFilter("Pending");
+    setSuggestionTestTypeFilter("");
+    setSuggestionEndpointFilter("");
+    await refreshSuggestions();
+  };
+
+  const reviewableSuggestions = allSuggestions.filter(
+    (item) => String(item.reviewStatus || "").toLowerCase() !== "superseded",
+  );
+
+  const pendingSuggestionsCount = reviewableSuggestions.filter(
+    (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
+  ).length;
+  const approvedSuggestionsCount = reviewableSuggestions.filter((item) => {
+    const status = String(item.reviewStatus || "").toLowerCase();
+    return status === "approved" || status === "modifiedandapproved";
+  }).length;
+  const rejectedSuggestionsCount = reviewableSuggestions.filter(
+    (item) => String(item.reviewStatus || "").toLowerCase() === "rejected",
+  ).length;
+  const filteredApprovedSuggestionsCount = suggestions.filter((item) => {
+    const status = String(item.reviewStatus || "").toLowerCase();
+    return status === "approved" || status === "modifiedandapproved";
+  }).length;
+  const shouldShowSuggestionBulkActions =
+    suggestions.length === 0 ||
+    filteredApprovedSuggestionsCount < suggestions.length;
+
+  const steps: Array<{
+    id: SuiteTab;
+    title: string;
+    helper: string;
+    isDone: boolean;
+  }> = [
+    {
+      id: "details",
+      title: "Step 1: Configure",
+      helper: hasChanges
+        ? "Endpoint changes pending approval"
+        : suggestions.length > 0
+          ? "Order approved and AI preview is available"
+          : "Approve order to generate AI preview",
+      isDone: isStep1Completed,
+    },
+    {
+      id: "suggestions",
+      title: "Step 2: AI Review",
+      helper:
+        reviewableSuggestions.length === 0
+          ? "Generate AI suggestions"
+          : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
+      isDone:
+        reviewableSuggestions.length > 0 &&
+        pendingSuggestionsCount === 0 &&
+        approvedSuggestionsCount > 0,
+    },
+    {
+      id: "testcases",
+      title: "Step 3: Test Cases",
+      helper: hasAnyTestCases
+        ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
+        : "No test cases yet",
+      isDone: hasAnyTestCases,
+    },
+  ];
+
+  const activeStepIndex = steps.findIndex((step) => step.id === activeTab);
 
   const getMethodColor = (method: string) => {
     switch (method?.toUpperCase()) {
@@ -529,6 +906,201 @@ export default function TestSuiteDetailPage() {
   });
 
   const isFiltering = !!searchTerm.trim() || !!filterMethod;
+
+  const getSuggestionDate = (suggestion: SuiteSuggestionModel) => {
+    const value = suggestion.createdDateTime || suggestion.updatedDateTime;
+    if (!value) return null;
+
+    const time = new Date(value).getTime();
+    return Number.isFinite(time) ? time : null;
+  };
+
+  const fallbackGenerationItems = () => {
+    const bucketMs = 60 * 1000;
+    const grouped = new Map<string, SuiteSuggestionModel[]>();
+
+    allSuggestions.forEach((suggestion) => {
+      const suggestionTime = getSuggestionDate(suggestion);
+      const key = suggestionTime
+        ? `auto-${Math.floor(suggestionTime / bucketMs) * bucketMs}`
+        : `auto-unknown-${suggestion.id}`;
+
+      const existing = grouped.get(key) || [];
+      existing.push(suggestion);
+      grouped.set(key, existing);
+    });
+
+    return Array.from(grouped.entries())
+      .map(([key, items], index) => {
+        const generatedAt = key.startsWith("auto-")
+          ? key.replace("auto-", "")
+          : undefined;
+        const generatedAtIso =
+          generatedAt && !Number.isNaN(Number(generatedAt))
+            ? new Date(Number(generatedAt)).toISOString()
+            : undefined;
+
+        const pendingSuggestions = items.filter(
+          (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
+        ).length;
+        const approvedSuggestions = items.filter((item) => {
+          const status = String(item.reviewStatus || "").toLowerCase();
+          return status === "approved" || status === "modifiedandapproved";
+        }).length;
+        const rejectedSuggestions = items.filter(
+          (item) =>
+            String(item.reviewStatus || "").toLowerCase() === "rejected",
+        ).length;
+        const supersededSuggestions = items.filter(
+          (item) =>
+            String(item.reviewStatus || "").toLowerCase() === "superseded",
+        ).length;
+
+        return {
+          id: key,
+          label: `Generate #${index + 1}`,
+          generatedAt: generatedAtIso,
+          totalSuggestions: items.length,
+          pendingSuggestions,
+          approvedSuggestions,
+          rejectedSuggestions,
+          supersededSuggestions,
+          testCaseIds: Array.from(
+            new Set(
+              items
+                .map((item) => item.appliedTestCaseId)
+                .filter((id): id is string => Boolean(id)),
+            ),
+          ),
+        } as GenerationItem;
+      })
+      .sort((a, b) => {
+        const aTime = a.generatedAt ? new Date(a.generatedAt).getTime() : 0;
+        const bTime = b.generatedAt ? new Date(b.generatedAt).getTime() : 0;
+        return bTime - aTime;
+      });
+  };
+
+  const generationItems: GenerationItem[] = (() => {
+    if (allSuggestions.length === 0) {
+      return [];
+    }
+
+    if (generationRuns.length === 0) {
+      return fallbackGenerationItems();
+    }
+
+    const sortedRuns = [...generationRuns].sort(
+      (a, b) =>
+        new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime(),
+    );
+
+    const groups = new Map<string, SuiteSuggestionModel[]>();
+    sortedRuns.forEach((run) => groups.set(run.id, []));
+
+    allSuggestions.forEach((suggestion) => {
+      const suggestionTime = getSuggestionDate(suggestion);
+      if (suggestionTime === null) {
+        const firstRun = sortedRuns[0];
+        groups.set(firstRun.id, [
+          ...(groups.get(firstRun.id) || []),
+          suggestion,
+        ]);
+        return;
+      }
+
+      let assignedRunId = sortedRuns[0].id;
+      for (let i = 0; i < sortedRuns.length; i++) {
+        const currentRun = sortedRuns[i];
+        const nextRun = sortedRuns[i + 1];
+        const currentTime = new Date(currentRun.generatedAt).getTime();
+        const nextTime = nextRun
+          ? new Date(nextRun.generatedAt).getTime()
+          : Number.POSITIVE_INFINITY;
+
+        if (suggestionTime >= currentTime && suggestionTime < nextTime) {
+          assignedRunId = currentRun.id;
+          break;
+        }
+
+        if (suggestionTime >= currentTime) {
+          assignedRunId = currentRun.id;
+        }
+      }
+
+      groups.set(assignedRunId, [
+        ...(groups.get(assignedRunId) || []),
+        suggestion,
+      ]);
+    });
+
+    return sortedRuns
+      .map((run, index) => {
+        const items = groups.get(run.id) || [];
+
+        const pendingSuggestions = items.filter(
+          (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
+        ).length;
+        const approvedSuggestions = items.filter((item) => {
+          const status = String(item.reviewStatus || "").toLowerCase();
+          return status === "approved" || status === "modifiedandapproved";
+        }).length;
+        const rejectedSuggestions = items.filter(
+          (item) =>
+            String(item.reviewStatus || "").toLowerCase() === "rejected",
+        ).length;
+        const supersededSuggestions = items.filter(
+          (item) =>
+            String(item.reviewStatus || "").toLowerCase() === "superseded",
+        ).length;
+
+        return {
+          id: run.id,
+          label: `Generate #${index + 1}`,
+          generatedAt: run.generatedAt,
+          totalSuggestions: items.length,
+          pendingSuggestions,
+          approvedSuggestions,
+          rejectedSuggestions,
+          supersededSuggestions,
+          testCaseIds: Array.from(
+            new Set(
+              items
+                .map((item) => item.appliedTestCaseId)
+                .filter((id): id is string => Boolean(id)),
+            ),
+          ),
+        };
+      })
+      .filter((item) => item.totalSuggestions > 0)
+      .sort(
+        (a, b) =>
+          new Date(b.generatedAt || 0).getTime() -
+          new Date(a.generatedAt || 0).getTime(),
+      );
+  })();
+
+  const handleRunGenerationItem = (item: GenerationItem) => {
+    if (!suiteId) return;
+
+    if (item.testCaseIds.length === 0) {
+      showInfoToast(
+        "This generation has no approved test cases yet. Approve suggestions first.",
+      );
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (projectId) {
+      params.set("projectId", projectId);
+    }
+    params.set("batchLabel", item.label);
+    if (item.generatedAt) {
+      params.set("generatedAt", item.generatedAt);
+    }
+    params.set("testCaseIds", item.testCaseIds.join(","));
+    navigate(`/test-suites/${suiteId}/generation-run?${params.toString()}`);
+  };
 
   if (isLoading) {
     return (
@@ -590,69 +1162,129 @@ export default function TestSuiteDetailPage() {
             )}
           </div>
           <div className="flex gap-3">
-            {activeTab === "details" && hasChanges && (
+            {activeTab === "details" && (!isStep1Completed || hasChanges) && (
               <button
-                onClick={handleSaveOrder}
+                onClick={handleApproveOrderAndGoToReview}
                 disabled={isSubmitting}
                 className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-semibold flex items-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50"
               >
                 <Save className="w-5 h-5" />
-                Save Changes
+                {hasChanges
+                  ? "Re Approve & Regenerate AI Preview"
+                  : "Approve Order"}
               </button>
             )}
-            {activeTab === "details" && (
-              <button
-                onClick={handleGenerateTestCases}
-                disabled={isSubmitting}
-                className="px-6 py-3 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary font-bold flex items-center gap-2 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-              >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                <Sparkles className="w-5 h-5" />
-                {suite.testCaseCount === 0
-                  ? "Generate Test Cases"
-                  : "Regenerate Test Cases"}
-              </button>
+
+            {activeTab === "suggestions" && shouldShowSuggestionBulkActions && (
+              <>
+                <button
+                  onClick={() => handleBulkReview("Approve")}
+                  disabled={
+                    isBulkReviewingSuggestions || suggestions.length === 0
+                  }
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+                >
+                  {isBulkReviewingSuggestions ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Approve All
+                </button>
+
+                <button
+                  onClick={() => handleBulkReview("Reject")}
+                  disabled={
+                    isBulkReviewingSuggestions || suggestions.length === 0
+                  }
+                  className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+                >
+                  {isBulkReviewingSuggestions ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <X className="w-4 h-4" />
+                  )}
+                  Reject All
+                </button>
+              </>
             )}
           </div>
         </header>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => changeTab("details")}
-            className={cn(
-              "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
-              activeTab === "details"
-                ? "bg-primary text-white"
-                : "bg-surface-container-high dark:bg-slate-800 text-on-surface",
-            )}
-          >
-            Details
-          </button>
-          <button
-            type="button"
-            onClick={() => changeTab("testcases")}
-            className={cn(
-              "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
-              activeTab === "testcases"
-                ? "bg-primary text-white"
-                : "bg-surface-container-high dark:bg-slate-800 text-on-surface",
-            )}
-          >
-            Test Cases
-          </button>
-          <button
-            type="button"
-            onClick={() => changeTab("suggestions")}
-            className={cn(
-              "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
-              activeTab === "suggestions"
-                ? "bg-primary text-white"
-                : "bg-surface-container-high dark:bg-slate-800 text-on-surface",
-            )}
-          >
-            LLM Suggestion
-          </button>
+        <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/10 dark:border-slate-800 p-4 md:p-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {steps.map((step, index) => {
+              const isActive = step.id === activeTab;
+              const isAccessible =
+                step.id === "details" ||
+                (step.id === "suggestions" && isStep1Completed) ||
+                (step.id === "testcases" && hasAnyTestCases);
+
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => {
+                    if (!isAccessible) {
+                      if (step.id === "suggestions") {
+                        showInfoToast(
+                          "Complete Step 1 by clicking Approve Order before moving to AI Review.",
+                        );
+                      } else {
+                        showInfoToast(
+                          "Complete previous steps before opening Test Cases.",
+                        );
+                      }
+                      return;
+                    }
+                    changeTab(step.id);
+                  }}
+                  className={cn(
+                    "text-left p-3 rounded-xl border transition-all",
+                    isActive
+                      ? "border-primary bg-primary/10"
+                      : "border-outline-variant/20 bg-surface-container-low hover:bg-surface-container-high",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold text-on-surface">
+                      {step.title}
+                    </p>
+                    {step.isDone && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    )}
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    {step.helper}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mt-2">
+                    {isActive
+                      ? "Current"
+                      : isAccessible
+                        ? "Available"
+                        : "Locked"}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 rounded-xl bg-surface-container-low dark:bg-slate-800/60 p-3 flex flex-wrap items-center gap-3 justify-between">
+            <p className="text-sm font-semibold text-on-surface">
+              Workflow Progress: Step {activeStepIndex + 1}/3
+            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
+              <span className="px-2 py-1 rounded-md bg-amber-100 text-amber-800">
+                Pending AI: {pendingSuggestionsCount}
+              </span>
+              <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-800">
+                Approved: {approvedSuggestionsCount}
+              </span>
+              <span className="px-2 py-1 rounded-md bg-rose-100 text-rose-800">
+                Rejected: {rejectedSuggestionsCount}
+              </span>
+            </div>
+          </div>
         </div>
 
         {activeTab === "testcases" && (
@@ -685,183 +1317,167 @@ export default function TestSuiteDetailPage() {
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
-              <div className="relative flex-1 min-w-[300px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                <input
-                  className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
-                  placeholder="Search test cases..."
-                  type="text"
-                  value={testCaseSearchTerm}
-                  onChange={(e) => setTestCaseSearchTerm(e.target.value)}
-                />
+            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+                  Generated Items
+                </h3>
+                <p className="text-xs text-on-surface-variant">
+                  Open one generation batch at a time
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
-                  Method
-                </span>
-                {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map(
-                  (method) => (
-                    <button
-                      key={method}
-                      onClick={() =>
-                        setTestCaseFilterMethod(method === "ALL" ? "" : method)
-                      }
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
-                        (method === "ALL" && !testCaseFilterMethod) ||
-                          method === testCaseFilterMethod
-                          ? "bg-primary dark:bg-indigo-600 text-on-primary"
-                          : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
-                      )}
+
+              {generationItems.length === 0 ? (
+                <div className="text-sm text-on-surface-variant">
+                  No generation item detected yet. Generate and approve
+                  suggestions to create executable items.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {generationItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
                     >
-                      {method}
-                    </button>
-                  ),
-                )}
-              </div>
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-on-surface">
+                            {item.label}
+                          </p>
+                          <p className="text-xs text-on-surface-variant">
+                            {item.generatedAt
+                              ? new Date(item.generatedAt).toLocaleString()
+                              : "Unknown generate time"}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                            <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                              Suggestions: {item.totalSuggestions}
+                            </span>
+                            <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
+                              Approved: {item.approvedSuggestions}
+                            </span>
+                            <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                              Pending: {item.pendingSuggestions}
+                            </span>
+                            <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                              Rejected: {item.rejectedSuggestions}
+                            </span>
+                            <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                              Superseded: {item.supersededSuggestions}
+                            </span>
+                            <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">
+                              Test cases: {item.testCaseIds.length}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleRunGenerationItem(item)}
+                          disabled={item.testCaseIds.length === 0}
+                          className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          <Play className="w-4 h-4" />
+                          Open
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {isLoadingTestCases ? (
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading test cases...
-              </div>
-            ) : filteredTestCases.length === 0 ? (
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant">
-                No test cases match current search/filter.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredTestCases.map((testCase) => (
-                  <div
-                    key={testCase.id}
-                    className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className={cn(
-                              "px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider",
-                              getMethodColor(getTestCaseMethod(testCase)),
-                            )}
-                          >
-                            {getTestCaseMethod(testCase)}
-                          </span>
-                          {(testCase as any).testType && (
-                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-surface-container-high dark:bg-slate-800 text-on-surface-variant uppercase tracking-wider">
-                              {(testCase as any).testType}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-semibold text-on-surface truncate">
-                          {testCase.name}
-                        </p>
-                        <p className="text-xs text-on-surface-variant mt-1 truncate">
-                          {getTestCaseMethod(testCase)} {testCase.path}
-                        </p>
-                        {testCase.description && (
-                          <p className="text-xs text-on-surface-variant mt-1 line-clamp-1">
-                            {testCase.description}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() =>
-                          navigate(
-                            `/test-suites/${suiteId}/test-cases/${testCase.id}`,
-                          )
-                        }
-                        className="px-3 py-2 rounded-md bg-surface-container-high dark:bg-slate-800 text-xs font-semibold text-on-surface"
-                      >
-                        Open
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-sm text-on-surface-variant">
+              Detailed test-case listing is hidden on this screen.
+            </div>
           </div>
         )}
 
         {activeTab === "suggestions" && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              {suggestions.length === 0 ? (
-                <button
-                  onClick={() => handleGenerateSuggestions(false)}
-                  disabled={isGeneratingSuggestions}
-                  className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-                >
-                  {isGeneratingSuggestions ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
-                  Generate
-                </button>
+            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+                  Generate Timeline
+                </h3>
+                <p className="text-xs text-on-surface-variant">
+                  Suggestions grouped by each generation run
+                </p>
+              </div>
+
+              {generationItems.length === 0 ? (
+                <div className="text-sm text-on-surface-variant">
+                  No generation run detected yet.
+                </div>
               ) : (
-                <button
-                  onClick={() => setIsRegenerateModalOpen(true)}
-                  disabled={isGeneratingSuggestions}
-                  className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-                >
-                  {isGeneratingSuggestions ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  Regenerate
-                </button>
+                <div className="space-y-2">
+                  {generationItems.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-on-surface">
+                              {item.label}
+                            </p>
+                            {index === 0 && (
+                              <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
+                                Latest
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-on-surface-variant">
+                            {item.generatedAt
+                              ? new Date(item.generatedAt).toLocaleString()
+                              : "Unknown generate time"}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                          <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                            Total: {item.totalSuggestions}
+                          </span>
+                          <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                            Pending: {item.pendingSuggestions}
+                          </span>
+                          <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
+                            Approved: {item.approvedSuggestions}
+                          </span>
+                          <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                            Rejected: {item.rejectedSuggestions}
+                          </span>
+                          <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                            Superseded: {item.supersededSuggestions}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-              <button
-                onClick={refreshSuggestions}
-                disabled={isLoadingSuggestions}
-                className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-60"
-              >
-                <RefreshCw
-                  className={cn(
-                    "w-4 h-4",
-                    isLoadingSuggestions && "animate-spin",
-                  )}
-                />
-                Refresh
-              </button>
             </div>
 
-            {isLoadingSuggestions ? (
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading LLM suggestions...
-              </div>
-            ) : suggestions.length === 0 ? (
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant">
-                No LLM suggestions found for this suite.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {suggestions.map((suggestion) => (
-                  <div
-                    key={suggestion.id}
-                    className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800"
-                  >
-                    <p className="text-sm font-semibold text-on-surface">
-                      {suggestion.suggestedName || "Untitled suggestion"}
-                    </p>
-                    <p className="text-xs text-on-surface-variant mt-1">
-                      {suggestion.suggestedDescription || "No description"}
-                    </p>
-                    <p className="text-[10px] text-on-surface-variant mt-2 uppercase tracking-widest">
-                      {suggestion.testType ||
-                        suggestion.suggestionType ||
-                        "Unknown"}{" "}
-                      • {suggestion.reviewStatus || "Pending"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
+            <SuggestionReviewPanel
+              suggestions={suggestions}
+              endpoints={endpoints}
+              isLoadingSuggestions={isLoadingSuggestions}
+              isReviewingSuggestion={isReviewingSuggestion}
+              isLoadingSuggestionDetail={isLoadingSuggestionDetail}
+              reviewStatusFilter={suggestionReviewStatusFilter}
+              testTypeFilter={suggestionTestTypeFilter}
+              endpointFilter={suggestionEndpointFilter}
+              onReviewStatusFilterChange={setSuggestionReviewStatusFilter}
+              onTestTypeFilterChange={setSuggestionTestTypeFilter}
+              onEndpointFilterChange={setSuggestionEndpointFilter}
+              onApplyFilters={async () => {
+                await refreshSuggestions();
+              }}
+              onClearFilters={clearSuggestionFilters}
+              onLoadDetail={handleOpenSuggestionDetail}
+              onApprove={handleApproveSuggestion}
+              onReject={handleRejectSuggestion}
+            />
           </div>
         )}
 
@@ -909,10 +1525,9 @@ export default function TestSuiteDetailPage() {
             {suite.testCaseCount === 0 && (
               <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
                 <p className="text-sm text-amber-800 dark:text-amber-400">
-                  💡 No test cases yet. Click "Generate Test Cases" to let LLM
-                  automatically create test cases for all endpoints in this
-                  suite. You can reorder endpoints below to control the
-                  execution sequence.
+                  💡 No test cases yet. Continue to "AI Review" after saving
+                  this step, then approve suggestions to materialize test cases.
+                  You can reorder endpoints below to control the sequence first.
                 </p>
               </div>
             )}
@@ -1041,46 +1656,6 @@ export default function TestSuiteDetailPage() {
             </div>
           </>
         )}
-
-        <Modal
-          isOpen={isRegenerateModalOpen}
-          onClose={() => setIsRegenerateModalOpen(false)}
-          title="Regenerate LLM Suggestions"
-          footer={
-            <>
-              <button
-                onClick={() => setIsRegenerateModalOpen(false)}
-                disabled={isGeneratingSuggestions}
-                className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  setIsRegenerateModalOpen(false);
-                  await handleGenerateSuggestions(true);
-                }}
-                disabled={isGeneratingSuggestions}
-                className="px-8 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isGeneratingSuggestions && (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                )}
-                Confirm Regenerate
-              </button>
-            </>
-          }
-        >
-          <div className="space-y-3">
-            <p className="text-on-surface">
-              This will force refresh LLM suggestions for this suite.
-            </p>
-            <p className="text-sm text-on-surface-variant">
-              Use this when you want to regenerate new suggestions instead of
-              keeping existing pending data.
-            </p>
-          </div>
-        </Modal>
       </div>
     </MainLayout>
   );

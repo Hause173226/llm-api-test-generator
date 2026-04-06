@@ -30,7 +30,6 @@ import {
 } from "../utils/errorHandler";
 import specificationService from "../services/specificationService";
 import endpointService from "../services/endpointService";
-import { apiService } from "../services/apiService";
 
 export default function TestSuitesPage() {
   const { t } = useTranslation();
@@ -180,84 +179,31 @@ export default function TestSuitesPage() {
         apiSpecId: selectedSpecId,
         selectedEndpointIds: selectedEndpointIds,
         generationType: "Auto",
-      });
+      } as any);
 
-      // Create and approve proposal immediately after suite creation
-      if (newSuite && newSuite.id) {
-        let isOrderApproved = false;
+      if (newSuite?.id) {
         try {
-          console.log("Creating proposal for suite:", newSuite.id);
-          // Create proposal
-          const proposal = await apiService.post(
-            `/test-suites/${newSuite.id}/order-proposals`,
-            {
-              SpecificationId: selectedSpecId,
-              SelectedEndpointIds: selectedEndpointIds,
-              Source: "User", // Valid values: Ai, User, System
-              ReasoningNote: "Initial proposal created after suite creation",
-            },
-          );
+          const proposal = await testSuiteService.proposeOrder(newSuite.id, {
+            specificationId: selectedSpecId,
+            selectedEndpointIds,
+            source: "System",
+            reasoningNote: "Auto-proposed from selected endpoints on suite creation",
+          });
 
-          console.log("Created proposal response:", proposal);
+          const proposalId = proposal?.proposalId || proposal?.ProposalId;
+          const proposalRowVersion = proposal?.rowVersion || proposal?.RowVersion;
 
-          // Backend returns PascalCase, try both
-          const proposalId = proposal.proposalId || proposal.ProposalId;
-          const rowVersion = proposal.rowVersion || proposal.RowVersion;
-
-          // Approve proposal
           if (proposalId) {
-            console.log("Approving proposal:", proposalId);
-            await apiService.post(
-              `/test-suites/${newSuite.id}/order-proposals/${proposalId}/approve`,
-              {
-                RowVersion: rowVersion,
-                ReviewNotes: "Auto-approved after suite creation",
-              },
+            await testSuiteService.approveOrder(
+              newSuite.id,
+              proposalId,
+              proposalRowVersion,
+              "Auto-approved after suite creation",
             );
-            console.log("Proposal approved successfully");
-            isOrderApproved = true;
-          } else {
-            console.error("No proposalId found in response:", proposal);
           }
-        } catch (proposalErr) {
-          console.error("Failed to create/approve proposal:", proposalErr);
-          showErrorToast(
-            "Suite created but failed to approve order. Please approve manually.",
-          );
-        }
-
-        if (isOrderApproved) {
-          try {
-            await apiService.post(
-              `/test-suites/${newSuite.id}/llm-suggestions/generate`,
-              {
-                specificationId: selectedSpecId,
-                forceRefresh: false,
-              },
-            );
-          } catch (suggestionErr: any) {
-            const statusCode =
-              suggestionErr?.status ?? suggestionErr?.response?.status;
-            const message = String(
-              suggestionErr?.message ||
-                suggestionErr?.response?.data?.message ||
-                "",
-            );
-            const alreadyHasPendingSuggestions =
-              statusCode === 400 &&
-              (message.includes("ForceRefresh=true") ||
-                message.includes("suggestion preview"));
-
-            if (!alreadyHasPendingSuggestions) {
-              console.error(
-                "Failed to auto-generate LLM suggestions:",
-                suggestionErr,
-              );
-              showErrorToast(
-                "Suite created and order approved, but auto-generate LLM suggestions failed. You can generate manually in LLM Suggestion tab.",
-              );
-            }
-          }
+        } catch (proposalError) {
+          console.warn("Failed to auto-propose API test order after suite creation", proposalError);
+          showErrorToast("Suite created, but auto order approval failed. You can approve/recreate order in suite detail.");
         }
       }
 
@@ -311,7 +257,7 @@ export default function TestSuitesPage() {
 
   const handleRun = (suiteId: string) => {
     // Navigate to test run page or trigger test run
-    navigate(`/test-runs/new?suiteId=${suiteId}`);
+    navigate(`/runs?suiteId=${suiteId}`);
   };
 
   const handleOpenSuite = (suite: any) => {

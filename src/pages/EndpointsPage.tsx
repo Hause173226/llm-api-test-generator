@@ -31,7 +31,8 @@ import {
   showSuccessToast,
 } from "../utils/errorHandler";
 import { testSuiteService } from "../services/testSuiteService";
-import { apiService } from "../services/apiService";
+
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export default function EndpointsPage() {
   const { t } = useTranslation();
@@ -55,7 +56,7 @@ export default function EndpointsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editForm, setEditForm] = useState({
     path: "",
-    method: "GET",
+    method: "GET" as HttpMethod,
     description: "",
   });
   const [selectedEndpoints, setSelectedEndpoints] = useState<Set<string>>(
@@ -144,7 +145,7 @@ export default function EndpointsPage() {
     setSelectedEndpoint(endpoint);
     setEditForm({
       path: endpoint.path,
-      method: endpoint.method,
+      method: endpoint.method as HttpMethod,
       description: endpoint.description || "",
     });
     setIsEditModalOpen(true);
@@ -231,84 +232,29 @@ export default function EndpointsPage() {
         globalBusinessRules: "",
       });
 
-      // Create and approve proposal immediately after suite creation
-      if (newSuite && newSuite.id) {
-        let isOrderApproved = false;
+      if (newSuite?.id) {
         try {
-          console.log("Creating proposal for suite:", newSuite.id);
+          const proposal = await testSuiteService.proposeOrder(newSuite.id, {
+            specificationId: selectedSpecId,
+            selectedEndpointIds: Array.from(selectedEndpoints),
+            source: "System",
+            reasoningNote: "Auto-proposed from selected endpoints on suite creation",
+          });
 
-          // Create proposal
-          const proposal = await apiService.post(
-            `/test-suites/${newSuite.id}/order-proposals`,
-            {
-              SpecificationId: selectedSpecId,
-              SelectedEndpointIds: Array.from(selectedEndpoints),
-              Source: "User",
-              ReasoningNote:
-                "Initial proposal created after suite creation from endpoints",
-            },
-          );
+          const proposalId = proposal?.proposalId || proposal?.ProposalId;
+          const proposalRowVersion = proposal?.rowVersion || proposal?.RowVersion;
 
-          console.log("Created proposal response:", proposal);
-
-          // Backend returns PascalCase, try both
-          const proposalId = proposal.proposalId || proposal.ProposalId;
-          const rowVersion = proposal.rowVersion || proposal.RowVersion;
-
-          // Approve proposal
           if (proposalId) {
-            console.log("Approving proposal:", proposalId);
-            await apiService.post(
-              `/test-suites/${newSuite.id}/order-proposals/${proposalId}/approve`,
-              {
-                RowVersion: rowVersion,
-                ReviewNotes: "Auto-approved after suite creation",
-              },
+            await testSuiteService.approveOrder(
+              newSuite.id,
+              proposalId,
+              proposalRowVersion,
+              "Auto-approved after suite creation",
             );
-            console.log("Proposal approved successfully");
-            isOrderApproved = true;
-          } else {
-            console.error("No proposalId found in response:", proposal);
           }
-        } catch (proposalErr) {
-          console.error("Failed to create/approve proposal:", proposalErr);
-          showErrorToast(
-            "Suite created but failed to approve order. Please approve manually.",
-          );
-        }
-
-        if (isOrderApproved) {
-          try {
-            await apiService.post(
-              `/test-suites/${newSuite.id}/llm-suggestions/generate`,
-              {
-                specificationId: selectedSpecId,
-                forceRefresh: false,
-              },
-            );
-          } catch (suggestionErr: any) {
-            const statusCode =
-              suggestionErr?.status ?? suggestionErr?.response?.status;
-            const message = String(
-              suggestionErr?.message ||
-                suggestionErr?.response?.data?.message ||
-                "",
-            );
-            const alreadyHasPendingSuggestions =
-              statusCode === 400 &&
-              (message.includes("ForceRefresh=true") ||
-                message.includes("suggestion preview"));
-
-            if (!alreadyHasPendingSuggestions) {
-              console.error(
-                "Failed to auto-generate LLM suggestions:",
-                suggestionErr,
-              );
-              showErrorToast(
-                "Suite created and order approved, but auto-generate LLM suggestions failed. You can generate manually in LLM Suggestion tab.",
-              );
-            }
-          }
+        } catch (proposalError) {
+          console.warn("Failed to auto-propose API test order after suite creation", proposalError);
+          showErrorToast("Suite created, but auto order approval failed. You can approve/recreate order in suite detail.");
         }
       }
 
@@ -447,7 +393,6 @@ export default function EndpointsPage() {
             </select>
           </div>
         )}
-
         {/* Filter Bar */}
         <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
           <div className="relative flex-1 min-w-[300px]">
@@ -702,7 +647,10 @@ export default function EndpointsPage() {
             <select
               value={editForm.method}
               onChange={(e) =>
-                setEditForm({ ...editForm, method: e.target.value })
+                setEditForm({
+                  ...editForm,
+                  method: e.target.value as HttpMethod,
+                })
               }
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
             >

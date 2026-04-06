@@ -32,7 +32,7 @@ export function useProject(projectId: string) {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await projectService.getProjectById(projectId);
+      const data = await projectService.getProjectDetail(projectId);
       setProject(data);
     } catch (err) {
       const errorMessage = handleError(err);
