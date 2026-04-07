@@ -278,8 +278,8 @@ export default function SuggestionReviewPanel({
           </div>
         </div>
         <p className="mt-2 text-[11px] text-cyan-200/80">
-          Tip: keep status at Pending to review the latest generation batch.
-          Use Superseded only for historical inspection.
+          Tip: keep status at Pending to review the latest generation batch. Use
+          Superseded only for historical inspection.
         </p>
       </div>
 

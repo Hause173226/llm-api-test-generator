@@ -39,6 +39,12 @@ type ProposalApiResponse = {
   RowVersion?: string;
   status?: string;
   Status?: string;
+  proposedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
+  ProposedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
+  userModifiedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
+  UserModifiedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
+  appliedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
+  AppliedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
 };
 
 type SuiteTab = "testcases" | "details" | "suggestions";
@@ -299,8 +305,45 @@ export default function TestSuiteDetailPage() {
 
         const allEndpoints = response.items || [];
 
-        // Filter and sort endpoints based on selectedEndpointIds order
-        const orderedEndpoints = suiteData.selectedEndpointIds
+        const normalizeOrder = (items?: Array<{ endpointId?: string; orderIndex?: number }>) =>
+          (items || [])
+            .filter((item) => Boolean(item?.endpointId))
+            .sort((a, b) => (a.orderIndex ?? Number.MAX_SAFE_INTEGER) - (b.orderIndex ?? Number.MAX_SAFE_INTEGER))
+            .map((item) => item.endpointId as string);
+
+        let orderedEndpointIds: string[] = suiteData.selectedEndpointIds || [];
+
+        try {
+          const latestProposal = await apiService.get<ProposalApiResponse>(
+            `/test-suites/${suiteId}/order-proposals/latest`,
+          );
+
+          const appliedOrder = normalizeOrder(
+            latestProposal?.appliedOrder || latestProposal?.AppliedOrder,
+          );
+          const userModifiedOrder = normalizeOrder(
+            latestProposal?.userModifiedOrder || latestProposal?.UserModifiedOrder,
+          );
+          const proposedOrder = normalizeOrder(
+            latestProposal?.proposedOrder || latestProposal?.ProposedOrder,
+          );
+
+          const proposalOrder =
+            appliedOrder.length > 0
+              ? appliedOrder
+              : userModifiedOrder.length > 0
+                ? userModifiedOrder
+                : proposedOrder;
+
+          if (proposalOrder.length > 0) {
+            orderedEndpointIds = proposalOrder;
+          }
+        } catch (proposalErr) {
+          console.warn("Failed to load latest order proposal, fallback to suite selectedEndpointIds.", proposalErr);
+        }
+
+        // Filter and sort endpoints based on latest order proposal (fallback: selectedEndpointIds)
+        const orderedEndpoints = orderedEndpointIds
           .map((id: string) => allEndpoints.find((ep: any) => ep.id === id))
           .filter(Boolean);
 

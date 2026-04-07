@@ -238,11 +238,13 @@ export default function EndpointsPage() {
             specificationId: selectedSpecId,
             selectedEndpointIds: Array.from(selectedEndpoints),
             source: "System",
-            reasoningNote: "Auto-proposed from selected endpoints on suite creation",
+            reasoningNote:
+              "Auto-proposed from selected endpoints on suite creation",
           });
 
           const proposalId = proposal?.proposalId || proposal?.ProposalId;
-          const proposalRowVersion = proposal?.rowVersion || proposal?.RowVersion;
+          const proposalRowVersion =
+            proposal?.rowVersion || proposal?.RowVersion;
 
           if (proposalId) {
             await testSuiteService.approveOrder(
@@ -253,8 +255,13 @@ export default function EndpointsPage() {
             );
           }
         } catch (proposalError) {
-          console.warn("Failed to auto-propose API test order after suite creation", proposalError);
-          showErrorToast("Suite created, but auto order approval failed. You can approve/recreate order in suite detail.");
+          console.warn(
+            "Failed to auto-propose API test order after suite creation",
+            proposalError,
+          );
+          showErrorToast(
+            "Suite created, but auto order approval failed. You can approve/recreate order in suite detail.",
+          );
         }
       }
 

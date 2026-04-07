@@ -53,6 +53,7 @@ export default function TestRunsPage() {
 
   const projectId = searchParams.get("projectId") || selectedProject?.id || "";
   const preselectedSuiteId = searchParams.get("suiteId") || "";
+  const activeSuiteIdFromQuery = searchParams.get("activeSuiteId") || "";
   const preselectedTestCaseId = searchParams.get("testCaseId") || "";
   const preselectedTestCaseIdsRaw = searchParams.get("testCaseIds") || "";
 
@@ -148,6 +149,16 @@ export default function TestRunsPage() {
       setActiveSuiteId(testSuites[0].id);
     }
   }, [testSuites, activeSuiteId]);
+
+  useEffect(() => {
+    if (!activeSuiteIdFromQuery) return;
+
+    setActiveSuiteId(activeSuiteIdFromQuery);
+
+    const params = new URLSearchParams(searchParams);
+    params.delete("activeSuiteId");
+    setSearchParams(params, { replace: true });
+  }, [activeSuiteIdFromQuery]);
 
   useEffect(() => {
     if (!preselectedSuiteId) return;
