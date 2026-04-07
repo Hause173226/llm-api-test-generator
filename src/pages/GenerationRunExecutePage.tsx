@@ -75,7 +75,7 @@ export default function GenerationRunExecutePage() {
   const buildRunsUrl = () => {
     const params = new URLSearchParams();
     if (suiteId) {
-      params.set("suiteId", suiteId);
+      params.set("activeSuiteId", suiteId);
     }
     if (projectId) {
       params.set("projectId", projectId);
