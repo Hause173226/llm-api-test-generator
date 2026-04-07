@@ -33,7 +33,9 @@
     "generating": "Generating...",
     "cancel": "Cancel",
     "save": "Save",
-    "create": "Create"
+    "create": "Create",
+    "error": "An error occurred",
+    "optional": "optional"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -170,6 +172,31 @@
     "noSpecsYet": "No specifications uploaded yet",
     "tryAgain": "Try Again",
     "modifiedAt": "Modified {{time}}",
+    "upload": {
+      "title": "Upload API Specification",
+      "formats": "Supported formats:",
+      "button": "Upload Specification"
+    },
+    "manual": {
+      "label": "Manual Entry",
+      "title": "Define Endpoints Manually",
+      "description": "Create a new specification from scratch by defining endpoints manually through our structured form interface.",
+      "button": "Manual Data Entry"
+    },
+    "recent": {
+      "title": "Recent Specifications",
+      "subtitle": "Your uploaded and manually created API specifications",
+      "table": {
+        "name": "Name",
+        "type": "Type",
+        "version": "Version",
+        "parseStatus": "Parse Status",
+        "actions": "Actions"
+      },
+      "actions": {
+        "delete": "Delete"
+      }
+    },
     "uploadModal": {
       "title": "Upload Specification",
       "nameLabel": "Name",
@@ -184,50 +211,64 @@
     },
     "deleteModal": {
       "title": "Delete Specification",
-      "message": "Are you sure you want to delete <1>{{name}}</1>?",
-      "warning": "This action cannot be undone. All endpoints extracted from this specification will also be removed.",
+      "message": "Are you sure you want to delete {{name}}?",
+      "warning": "This action cannot be undone.",
       "cancel": "Cancel",
       "confirm": "Delete"
     },
-    "parseStatus": {
-      "success": "Success",
-      "parsing": "Parsing...",
-      "failed": "Failed",
-      "unknown": "Unknown"
-    },
-    "upload": {
-      "title": "Drag and Drop API Specification Files here",
-      "formats": "Supported formats:",
-      "button": "Select Local Files"
-    },
-    "manual": {
-      "label": "Direct Configuration",
-      "title": "Define Specification Parameters Manually",
-      "description": "Create a new specification from scratch using our structured editorial environment for precise endpoint mapping.",
-      "button": "Manual Data Entry"
-    },
-    "recent": {
-      "title": "Recent Specification Documents",
-      "subtitle": "Review and manage your recently synchronized assets.",
-      "activeCount": "{{count}} Active Documents",
-      "table": {
-        "name": "Specification Document Name",
-        "type": "Format Type",
-        "version": "Version",
-        "parseStatus": "Parse Status",
-        "status": "Status",
-        "actions": "Actions"
+    "manualModal": {
+      "title": "Create Manual Specification",
+      "creating": "Creating specification...",
+      "success": "Specification created successfully",
+      "nameLabel": "Specification Name",
+      "namePlaceholder": "My API Specification",
+      "versionLabel": "Version",
+      "versionPlaceholder": "1.0.0",
+      "autoActivateLabel": "Auto-activate after creation",
+      "endpointsTitle": "Endpoints",
+      "addEndpoint": "Add Endpoint",
+      "removeEndpoint": "Remove Endpoint",
+      "httpMethodLabel": "HTTP Method",
+      "pathLabel": "Path",
+      "pathPlaceholder": "/api/resource",
+      "operationIdLabel": "Operation ID (Optional)",
+      "summaryLabel": "Summary (Optional)",
+      "descriptionLabel": "Description (Optional)",
+      "tagsLabel": "Tags",
+      "tagsPlaceholder": "Add tag...",
+      "deprecatedLabel": "Mark as deprecated",
+      "parametersTitle": "Parameters",
+      "addParameter": "Add Parameter",
+      "removeParameter": "Remove",
+      "paramNameLabel": "Name",
+      "paramLocationLabel": "Location",
+      "paramTypeLabel": "Data Type",
+      "paramRequiredLabel": "Required",
+      "responsesTitle": "Responses",
+      "addResponse": "Add Response",
+      "removeResponse": "Remove",
+      "statusCodeLabel": "Status Code",
+      "responseDescLabel": "Description",
+      "schemaLabel": "Schema (JSON)",
+      "schemaPlaceholder": "{\"type\": \"object\"}",
+      "validation": {
+        "nameRequired": "Specification name is required",
+        "endpointsRequired": "At least one endpoint is required",
+        "methodRequired": "HTTP method is required",
+        "pathRequired": "Path is required",
+        "pathInvalid": "Path must start with / (e.g., /api/users)",
+        "paramNameRequired": "Parameter name is required",
+        "statusCodeRequired": "Status code is required",
+        "statusCodeRange": "Status code must be an integer between 100 and 599",
+        "schemaInvalid": "Schema must be valid JSON",
+        "failed": "Failed to create specification. Please check your input and try again."
       },
-      "actions": {
-        "view": "View Details",
-        "delete": "Delete"
-      },
-      "pagination": "Showing {{current}} of {{total}} Registered Specifications"
-    }
-  },
-  "endpoints": {
-    "title": "Endpoints Management",
-    "subtitle": "Monitor and manage all discovered API endpoints across your services.",
+      "unsavedChanges": "You have unsaved changes. If you leave now, these changes will be lost.",
+      "discardTitle": "Discard unsaved changes?",
+      "discardWarning": "This action cannot be undone. All unsaved changes will be lost.",
+      "discard": "Discard",
+      "keepEditing": "Keep Editing"
+    },
     "exportButton": "Export List",
     "syncButton": "Sync Endpoints",
     "searchPlaceholder": "Search by path or description...",
@@ -460,6 +501,41 @@
       "delete": "Are you sure you want to delete this report?"
     }
   },
+  "generating": {
+    "title": "Generating Test Cases",
+    "pageTitle": "Generating Test Cases",
+    "status": {
+      "generating": "Generating Test Cases",
+      "success": "Generation Complete!",
+      "partial": "Partial Success",
+      "error": "Generation Failed"
+    },
+    "subtitle": {
+      "generating": "AI is creating comprehensive test cases for your endpoints",
+      "success": "All test cases generated successfully. Redirecting...",
+      "partial": "Some test cases generated successfully",
+      "error": "Test case generation failed"
+    },
+    "happyPath": "Happy Path Test Cases",
+    "boundaryNegative": "Boundary/Negative Test Cases",
+    "badge": {
+      "generating": "Generating...",
+      "complete": "Complete",
+      "failed": "Failed"
+    },
+    "retryHappyPath": "Retry Happy Path",
+    "retryBoundaryNegative": "Retry Boundary/Negative",
+    "goBack": "Go Back",
+    "continue": "Continue to Test Cases",
+    "tip": "Unified generation is running once for all types (HappyPath, Boundary, Negative). This may take a few minutes depending on the number of endpoints.",
+    "steps": {
+      "analyzing": "Analyzing endpoints...",
+      "llmGenerating": "LLM generating mixed test cases...",
+      "complete": "Unified generation complete!",
+      "preparing": "Preparing...",
+      "retrying": "Retrying..."
+    }
+  },
   "environments": {
     "title": "Environments Management",
     "subtitle": "Configure and monitor the infrastructure where your API tests are executed.",
@@ -482,80 +558,7 @@
       "subtitle": "Connect your staging, QA, or production clusters for automated testing."
     }
   },
-  "failureExplanation": {
-    "title": "Failure Explanation",
-    "subtitle": "Autonomous root-cause analysis for failed API test executions.",
-    "reAnalyze": "Re-Analyze Failures",
-    "analysis": {
-      "title": "AI Root Cause Analysis",
-      "expected": "Expected Behavior",
-      "suggested": "Suggested Resolution",
-      "payloadComparison": "Request Payload Comparison",
-      "actual": "Actual Request (Failed)",
-      "expectedRequest": "Expected Request (Success)"
-    },
-    "impact": {
-      "title": "Impact Analysis",
-      "risk": "Risk Level",
-      "critical": "Critical",
-      "affected": "Affected Users",
-      "generatePr": "Generate Fix PR"
-    },
-    "similar": {
-      "title": "Similar Failures",
-      "match": "Match"
-    },
-    "selfHealing": {
-      "title": "Self-Healing Tip",
-      "tip": "Enable <0>Auto-Fix</0> for this suite to allow the LLM to automatically update test cases when API schemas change."
-    }
-  },
   "settings": {
-    "title": "Account Settings",
-    "subtitle": "Manage your personal information, security credentials, and application preferences.",
-    "save": "Save Changes",
-    "success": "Your settings have been updated successfully.",
-    "tabs": {
-      "profile": "Profile Information",
-      "security": "Security and Password",
-      "notifications": "Notification Preferences"
-    },
-    "profile": {
-      "title": "Profile Information",
-      "subtitle": "Update your personal details and contact information.",
-      "name": "Full Legal Name",
-      "email": "Electronic Mail Address",
-      "emailWarning": "Changing your electronic mail address will require a new verification process. You will receive a confirmation link at your new address."
-    },
-    "security": {
-      "title": "Security and Password",
-      "subtitle": "Ensure your account is protected with a strong password.",
-      "current": "Current Password",
-      "new": "New Password",
-      "confirm": "Confirm New Password"
-    },
-    "notifications": {
-      "title": "Notification Preferences",
-      "subtitle": "Control how and when you receive updates from the platform.",
-      "critical": {
-        "label": "Critical System Alerts",
-        "desc": "Receive immediate notifications about API failures and system downtime."
-      },
-      "weekly": {
-        "label": "Weekly Performance Reports",
-        "desc": "A summary of your test execution results and API health metrics."
-      },
-      "security": {
-        "label": "Security and Login Notifications",
-        "desc": "Alerts for new login attempts, password changes, and security updates."
-      },
-      "marketing": {
-        "label": "Product Updates and News",
-        "desc": "Stay informed about new features, improvements, and platform announcements."
-      }
-    }
-  },
-  "projectDetail": {
     "title": "Project Detailed View",
     "back": "Go Back to Dashboard",
     "metrics": {

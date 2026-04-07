@@ -1,4 +1,5 @@
 import apiService from './apiService';
+import { ManualSpecificationRequest } from '../types/manualSpec';
 
 export interface Specification {
   id: string;
@@ -39,7 +40,7 @@ const specificationService = {
     const formData = new FormData();
     formData.append('Name', data.name);
     formData.append('File', data.file);
-    
+
     // Map type to SourceType enum (0=OpenAPI, 1=Postman, 2=GraphQL)
     let sourceType = 0; // Default OpenAPI
     if (data.type.toLowerCase().includes('postman')) {
@@ -48,7 +49,7 @@ const specificationService = {
       sourceType = 2;
     }
     formData.append('SourceType', sourceType.toString());
-    
+
     // Optional fields
     formData.append('Version', '1.0.0'); // Default version
     formData.append('AutoActivate', 'true'); // Auto activate after upload
@@ -69,6 +70,17 @@ const specificationService = {
   // Delete specification
   deleteSpecification: async (projectId: string, specId: string): Promise<void> => {
     await apiService.delete(`/projects/${projectId}/specifications/${specId}`);
+  },
+
+  // Create manual specification
+  createManualSpecification: async (
+    projectId: string,
+    data: ManualSpecificationRequest
+  ): Promise<Specification> => {
+    return await apiService.post<Specification>(
+      `/projects/${projectId}/specifications/manual`,
+      data
+    );
   },
 
   // Note: Parse happens automatically via background job after upload

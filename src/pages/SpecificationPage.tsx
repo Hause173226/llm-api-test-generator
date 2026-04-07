@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
+import ManualSpecModal from "../components/specifications/ManualSpecModal";
 import { cn } from "../lib/utils";
 import { useSpecifications } from "../hooks/useSpecifications";
 import { projectService } from "../services";
@@ -48,10 +49,12 @@ export default function SpecificationPage() {
     refetch,
     uploadSpecification,
     deleteSpecification,
+    createManualSpecification,
   } = useSpecifications(projectId);
 
   const [project, setProject] = useState<any>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSpec, setSelectedSpec] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -332,7 +335,7 @@ export default function SpecificationPage() {
                   {t("specifications.manual.description")}
                 </p>
               </div>
-              <button className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2">
+              <button className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2" onClick={() => setIsManualModalOpen(true)}>
                 <Keyboard className="w-5 h-5" />
                 {t("specifications.manual.button")}
               </button>
@@ -422,14 +425,14 @@ export default function SpecificationPage() {
                                 {spec.name}
                               </div>
                               <div className="text-[10px] text-on-surface-variant">
-                                {t("specifications.modifiedAt", { time: formatDate(spec.updatedAt) })}
+                                {t("specifications.modifiedAt", { time: formatDate(spec.createdDateTime) })}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-6">
                           <span className="px-3 py-1 bg-surface-container dark:bg-slate-800 text-on-secondary-container dark:text-slate-300 text-[10px] font-bold rounded-full">
-                            {spec.type}
+                            {spec.sourceType}
                           </span>
                         </td>
                         <td className="px-6 py-6 text-center">
@@ -541,6 +544,15 @@ export default function SpecificationPage() {
           </p>
         </div>
       </Modal>
+
+      {/* Manual Specification Modal */}
+      <ManualSpecModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        projectId={projectId}
+        onSuccess={refetch}
+        createManualSpecification={createManualSpecification}
+      />
     </MainLayout>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { specificationService, Specification } from '../services';
 import { handleError } from '../utils/errorHandler';
+import { ManualSpecificationRequest } from '../types/manualSpec';
 
 export function useSpecifications(projectId: string) {
   const [specifications, setSpecifications] = useState<Specification[]>([]);
@@ -9,7 +10,7 @@ export function useSpecifications(projectId: string) {
 
   const fetchSpecifications = useCallback(async () => {
     if (!projectId) return;
-    
+
     try {
       setIsLoading(true);
       setError(null);
@@ -68,6 +69,16 @@ export function useSpecifications(projectId: string) {
     }
   };
 
+  const createManualSpecification = async (data: ManualSpecificationRequest) => {
+    try {
+      const newSpec = await specificationService.createManualSpecification(projectId, data);
+      await fetchSpecifications(); // Refresh list
+      return newSpec;
+    } catch (err) {
+      throw err;
+    }
+  };
+
   return {
     specifications,
     isLoading,
@@ -76,5 +87,6 @@ export function useSpecifications(projectId: string) {
     uploadSpecification,
     updateSpecification,
     deleteSpecification,
+    createManualSpecification,
   };
 }

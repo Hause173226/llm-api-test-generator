@@ -33,7 +33,9 @@
     "generating": "Đang tạo...",
     "cancel": "Hủy",
     "save": "Lưu",
-    "create": "Tạo"
+    "create": "Tạo",
+    "error": "Đã xảy ra lỗi",
+    "optional": "tùy chọn"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -140,7 +142,7 @@
       "title": "Xóa Dự án",
       "confirm": "Xóa",
       "cancel": "Hủy",
-      "message": "Bạn có chắc muốn xóa <1>{{name}}</1>?",
+      "message": "Bạn có chắc muốn xóa \"{{name}}\"?",
       "warning": "Hành động này không thể hoàn tác. Tất cả bộ kiểm thử, kịch bản và kết quả liên quan đến dự án này sẽ bị xóa vĩnh viễn."
     },
     "toast": {
@@ -184,7 +186,7 @@
     },
     "deleteModal": {
       "title": "Xóa Đặc tả",
-      "message": "Bạn có chắc muốn xóa <1>{{name}}</1>?",
+      "message": "Bạn có chắc muốn xóa \"{{name}}\"?",
       "warning": "Hành động này không thể hoàn tác. Tất cả các điểm cuối được trích xuất từ đặc tả này cũng sẽ bị xóa.",
       "cancel": "Hủy",
       "confirm": "Xóa"
@@ -223,6 +225,59 @@
         "delete": "Xóa"
       },
       "pagination": "Hiển thị {{current}} trên {{total}} Đặc tả Đã đăng ký"
+    },
+    "manualModal": {
+      "title": "Tạo Đặc tả Thủ công",
+      "creating": "Đang tạo đặc tả...",
+      "success": "Tạo đặc tả thành công",
+      "nameLabel": "Tên Đặc tả",
+      "namePlaceholder": "Đặc tả API của tôi",
+      "versionLabel": "Phiên bản",
+      "versionPlaceholder": "1.0.0",
+      "autoActivateLabel": "Tự động kích hoạt sau khi tạo",
+      "endpointsTitle": "Điểm cuối",
+      "addEndpoint": "Thêm Điểm cuối",
+      "removeEndpoint": "Xóa Điểm cuối",
+      "httpMethodLabel": "Phương thức HTTP",
+      "pathLabel": "Đường dẫn",
+      "pathPlaceholder": "/api/resource",
+      "operationIdLabel": "ID Thao tác (Tùy chọn)",
+      "summaryLabel": "Tóm tắt (Tùy chọn)",
+      "descriptionLabel": "Mô tả (Tùy chọn)",
+      "tagsLabel": "Thẻ",
+      "tagsPlaceholder": "Thêm thẻ...",
+      "deprecatedLabel": "Đánh dấu là lỗi thời",
+      "parametersTitle": "Tham số",
+      "addParameter": "Thêm Tham số",
+      "removeParameter": "Xóa",
+      "paramNameLabel": "Tên",
+      "paramLocationLabel": "Vị trí",
+      "paramTypeLabel": "Kiểu Dữ liệu",
+      "paramRequiredLabel": "Bắt buộc",
+      "responsesTitle": "Phản hồi",
+      "addResponse": "Thêm Phản hồi",
+      "removeResponse": "Xóa",
+      "statusCodeLabel": "Mã Trạng thái",
+      "responseDescLabel": "Mô tả",
+      "schemaLabel": "Lược đồ (JSON)",
+      "schemaPlaceholder": "{\"type\": \"object\"}",
+      "validation": {
+        "nameRequired": "Tên đặc tả là bắt buộc",
+        "endpointsRequired": "Cần ít nhất một điểm cuối",
+        "methodRequired": "Phương thức HTTP là bắt buộc",
+        "pathRequired": "Đường dẫn là bắt buộc",
+        "pathInvalid": "Đường dẫn phải bắt đầu bằng / (ví dụ: /api/users)",
+        "paramNameRequired": "Tên tham số là bắt buộc",
+        "statusCodeRequired": "Mã trạng thái là bắt buộc",
+        "statusCodeRange": "Mã trạng thái phải là số nguyên từ 100 đến 599",
+        "schemaInvalid": "Schema phải là JSON hợp lệ",
+        "failed": "Không thể tạo đặc tả. Vui lòng kiểm tra dữ liệu và thử lại."
+      },
+      "unsavedChanges": "Bạn có thay đổi chưa được lưu. Nếu thoát bây giờ, các thay đổi này sẽ bị mất.",
+      "discardTitle": "Bỏ thay đổi chưa lưu?",
+      "discardWarning": "Hành động này không thể hoàn tác. Tất cả thay đổi chưa lưu sẽ bị mất.",
+      "discard": "Hủy bỏ",
+      "keepEditing": "Tiếp tục Chỉnh sửa"
     }
   },
   "endpoints": {
@@ -460,6 +515,41 @@
       "delete": "Bạn có chắc muốn xóa báo cáo này không?"
     }
   },
+  "generating": {
+    "title": "Đang tạo Kịch bản Kiểm thử",
+    "pageTitle": "Đang tạo Kịch bản Kiểm thử",
+    "status": {
+      "generating": "Đang tạo Kịch bản Kiểm thử",
+      "success": "Tạo hoàn tất!",
+      "partial": "Thành công một phần",
+      "error": "Tạo thất bại"
+    },
+    "subtitle": {
+      "generating": "AI đang tạo các kịch bản kiểm thử toàn diện cho các điểm cuối của bạn",
+      "success": "Tất cả kịch bản kiểm thử đã được tạo thành công. Đang chuyển hướng...",
+      "partial": "Một số kịch bản kiểm thử đã được tạo thành công",
+      "error": "Tạo kịch bản kiểm thử thất bại"
+    },
+    "happyPath": "Kịch bản Luồng chính",
+    "boundaryNegative": "Kịch bản Biên/Phủ định",
+    "badge": {
+      "generating": "Đang tạo...",
+      "complete": "Hoàn tất",
+      "failed": "Thất bại"
+    },
+    "retryHappyPath": "Thử lại Luồng chính",
+    "retryBoundaryNegative": "Thử lại Biên/Phủ định",
+    "goBack": "Quay lại",
+    "continue": "Tiếp tục đến Kịch bản Kiểm thử",
+    "tip": "Quá trình tạo thống nhất đang chạy một lần cho tất cả các loại (HappyPath, Boundary, Negative). Quá trình này có thể mất vài phút tùy thuộc vào số lượng điểm cuối.",
+    "steps": {
+      "analyzing": "Đang phân tích các điểm cuối...",
+      "llmGenerating": "LLM đang tạo kịch bản kiểm thử hỗn hợp...",
+      "complete": "Tạo thống nhất hoàn tất!",
+      "preparing": "Đang chuẩn bị...",
+      "retrying": "Đang thử lại..."
+    }
+  },
   "environments": {
     "title": "Quản lý Môi trường",
     "subtitle": "Cấu hình và giám sát cơ sở hạ tầng nơi các bài kiểm thử API của bạn được thực thi.",
@@ -480,34 +570,6 @@
     "register": {
       "title": "Đăng ký Môi trường Mới",
       "subtitle": "Kết nối các cụm dàn dựng, QA hoặc sản xuất của bạn để kiểm thử tự động."
-    }
-  },
-  "failureExplanation": {
-    "title": "Giải thích Thất bại",
-    "subtitle": "Phân tích nguyên nhân gốc rễ tự động cho các lượt thực thi kiểm thử API thất bại.",
-    "reAnalyze": "Phân tích lại Thất bại",
-    "analysis": {
-      "title": "Phân tích Nguyên nhân Gốc rễ bằng Trí tuệ Nhân tạo",
-      "expected": "Hành vi Mong đợi",
-      "suggested": "Giải pháp Đề xuất",
-      "payloadComparison": "So sánh Dữ liệu Yêu cầu",
-      "actual": "Yêu cầu Thực tế (Thất bại)",
-      "expectedRequest": "Yêu cầu Mong đợi (Thành công)"
-    },
-    "impact": {
-      "title": "Phân tích Tác động",
-      "risk": "Mức độ Rủi ro",
-      "critical": "Nghiêm trọng",
-      "affected": "Người dùng bị Ảnh hưởng",
-      "generatePr": "Tạo PR Sửa lỗi"
-    },
-    "similar": {
-      "title": "Thất bại Tương tự",
-      "match": "Khớp"
-    },
-    "selfHealing": {
-      "title": "Mẹo Tự phục hồi",
-      "tip": "Bật <0>Tự động Sửa lỗi</0> cho bộ này để cho phép LLM tự động cập nhật các trường hợp kiểm thử khi lược đồ API thay đổi."
     }
   },
   "settings": {

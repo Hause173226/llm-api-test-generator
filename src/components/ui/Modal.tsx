@@ -9,9 +9,10 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
 }
 
-export default function Modal({ isOpen, onClose, title, children, footer }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'lg' }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -22,6 +23,16 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
+
+  const maxWidthClasses = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+  };
 
   return (
     <AnimatePresence>
@@ -42,14 +53,14 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            className={cn("relative w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col", maxWidthClasses[maxWidth])}
           >
             {/* Header */}
-            <div className="px-8 py-6 flex items-center justify-between border-b border-slate-100">
-              <h3 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h3>
+            <div className="px-8 py-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{title}</h3>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-slate-600"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -62,7 +73,7 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
 
             {/* Footer */}
             {footer && (
-              <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-4">
+              <div className="px-8 py-6 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-4">
                 {footer}
               </div>
             )}
