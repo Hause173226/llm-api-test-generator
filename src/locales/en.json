@@ -19,7 +19,13 @@
     "softwareStudent": "Software Engineering Student",
     "logOut": "Log Out",
     "switchToLightMode": "Switch to Light Mode",
-    "switchToDarkMode": "Switch to Dark Mode"
+    "switchToDarkMode": "Switch to Dark Mode",
+    "edit": "Edit",
+    "clone": "Clone",
+    "delete": "Delete",
+    "create": "Create",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -535,7 +541,8 @@
     "status": {
       "operational": "Operational",
       "degraded": "Degraded",
-      "default": "Default"
+      "default": "Default",
+      "inactive": "Inactive"
     },
     "details": {
       "copyUrl": "Copy URL",
@@ -543,11 +550,59 @@
       "region": "Region",
       "sslVerified": "SSL Verified",
       "autoSync": "Auto-Sync ON",
-      "configureVariables": "Configure Variables"
+      "configureVariables": "Configure Variables",
+      "variables": "Variables",
+      "headers": "Headers",
+      "defined": "Defined"
     },
     "register": {
       "title": "Register New Environment",
       "subtitle": "Connect your staging, QA, or production clusters for automated testing."
+    },
+    "actions": {
+      "setDefault": "Set as Default",
+      "test": "Test Connection"
+    },
+    "create": {
+      "title": "Create New Environment"
+    },
+    "edit": {
+      "title": "Edit Environment"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "baseUrl": "Base URL",
+      "setAsDefault": "Set as default environment"
+    },
+    "clone": {
+      "prompt": "Enter a name for the cloned environment:"
+    },
+    "confirm": {
+      "delete": "Are you sure you want to delete this environment?"
+    },
+    "variables": {
+      "title": "Configure Variables & Headers",
+      "envVars": "Environment Variables",
+      "headers": "Default Headers",
+      "keyPlaceholder": "KEY",
+      "valuePlaceholder": "value",
+      "headerKeyPlaceholder": "Header-Name",
+      "headerValuePlaceholder": "header-value"
+    },
+    "success": {
+      "created": "Environment created successfully",
+      "updated": "Environment updated successfully",
+      "deleted": "Environment deleted successfully",
+      "setDefault": "Default environment updated",
+      "cloned": "Environment cloned successfully",
+      "testPassed": "Connection test passed",
+      "urlCopied": "URL copied to clipboard",
+      "variablesSaved": "Variables saved successfully"
+    },
+    "errors": {
+      "missingFields": "Please fill in the name and base URL",
+      "testFailed": "Connection test failed"
     }
   },
   "failureExplanation": {
@@ -702,6 +757,33 @@
     "title": "LLM Suggestions",
     "subtitle": "Our autonomous intelligence engine has analyzed your API specifications and test results to identify critical coverage gaps and optimizations.",
     "reAnalyze": "Re-Analyze Suite",
+    "pageTitle": "Execute Analysis",
+    "backToRuns": "Back to Runs",
+    "suiteLabel": "Test Suite",
+    "suitePlaceholder": "Select test suite...",
+    "runLabel": "Test Run",
+    "runPlaceholder": "Select test run...",
+    "selectProject": "Please select a project from the sidebar to inspect run details.",
+    "selectSuite": "Select a test suite to inspect execute details.",
+    "generateAll": "Generate All Explanations",
+    "refresh": "Refresh",
+    "loadingRuns": "Loading test runs...",
+    "loadingDetail": "Loading run details...",
+    "noRuns": "No test runs found for this suite.",
+    "noRunsDesc": "Execute this suite first, then come back for explanations.",
+    "runDetails": "Run Details ({{count}} cases)",
+    "cacheUnavailable": "Detailed run results are unavailable because cache (Redis) was unavailable or expired. Please re-run the test to generate new data.",
+    "noUrl": "No resolved URL",
+    "generateExplanation": "Generate Explanation",
+    "getExisting": "Get Existing",
+    "noSummary": "No summary",
+    "possibleCauses": "Possible causes:",
+    "suggestedActions": "Suggested actions:",
+    "toast": {
+      "explanationGenerated": "Failure explanation generated.",
+      "noFailed": "No failed test cases to explain.",
+      "allGenerated": "Generated explanations for all failed cases."
+    },
     "metrics": {
       "score": "Overall Intelligence Score",
       "scoreTrend": "+4.2% from last week",
@@ -731,9 +813,17 @@
   "billing": {
     "title": "Subscription & Billing",
     "subtitle": "Manage your plan, billing information, and usage limits.",
+    "refresh": "Refresh",
+    "error": {
+      "loadFailed": "Failed to load subscription data"
+    },
+    "tryAgain": "Try Again",
     "usage": {
       "testRuns": "Monthly Test Runs",
       "testRunsDesc": "{{percent}}% of your monthly limit used",
+      "percentUsed": "{{percent}}% used",
+      "remaining": "{{count}} remaining",
+      "resetsMonthly": "Resets monthly",
       "projects": "Active Projects",
       "projectsLimit": "Limit reached. Upgrade for more.",
       "aiTokens": "AI Tokens Used",
@@ -746,6 +836,44 @@
       "mostPopular": "Most Popular",
       "perMonth": "/month",
       "custom": "Custom",
+      "currentPlan": "Current Plan",
+      "subscribe": "Subscribe",
+      "noPlans": "No plans available",
+      "noDescription": "No description available",
+      "noLimits": "No limits specified",
+      "billingCycle": {
+        "month": "month",
+        "year": "year",
+        "monthly": "month",
+        "yearly": "year"
+      },
+      "names": {
+        "free": "Free",
+        "pro": "Pro",
+        "enterprise": "Enterprise",
+        "starter": "Starter",
+        "professional": "Professional"
+      },
+      "descriptions": {
+        "free": "Basic plan for individuals getting started",
+        "pro": "Professional plan for growing teams",
+        "enterprise": "Enterprise plan for large organizations",
+        "starter": "Perfect for small projects and individual developers.",
+        "professional": "Advanced features for growing teams and scaling apps."
+      },
+      "limitTypes": {
+        "MaxProjects": "Max Projects",
+        "MaxEndpointsPerProject": "Max Endpoints / Project",
+        "MaxTestCasesPerSuite": "Max Test Cases / Suite",
+        "MaxTestRunsPerMonth": "Test Runs / Month",
+        "MaxConcurrentRuns": "Concurrent Runs",
+        "RetentionDays": "Data Retention (days)",
+        "MaxLimCallsPerMonth": "LLM Calls / Month",
+        "MaxStorageMB": "Storage (MB)",
+        "AITokens": "AI Tokens",
+        "Projects": "Projects",
+        "TestRuns": "Test Runs"
+      },
       "starter": {
         "name": "Starter",
         "desc": "Perfect for small projects and individual developers.",
@@ -788,6 +916,7 @@
     "history": {
       "title": "Billing History",
       "downloadAll": "Download All",
+      "noPayments": "No payment history yet",
       "table": {
         "invoice": "Invoice ID",
         "date": "Date",

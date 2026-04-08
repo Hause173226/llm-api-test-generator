@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
@@ -26,6 +27,7 @@ interface FailureExplanationModel {
 }
 
 export default function SuggestionsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { selectedProject } = useProject();
@@ -226,7 +228,7 @@ export default function SuggestionsPage() {
         ...prev,
         [testCaseId]: data || null,
       }));
-      showSuccessToast("Failure explanation generated.");
+      showSuccessToast(t("suggestions.toast.explanationGenerated"));
     } catch (err) {
       handleError(err);
     } finally {
@@ -243,7 +245,7 @@ export default function SuggestionsPage() {
 
   const generateAllFailed = async () => {
     if (failedCases.length === 0) {
-      showErrorToast("No failed test cases to explain.");
+      showErrorToast(t("suggestions.toast.noFailed"));
       return;
     }
 
@@ -252,23 +254,22 @@ export default function SuggestionsPage() {
       for (const failedCase of failedCases) {
         await generateExplanation(failedCase.testCaseId);
       }
-      showSuccessToast("Generated explanations for all failed cases.");
+      showSuccessToast(t("suggestions.toast.allGenerated"));
     } finally {
       setIsGeneratingAll(false);
     }
   };
 
   return (
-    <MainLayout title="Execute Analysis">
+    <MainLayout title={t("suggestions.pageTitle")}>
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight text-on-surface mt-10 mb-2">
-              Run Details va Failure Explanation
+              {t("suggestions.title")}
             </h1>
             <p className="text-on-surface-variant max-w-3xl">
-              Trang nay dung cho Execute: xem run details va giai thich loi cho
-              failed cases.
+              {t("suggestions.subtitle")}
             </p>
           </div>
           <button
@@ -279,14 +280,14 @@ export default function SuggestionsPage() {
             }
             className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all cursor-pointer"
           >
-            Back to Runs
+            {t("suggestions.backToRuns")}
           </button>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-              Test Suite
+              {t("suggestions.suiteLabel")}
             </label>
             <select
               value={selectedSuiteId}
@@ -294,7 +295,7 @@ export default function SuggestionsPage() {
               disabled={!selectedProjectId || isLoadingSuites}
               className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface disabled:opacity-60"
             >
-              <option value="">Select test suite...</option>
+              <option value="">{t("suggestions.suitePlaceholder")}</option>
               {testSuites.map((suite) => (
                 <option key={suite.id} value={suite.id}>
                   {suite.name}
@@ -305,7 +306,7 @@ export default function SuggestionsPage() {
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-              Test Run
+              {t("suggestions.runLabel")}
             </label>
             <select
               value={selectedRunId}
@@ -313,7 +314,7 @@ export default function SuggestionsPage() {
               disabled={!selectedSuiteId || isLoadingRuns}
               className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface disabled:opacity-60"
             >
-              <option value="">Select test run...</option>
+              <option value="">{t("suggestions.runPlaceholder")}</option>
               {runs.map((run) => (
                 <option key={run.id} value={run.id}>
                   #{run.runNumber || "-"} - {run.status}
@@ -325,7 +326,7 @@ export default function SuggestionsPage() {
 
         {!selectedProjectId && (
           <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant">
-            Please select a project from the sidebar to inspect run details.
+            {t("suggestions.selectProject")}
           </div>
         )}
 
@@ -342,7 +343,7 @@ export default function SuggestionsPage() {
             ) : (
               <Sparkles className="w-4 h-4" />
             )}
-            Generate All Explanations
+            {t("suggestions.generateAll")}
           </button>
 
           <button
@@ -360,12 +361,12 @@ export default function SuggestionsPage() {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            Refresh
+            {t("suggestions.refresh")}
           </button>
 
           {selectedSuite && (
             <span className="text-sm text-on-surface-variant">
-              Suite:{" "}
+              {t("suggestions.suiteLabel")}:{" "}
               <span className="font-semibold text-on-surface">
                 {selectedSuite.name}
               </span>
@@ -375,14 +376,14 @@ export default function SuggestionsPage() {
 
         {!selectedSuiteId && (
           <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant">
-            Select a test suite to inspect execute details.
+            {t("suggestions.selectSuite")}
           </div>
         )}
 
         {selectedSuiteId && isLoadingRuns && (
           <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant flex items-center gap-2">
             <RefreshCw className="w-4 h-4 animate-spin" />
-            Loading test runs...
+            {t("suggestions.loadingRuns")}
           </div>
         )}
 
@@ -392,10 +393,10 @@ export default function SuggestionsPage() {
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5" />
               <div>
                 <p className="text-on-surface font-semibold">
-                  No test runs found for this suite.
+                  {t("suggestions.noRuns")}
                 </p>
                 <p className="text-sm text-on-surface-variant mt-1">
-                  Execute this suite first, then come back for explanations.
+                  {t("suggestions.noRunsDesc")}
                 </p>
               </div>
             </div>
@@ -405,21 +406,19 @@ export default function SuggestionsPage() {
         {selectedRunId && isLoadingDetail && (
           <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant flex items-center gap-2">
             <RefreshCw className="w-4 h-4 animate-spin" />
-            Loading run details...
+            {t("suggestions.loadingDetail")}
           </div>
         )}
 
         {selectedRunId && !isLoadingDetail && runDetail && (
           <div className="space-y-3">
             <h2 className="text-2xl font-bold text-on-surface tracking-tight">
-              Run Details ({runDetail.cases.length} cases)
+              {t("suggestions.runDetails", { count: runDetail.cases.length })}
             </h2>
 
             {runDetailsUnavailable && (
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
-                Chi tiet ket qua run hien tai khong con trong cache
-                (resultsSource=unavailable), nen khong the tao Failure
-                Explanation. Hay chay lai test run de tao du lieu moi.
+                {t("suggestions.cacheUnavailable")}
               </div>
             )}
 
@@ -448,7 +447,7 @@ export default function SuggestionsPage() {
                     {testCase.name}
                   </p>
                   <p className="text-on-surface-variant mt-1">
-                    {testCase.resolvedUrl || "No resolved URL"}
+                    {testCase.resolvedUrl || t("suggestions.noUrl")}
                   </p>
 
                   {isFailed && (
@@ -466,7 +465,7 @@ export default function SuggestionsPage() {
                           ) : (
                             <Sparkles className="w-3 h-3" />
                           )}
-                          Generate Explanation
+                          {t("suggestions.generateExplanation")}
                         </button>
                         <button
                           onClick={() => getExplanation(testCase.testCaseId)}
@@ -479,21 +478,21 @@ export default function SuggestionsPage() {
                               loadingExplanation && "animate-spin",
                             )}
                           />
-                          Get Existing
+                          {t("suggestions.getExisting")}
                         </button>
                       </div>
 
                       {explanation && (
                         <div className="text-sm text-on-surface-variant space-y-2">
                           <p className="text-on-surface font-semibold">
-                            {explanation.summaryVi || "No summary"}
+                            {explanation.summaryVi || t("suggestions.noSummary")}
                           </p>
 
                           {Array.isArray(explanation.possibleCauses) &&
                             explanation.possibleCauses.length > 0 && (
                               <div>
                                 <p className="font-semibold">
-                                  Possible causes:
+                                  {t("suggestions.possibleCauses")}
                                 </p>
                                 {explanation.possibleCauses.map(
                                   (cause, index) => (
@@ -511,7 +510,7 @@ export default function SuggestionsPage() {
                             explanation.suggestedNextActions.length > 0 && (
                               <div>
                                 <p className="font-semibold">
-                                  Suggested actions:
+                                  {t("suggestions.suggestedActions")}
                                 </p>
                                 {explanation.suggestedNextActions.map(
                                   (action, index) => (
