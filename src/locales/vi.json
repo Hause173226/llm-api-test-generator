@@ -19,7 +19,13 @@
     "softwareStudent": "Sinh viên Kỹ thuật Phần mềm",
     "logOut": "Đăng xuất",
     "switchToLightMode": "Chuyển sang chế độ sáng",
-    "switchToDarkMode": "Chuyển sang chế độ tối"
+    "switchToDarkMode": "Chuyển sang chế độ tối",
+    "edit": "Chỉnh sửa",
+    "clone": "Nhân bản",
+    "delete": "Xóa",
+    "create": "Tạo mới",
+    "save": "Lưu",
+    "cancel": "Hủy"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -535,7 +541,8 @@
     "status": {
       "operational": "Hoạt động",
       "degraded": "Suy giảm",
-      "default": "Mặc định"
+      "default": "Mặc định",
+      "inactive": "Không hoạt động"
     },
     "details": {
       "copyUrl": "Sao chép URL",
@@ -543,11 +550,59 @@
       "region": "Vùng",
       "sslVerified": "Đã xác minh SSL",
       "autoSync": "Tự động Đồng bộ BẬT",
-      "configureVariables": "Cấu hình Biến"
+      "configureVariables": "Cấu hình Biến",
+      "variables": "Biến",
+      "headers": "Headers",
+      "defined": "Đã định nghĩa"
     },
     "register": {
       "title": "Đăng ký Môi trường Mới",
       "subtitle": "Kết nối các cụm dàn dựng, QA hoặc sản xuất của bạn để kiểm thử tự động."
+    },
+    "actions": {
+      "setDefault": "Đặt làm Mặc định",
+      "test": "Kiểm tra Kết nối"
+    },
+    "create": {
+      "title": "Tạo Môi trường Mới"
+    },
+    "edit": {
+      "title": "Chỉnh sửa Môi trường"
+    },
+    "form": {
+      "name": "Tên",
+      "description": "Mô tả",
+      "baseUrl": "URL Gốc",
+      "setAsDefault": "Đặt làm môi trường mặc định"
+    },
+    "clone": {
+      "prompt": "Nhập tên cho môi trường được nhân bản:"
+    },
+    "confirm": {
+      "delete": "Bạn có chắc chắn muốn xóa môi trường này không?"
+    },
+    "variables": {
+      "title": "Cấu hình Biến & Headers",
+      "envVars": "Biến Môi trường",
+      "headers": "Headers Mặc định",
+      "keyPlaceholder": "KHÓA",
+      "valuePlaceholder": "giá trị",
+      "headerKeyPlaceholder": "Tên-Header",
+      "headerValuePlaceholder": "giá-trị-header"
+    },
+    "success": {
+      "created": "Tạo môi trường thành công",
+      "updated": "Cập nhật môi trường thành công",
+      "deleted": "Xóa môi trường thành công",
+      "setDefault": "Đã cập nhật môi trường mặc định",
+      "cloned": "Nhân bản môi trường thành công",
+      "testPassed": "Kiểm tra kết nối thành công",
+      "urlCopied": "Đã sao chép URL vào clipboard",
+      "variablesSaved": "Lưu biến thành công"
+    },
+    "errors": {
+      "missingFields": "Vui lòng điền tên và URL gốc",
+      "testFailed": "Kiểm tra kết nối thất bại"
     }
   },
   "failureExplanation": {
@@ -702,6 +757,33 @@
     "title": "Đề xuất từ LLM",
     "subtitle": "Công cụ trí tuệ tự trị của chúng tôi đã phân tích các đặc tả API và kết quả kiểm thử của bạn để xác định các lỗ hổng bao phủ và tối ưu hóa quan trọng.",
     "reAnalyze": "Phân tích lại Bộ kiểm thử",
+    "pageTitle": "Phân tích Thực thi",
+    "backToRuns": "Quay lại Lượt chạy",
+    "suiteLabel": "Bộ Kiểm thử",
+    "suitePlaceholder": "Chọn bộ kiểm thử...",
+    "runLabel": "Lượt Chạy Kiểm thử",
+    "runPlaceholder": "Chọn lượt chạy kiểm thử...",
+    "selectProject": "Vui lòng chọn dự án từ thanh bên để xem chi tiết lượt chạy.",
+    "selectSuite": "Chọn một bộ kiểm thử để xem chi tiết thực thi.",
+    "generateAll": "Tạo Tất cả Giải thích",
+    "refresh": "Làm mới",
+    "loadingRuns": "Đang tải lượt chạy kiểm thử...",
+    "loadingDetail": "Đang tải chi tiết lượt chạy...",
+    "noRuns": "Không tìm thấy lượt chạy kiểm thử cho bộ này.",
+    "noRunsDesc": "Hãy thực thi bộ này trước, sau đó quay lại để xem giải thích.",
+    "runDetails": "Chi tiết Lượt chạy ({{count}} kịch bản)",
+    "cacheUnavailable": "Kết quả chi tiết không khả dụng vì bộ nhớ đệm (Redis) không khả dụng hoặc đã hết hạn. Vui lòng chạy lại kiểm thử để tạo dữ liệu mới.",
+    "noUrl": "Không có URL đã giải quyết",
+    "generateExplanation": "Tạo Giải thích",
+    "getExisting": "Lấy Giải thích Hiện có",
+    "noSummary": "Không có tóm tắt",
+    "possibleCauses": "Nguyên nhân có thể:",
+    "suggestedActions": "Hành động đề xuất:",
+    "toast": {
+      "explanationGenerated": "Đã tạo giải thích lỗi.",
+      "noFailed": "Không có kịch bản kiểm thử thất bại để giải thích.",
+      "allGenerated": "Đã tạo giải thích cho tất cả kịch bản thất bại."
+    },
     "metrics": {
       "score": "Điểm Trí tuệ Tổng thể",
       "scoreTrend": "+4.2% so với tuần trước",
@@ -731,9 +813,17 @@
   "billing": {
     "title": "Đăng ký & Thanh toán",
     "subtitle": "Quản lý gói dịch vụ, thông tin thanh toán và giới hạn sử dụng của bạn.",
+    "refresh": "Làm mới",
+    "error": {
+      "loadFailed": "Không thể tải dữ liệu đăng ký"
+    },
+    "tryAgain": "Thử lại",
     "usage": {
       "testRuns": "Số lượt Chạy Kiểm thử Hàng tháng",
       "testRunsDesc": "Đã sử dụng {{percent}}% giới hạn hàng tháng của bạn",
+      "percentUsed": "Đã dùng {{percent}}%",
+      "remaining": "Còn lại {{count}}",
+      "resetsMonthly": "Đặt lại hàng tháng",
       "projects": "Dự án Đang hoạt động",
       "projectsLimit": "Đã đạt giới hạn. Nâng cấp để thêm.",
       "aiTokens": "Token AI đã Sử dụng",
@@ -746,6 +836,44 @@
       "mostPopular": "Phổ biến nhất",
       "perMonth": "/tháng",
       "custom": "Tùy chỉnh",
+      "currentPlan": "Gói hiện tại",
+      "subscribe": "Đăng ký",
+      "noPlans": "Không có gói dịch vụ nào",
+      "noDescription": "Không có mô tả",
+      "noLimits": "Không có giới hạn được chỉ định",
+      "billingCycle": {
+        "month": "tháng",
+        "year": "năm",
+        "monthly": "tháng",
+        "yearly": "năm"
+      },
+      "names": {
+        "free": "Miễn phí",
+        "pro": "Pro",
+        "enterprise": "Doanh nghiệp",
+        "starter": "Cơ bản",
+        "professional": "Chuyên nghiệp"
+      },
+      "descriptions": {
+        "free": "Gói cơ bản dành cho cá nhân mới bắt đầu",
+        "pro": "Gói chuyên nghiệp dành cho nhóm đang phát triển",
+        "enterprise": "Gói doanh nghiệp dành cho tổ chức lớn",
+        "starter": "Hoàn hảo cho các dự án nhỏ và nhà phát triển cá nhân.",
+        "professional": "Tính năng nâng cao cho nhóm đang phát triển và ứng dụng mở rộng quy mô."
+      },
+      "limitTypes": {
+        "MaxProjects": "Số dự án tối đa",
+        "MaxEndpointsPerProject": "Số endpoint tối đa / dự án",
+        "MaxTestCasesPerSuite": "Số kịch bản tối đa / bộ",
+        "MaxTestRunsPerMonth": "Lượt chạy kiểm thử / tháng",
+        "MaxConcurrentRuns": "Số lượt chạy đồng thời",
+        "RetentionDays": "Lưu trữ dữ liệu (ngày)",
+        "MaxLimCallsPerMonth": "Lượt gọi LLM / tháng",
+        "MaxStorageMB": "Dung lượng lưu trữ (MB)",
+        "AITokens": "Token AI",
+        "Projects": "Dự án",
+        "TestRuns": "Lượt kiểm thử"
+      },
       "starter": {
         "name": "Cơ bản",
         "desc": "Hoàn hảo cho các dự án nhỏ và nhà phát triển cá nhân.",
@@ -788,6 +916,7 @@
     "history": {
       "title": "Lịch sử Thanh toán",
       "downloadAll": "Tải xuống Tất cả",
+      "noPayments": "Chưa có lịch sử thanh toán",
       "table": {
         "invoice": "Mã Hóa đơn",
         "date": "Ngày",

@@ -25,7 +25,7 @@ export default function BillingPage() {
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
             <p className="text-on-surface-variant">
-              Failed to load subscription data
+              {t("billing.error.loadFailed")}
             </p>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function BillingPage() {
               onClick={refetch}
               className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 cursor-pointer"
             >
-              Try Again
+              {t("billing.tryAgain")}
             </button>
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function BillingPage() {
             className="px-5 py-2.5 rounded-xl bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-high dark:hover:bg-slate-700 transition-all disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
-            Refresh
+            {t("billing.refresh")}
           </button>
         </header>
 
@@ -198,10 +198,11 @@ export default function BillingPage() {
               ></div>
             </div>
             <p className="mt-2 text-xs text-on-surface-variant">
-              {Math.round(
-                (testRunsUsage.currentUsage / testRunsUsage.limitValue) * 100,
-              )}
-              % used
+              {t("billing.usage.percentUsed", {
+                percent: Math.round(
+                  (testRunsUsage.currentUsage / testRunsUsage.limitValue) * 100,
+                ),
+              })}
             </p>
           </div>
 
@@ -237,8 +238,9 @@ export default function BillingPage() {
               </p>
             ) : (
               <p className="mt-2 text-xs text-on-surface-variant">
-                {projectsUsage.limitValue - projectsUsage.currentUsage}{" "}
-                remaining
+                {t("billing.usage.remaining", {
+                  count: projectsUsage.limitValue - projectsUsage.currentUsage,
+                })}
               </p>
             )}
           </div>
@@ -265,7 +267,7 @@ export default function BillingPage() {
               ></div>
             </div>
             <p className="mt-2 text-xs text-on-surface-variant">
-              Resets monthly
+              {t("billing.usage.resetsMonthly")}
             </p>
           </div>
         </section>
@@ -303,18 +305,18 @@ export default function BillingPage() {
 
                     <div className="mb-8">
                       <h3 className="text-xl font-bold text-on-surface mb-2">
-                        {plan.name}
+                        {t(`billing.plans.names.${plan.name?.toLowerCase()}`, { defaultValue: plan.name })}
                       </h3>
                       <div className="flex items-baseline gap-1 mb-4">
                         <span className="text-4xl font-bold text-on-surface">
                           ${plan.price || 0}
                         </span>
                         <span className="text-on-surface-variant font-medium">
-                          /{plan.billingCycle?.toLowerCase() || "month"}
+                          /{t(`billing.plans.billingCycle.${plan.billingCycle?.toLowerCase()}`, { defaultValue: plan.billingCycle?.toLowerCase() || "month" })}
                         </span>
                       </div>
                       <p className="text-sm text-on-surface-variant leading-relaxed">
-                        {plan.description || "No description available"}
+                        {t(`billing.plans.descriptions.${plan.name?.toLowerCase()}`, { defaultValue: plan.description || t("billing.plans.noDescription") })}
                       </p>
                     </div>
 
@@ -328,13 +330,13 @@ export default function BillingPage() {
                             <div className="mt-0.5 w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
                             </div>
-                            {limit.limitType}:{" "}
+                            {t(`billing.plans.limitTypes.${limit.limitType}`, { defaultValue: limit.limitType })}:{" "}
                             {limit.limitValue?.toLocaleString() || 0}
                           </li>
                         ))
                       ) : (
                         <li className="text-sm text-on-surface-variant">
-                          No limits specified
+                          {t("billing.plans.noLimits")}
                         </li>
                       )}
                     </ul>
@@ -349,7 +351,7 @@ export default function BillingPage() {
                           : "bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-400 shadow-lg shadow-indigo-500/20 active:scale-[0.98] cursor-pointer",
                       )}
                     >
-                      {isCurrentPlan ? "Current Plan" : "Subscribe"}
+                      {isCurrentPlan ? t("billing.plans.currentPlan") : t("billing.plans.subscribe")}
                       {!isCurrentPlan && <ArrowRight className="w-4 h-4" />}
                     </button>
                   </div>
@@ -357,7 +359,7 @@ export default function BillingPage() {
               })
             ) : (
               <div className="col-span-3 text-center py-12 text-on-surface-variant">
-                No plans available
+                {t("billing.plans.noPlans")}
               </div>
             )}
           </div>
@@ -434,7 +436,7 @@ export default function BillingPage() {
                       colSpan={5}
                       className="px-8 py-12 text-center text-on-surface-variant"
                     >
-                      No payment history yet
+                      {t("billing.history.noPayments")}
                     </td>
                   </tr>
                 )}
