@@ -86,7 +86,7 @@ export default function TopAppBar({
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleSidebar}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors group"
+          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors group cursor-pointer"
         >
           <Menu className="w-5 h-5 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform" />
         </button>
@@ -105,7 +105,7 @@ export default function TopAppBar({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsDark(!isDark)}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
             title={
               isDark
                 ? t("common.switchToLightMode")
@@ -121,7 +121,7 @@ export default function TopAppBar({
 
           <button
             onClick={toggleLanguage}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-600 dark:text-slate-300 font-bold text-xs"
+            className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-600 dark:text-slate-300 font-bold text-xs cursor-pointer"
           >
             <Languages className="w-4 h-4" />
             <span className="uppercase">
@@ -135,9 +135,9 @@ export default function TopAppBar({
             onClick={() => setIsUserMenuOpen((prev) => !prev)}
             className="flex items-center gap-3 cursor-pointer group active:scale-95 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-1.5 -m-1.5 rounded-2xl transition-all duration-150"
           >
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-on-surface leading-none">
-                {user?.fullName || user?.email || "User"}
+            <div className="text-right hidden sm:block max-w-[140px]">
+              <p className="text-sm font-semibold text-on-surface leading-none truncate">
+                {user?.fullName}
               </p>
               <p className="text-[10px] text-on-surface-variant tracking-wider uppercase font-bold mt-1">
                 {user?.roles?.[0] || t("common.softwareStudent")}

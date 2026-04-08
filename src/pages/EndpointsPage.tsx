@@ -157,7 +157,7 @@ export default function EndpointsPage() {
     try {
       setIsSubmitting(true);
       await updateEndpoint(selectedEndpoint.id, editForm);
-      showSuccessToast("Endpoint updated successfully");
+      showSuccessToast(t("endpoints.toast.updated"));
       setIsEditModalOpen(false);
       setSelectedEndpoint(null);
     } catch (err) {
@@ -178,7 +178,7 @@ export default function EndpointsPage() {
     try {
       setIsSubmitting(true);
       await deleteEndpoint(selectedEndpoint.id);
-      showSuccessToast("Endpoint deleted successfully");
+      showSuccessToast(t("endpoints.toast.deleted"));
       setIsDeleteModalOpen(false);
       setSelectedEndpoint(null);
     } catch (err) {
@@ -208,14 +208,12 @@ export default function EndpointsPage() {
 
   const handleCreateTestSuite = async () => {
     if (!suiteName || selectedEndpoints.size === 0) {
-      showErrorToast(
-        "Please provide suite name and select at least one endpoint",
-      );
+      showErrorToast(t("endpoints.toast.suiteNameRequired"));
       return;
     }
 
     if (!selectedSpecId) {
-      showErrorToast("Please select a specification first");
+      showErrorToast(t("endpoints.toast.selectSpec"));
       return;
     }
 
@@ -259,14 +257,12 @@ export default function EndpointsPage() {
             "Failed to auto-propose API test order after suite creation",
             proposalError,
           );
-          showErrorToast(
-            "Suite created, but auto order approval failed. You can approve/recreate order in suite detail.",
-          );
+          showErrorToast(t("endpoints.toast.suiteOrderFailed"));
         }
       }
 
       showSuccessToast(
-        `Test suite "${suiteName}" created with ${selectedEndpoints.size} endpoints.`,
+        t("endpoints.toast.suiteCreated", { name: suiteName, count: selectedEndpoints.size }),
       );
       setIsCreateSuiteModalOpen(false);
       setSuiteName("");
@@ -312,7 +308,7 @@ export default function EndpointsPage() {
   };
 
   const getStatusText = (isActive: boolean) => {
-    return isActive ? "Active" : "Inactive";
+    return isActive ? t("endpoints.status.active") : t("endpoints.status.inactive");
   };
 
   const getStatusColor = (isActive: boolean) => {
@@ -330,9 +326,9 @@ export default function EndpointsPage() {
             <p className="text-on-surface-variant mb-4">{error}</p>
             <button
               onClick={refetch}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 cursor-pointer"
             >
-              Try Again
+              {t("endpoints.tryAgain")}
             </button>
           </div>
         </div>
@@ -362,16 +358,16 @@ export default function EndpointsPage() {
             {selectedEndpoints.size > 0 && (
               <button
                 onClick={() => setIsCreateSuiteModalOpen(true)}
-                className="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg"
+                className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all shadow-lg cursor-pointer"
               >
                 <Plus className="w-5 h-5" />
-                Create Test Suite ({selectedEndpoints.size})
+                {t("endpoints.createSuiteButton", { count: selectedEndpoints.size })}
               </button>
             )}
             <button
               onClick={refetch}
               disabled={isLoading}
-              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw
                 className={cn("w-5 h-5", isLoading && "animate-spin")}
@@ -385,7 +381,7 @@ export default function EndpointsPage() {
         {specifications.length > 0 && (
           <div className="bg-surface-container-low dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800">
             <label className="text-sm font-semibold text-on-surface-variant mb-2 block">
-              Specification
+              {t("endpoints.specificationLabel")}
             </label>
             <select
               value={selectedSpecId}
@@ -421,9 +417,9 @@ export default function EndpointsPage() {
                 key={m}
                 onClick={() => handleMethodFilter(m)}
                 className={cn(
-                  "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
+                  "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer",
                   (m === "ALL" && !selectedMethod) || m === selectedMethod
-                    ? "bg-primary dark:bg-indigo-600 text-on-primary"
+                    ? "bg-indigo-600 dark:bg-indigo-500 text-white"
                     : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
                 )}
               >
@@ -447,18 +443,20 @@ export default function EndpointsPage() {
                 className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-2 focus:ring-primary/20"
               />
               <span className="text-sm font-medium text-on-surface">
-                Select All
+                {t("endpoints.selectAll")}
               </span>
             </label>
             <p className="text-sm text-on-surface-variant">
-              Showing{" "}
-              {endpoints.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-              {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
-              endpoints
+              {t("projects.showing")}{" "}
+              {endpoints.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}{" "}
+              {t("projects.to")}{" "}
+              {Math.min(currentPage * pageSize, totalCount)}{" "}
+              {t("projects.of")} {totalCount}{" "}
+              {t("endpoints.endpointsCount")}
             </p>
           </div>
-          <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest bg-surface-container-low dark:bg-slate-800 px-3 py-1 rounded-full">
-            {endpoints.filter((e) => e.isActive).length} Active
+          <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1.5 rounded-full">
+            {t("endpoints.activeCount", { count: endpoints.filter((e) => e.isActive).length })}
           </span>
         </div>
 
@@ -543,7 +541,7 @@ export default function EndpointsPage() {
 
                     <div className="text-center min-w-[80px]">
                       <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                        Created
+                        {t("endpoints.createdLabel")}
                       </p>
                       <p className="text-xs font-medium text-on-surface">
                         {new Date(endpoint.createdAt).toLocaleDateString()}
@@ -553,15 +551,15 @@ export default function EndpointsPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEditModal(endpoint)}
-                        className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors"
-                        title="Edit endpoint"
+                        className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        title={t("endpoints.editTitle")}
                       >
                         <Edit3 className="w-4 h-4 text-on-surface-variant" />
                       </button>
                       <button
                         onClick={() => openDeleteModal(endpoint)}
-                        className="p-2 hover:bg-rose-100 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-                        title="Delete endpoint"
+                        className="p-2 hover:bg-rose-100 dark:hover:bg-rose-900/20 rounded-lg transition-colors cursor-pointer"
+                        title={t("endpoints.deleteTitle")}
                       >
                         <Trash2 className="w-4 h-4 text-error" />
                       </button>
@@ -579,22 +577,22 @@ export default function EndpointsPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1 || isLoading}
-              className="px-6 py-2 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold rounded-lg hover:bg-primary-fixed dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold rounded-lg hover:bg-primary-fixed dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
-              Previous
+              {t("endpoints.previous")}
             </button>
 
             <span className="text-sm font-medium text-on-surface">
-              Page {currentPage} of {totalPages}
+              {t("projects.page")} {currentPage} / {totalPages}
             </span>
 
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages || isLoading}
-              className="px-6 py-2 bg-primary dark:bg-indigo-600 text-on-primary font-semibold rounded-lg hover:bg-primary-container dark:hover:bg-indigo-500 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
-              Next
+              {t("endpoints.next")}
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -608,7 +606,7 @@ export default function EndpointsPage() {
           setIsEditModalOpen(false);
           setSelectedEndpoint(null);
         }}
-        title="Edit Endpoint"
+        title={t("endpoints.modal.editTitle")}
         footer={
           <>
             <button
@@ -617,17 +615,17 @@ export default function EndpointsPage() {
                 setSelectedEndpoint(null);
               }}
               disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
             >
-              Cancel
+              {t("endpoints.modal.cancel")}
             </button>
             <button
               onClick={handleEdit}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save Changes
+              {t("endpoints.modal.saveChanges")}
             </button>
           </>
         }
@@ -635,7 +633,7 @@ export default function EndpointsPage() {
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Path
+              {t("endpoints.modal.pathLabel")}
             </label>
             <input
               type="text"
@@ -649,7 +647,7 @@ export default function EndpointsPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Method
+              {t("endpoints.modal.methodLabel")}
             </label>
             <select
               value={editForm.method}
@@ -670,7 +668,7 @@ export default function EndpointsPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description
+              {t("endpoints.modal.descriptionLabel")}
             </label>
             <textarea
               rows={3}
@@ -679,7 +677,7 @@ export default function EndpointsPage() {
                 setEditForm({ ...editForm, description: e.target.value })
               }
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="Endpoint description"
+              placeholder={t("endpoints.modal.descriptionPlaceholder")}
             />
           </div>
         </div>
@@ -692,7 +690,7 @@ export default function EndpointsPage() {
           setIsDeleteModalOpen(false);
           setSelectedEndpoint(null);
         }}
-        title="Delete Endpoint"
+        title={t("endpoints.modal.deleteTitle")}
         footer={
           <>
             <button
@@ -701,29 +699,28 @@ export default function EndpointsPage() {
                 setSelectedEndpoint(null);
               }}
               disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
             >
-              Cancel
+              {t("endpoints.modal.cancel")}
             </button>
             <button
               onClick={handleDelete}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-8 py-3 bg-red-600 dark:bg-red-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t("endpoints.modal.deleteButton")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-on-surface">
-            Are you sure you want to delete endpoint{" "}
+            {t("endpoints.modal.deleteConfirm")}{" "}
             <span className="font-bold">{selectedEndpoint?.path}</span>?
           </p>
           <p className="text-sm text-on-surface-variant">
-            This action cannot be undone. All test cases associated with this
-            endpoint will also be affected.
+            {t("endpoints.modal.deleteWarning")}
           </p>
         </div>
       </Modal>
@@ -736,7 +733,7 @@ export default function EndpointsPage() {
           setSuiteName("");
           setSuiteDescription("");
         }}
-        title="Create Test Suite"
+        title={t("endpoints.modal.createSuiteTitle")}
         footer={
           <>
             <button
@@ -746,17 +743,17 @@ export default function EndpointsPage() {
                 setSuiteDescription("");
               }}
               disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
             >
-              Cancel
+              {t("endpoints.modal.cancel")}
             </button>
             <button
               onClick={handleCreateTestSuite}
               disabled={isSubmitting || !suiteName}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Create Suite
+              {t("endpoints.modal.createSuiteButton")}
             </button>
           </>
         }
@@ -765,37 +762,36 @@ export default function EndpointsPage() {
           <div className="bg-primary-fixed/10 dark:bg-indigo-900/20 p-4 rounded-xl">
             <p className="text-sm text-on-surface">
               <span className="font-bold">{selectedEndpoints.size}</span>{" "}
-              endpoints selected
+              {t("endpoints.modal.endpointsSelected")}
             </p>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Suite Name *
+              {t("endpoints.modal.suiteNameLabel")}
             </label>
             <input
               type="text"
               value={suiteName}
               onChange={(e) => setSuiteName(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="e.g., Products API Test Suite"
+              placeholder={t("endpoints.modal.suiteNamePlaceholder")}
             />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description (Optional)
+              {t("endpoints.modal.suiteDescLabel")}
             </label>
             <textarea
               rows={3}
               value={suiteDescription}
               onChange={(e) => setSuiteDescription(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="Describe what this test suite covers..."
+              placeholder={t("endpoints.modal.suiteDescPlaceholder")}
             />
           </div>
           <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl">
             <p className="text-sm text-amber-800 dark:text-amber-400">
-              💡 LLM will automatically generate test cases for each selected
-              endpoint
+              {t("endpoints.modal.llmHint")}
             </p>
           </div>
         </div>

@@ -103,21 +103,19 @@ export default function SpecificationPage() {
 
   const handleUpload = async () => {
     if (!uploadForm.name || !uploadForm.file) {
-      showErrorToast("Please provide a name and select a file");
+      showErrorToast(t("specifications.upload.errorNameFile"));
       return;
     }
 
     if (!projectId) {
-      showErrorToast("No project selected. Please select a project first.");
+      showErrorToast(t("specifications.noProjectSelected"));
       return;
     }
 
     try {
       setIsSubmitting(true);
       await uploadSpecification(uploadForm);
-      showSuccessToast(
-        "Specification uploaded successfully. Parsing in progress...",
-      );
+      showSuccessToast(t("specifications.upload.successToast"));
       setIsUploadModalOpen(false);
       setUploadForm({ name: "", description: "", type: "openapi", file: null });
 
@@ -138,7 +136,7 @@ export default function SpecificationPage() {
     try {
       setIsSubmitting(true);
       await deleteSpecification(selectedSpec.id);
-      showSuccessToast("Specification deleted successfully");
+      showSuccessToast(t("specifications.delete.successToast"));
       setIsDeleteModalOpen(false);
       setSelectedSpec(null);
     } catch (err) {
@@ -154,27 +152,27 @@ export default function SpecificationPage() {
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            Success
+            {t("specifications.parseStatus.success")}
           </span>
         );
       case "Pending":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400">
             <Loader2 className="w-3 h-3 animate-spin" />
-            Parsing...
+            {t("specifications.parseStatus.pending")}
           </span>
         );
       case "Failed":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-400">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-            Failed
+            {t("specifications.parseStatus.failed")}
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-            Unknown
+            {t("specifications.parseStatus.unknown")}
           </span>
         );
     }
@@ -195,10 +193,10 @@ export default function SpecificationPage() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 30) return `${diffDays} days ago`;
+    if (diffMins < 60) return t("projects.minutesAgo", { count: diffMins });
+    if (diffHours < 24) return t("projects.hoursAgo", { count: diffHours });
+    if (diffDays === 1) return t("specifications.yesterday");
+    if (diffDays < 30) return t("projects.daysAgo", { count: diffDays });
     return date.toLocaleDateString();
   };
 
@@ -211,9 +209,9 @@ export default function SpecificationPage() {
             <p className="text-on-surface-variant mb-4">{error}</p>
             <button
               onClick={refetch}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-colors cursor-pointer"
             >
-              Try Again
+              {t("specifications.tryAgain")}
             </button>
           </div>
         </div>
@@ -228,16 +226,16 @@ export default function SpecificationPage() {
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
             <p className="text-on-surface font-bold text-lg mb-2">
-              No Project Selected
+              {t("specifications.noProjectSelected")}
             </p>
             <p className="text-on-surface-variant mb-6">
-              Please select a project from the sidebar or go to Projects page
+              {t("specifications.noProjectDesc")}
             </p>
             <Link
               to="/projects"
-              className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 inline-block"
+              className="px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-colors inline-block cursor-pointer"
             >
-              Go to Projects
+              {t("specifications.goToProjects")}
             </Link>
           </div>
         </div>
@@ -255,7 +253,7 @@ export default function SpecificationPage() {
               to="/projects"
               className="text-primary hover:underline font-medium"
             >
-              Projects
+              {t("common.projectManagement")}
             </Link>
             <ChevronRight className="w-4 h-4 text-on-surface-variant" />
             <Link
@@ -265,7 +263,7 @@ export default function SpecificationPage() {
               {project.name}
             </Link>
             <ChevronRight className="w-4 h-4 text-on-surface-variant" />
-            <span className="text-on-surface-variant">Specifications</span>
+            <span className="text-on-surface-variant">{t("specifications.title")}</span>
           </div>
         )}
 
@@ -291,13 +289,20 @@ export default function SpecificationPage() {
               onClick={() => setIsUploadModalOpen(true)}
               className="relative overflow-hidden bg-surface-container-low dark:bg-slate-900 rounded-xl p-12 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-surface-container-high dark:hover:bg-slate-800 min-h-[400px] border-2 border-dashed border-outline-variant/20 dark:border-slate-800 cursor-pointer"
             >
+              {/* Recommended badge */}
+              <span className="absolute top-4 right-4 inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
+                ✦ Recommended
+              </span>
               <div className="relative z-10">
                 <div className="mb-8 p-6 bg-surface-container-lowest dark:bg-slate-800 rounded-full shadow-sm inline-block">
                   <UploadCloud className="w-12 h-12 text-primary dark:text-indigo-400" />
                 </div>
-                <h2 className="text-2xl font-semibold text-on-surface mb-4">
+                <h2 className="text-2xl font-semibold text-on-surface mb-2">
                   {t("specifications.upload.title")}
                 </h2>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-4">
+                  {t("specifications.upload.recommendedDesc")}
+                </p>
                 <p className="text-on-surface-variant font-medium mb-8">
                   {t("specifications.upload.formats")}{" "}
                   <span className="text-primary dark:text-indigo-400">
@@ -313,7 +318,7 @@ export default function SpecificationPage() {
                   </span>
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-4">
-                  <button className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-8 py-4 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all flex items-center gap-2">
+                  <button className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all flex items-center gap-2 cursor-pointer">
                     <Plus className="w-5 h-5" />
                     {t("specifications.upload.button")}
                   </button>
@@ -326,12 +331,15 @@ export default function SpecificationPage() {
           <div className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col h-full justify-between shadow-sm">
               <div>
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-3">
                   <Edit3 className="w-5 h-5 text-secondary dark:text-amber-400" />
                   <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
                     {t("specifications.manual.label")}
                   </span>
                 </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-5">
+                  {t("specifications.manual.moreControl")}
+                </p>
                 <h3 className="text-xl font-semibold mb-4 leading-snug text-on-surface">
                   {t("specifications.manual.title")}
                 </h3>
@@ -339,7 +347,7 @@ export default function SpecificationPage() {
                   {t("specifications.manual.description")}
                 </p>
               </div>
-              <button className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2">
+              <button className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer">
                 <Keyboard className="w-5 h-5" />
                 {t("specifications.manual.button")}
               </button>
@@ -362,7 +370,7 @@ export default function SpecificationPage() {
               <button
                 onClick={refetch}
                 disabled={isLoading}
-                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
+                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <RefreshCw
                   className={cn(
@@ -371,8 +379,8 @@ export default function SpecificationPage() {
                   )}
                 />
               </button>
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest bg-surface-container-low dark:bg-slate-800 px-3 py-1 rounded-full">
-                {specifications?.length || 0} Active
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1.5 rounded-full">
+                {t("specifications.recent.activeCount", { count: specifications?.length || 0 })}
               </span>
             </div>
           </div>
@@ -411,12 +419,14 @@ export default function SpecificationPage() {
                       colSpan={5}
                       className="px-6 py-12 text-center text-on-surface-variant"
                     >
-                      No specifications uploaded yet
+                      {t("specifications.recent.noSpecs")}
                     </td>
                   </tr>
                 ) : (
                   (specifications || []).map((spec, i) => {
-                    const SpecIcon = getSpecIcon(spec.type);
+                    const SpecIcon = getSpecIcon(spec.sourceType || spec.type);
+                    const specType = spec.sourceType || spec.type || "Unknown";
+                    const modifiedDate = spec.updatedDateTime || spec.createdDateTime;
                     return (
                       <tr
                         key={spec.id}
@@ -432,14 +442,14 @@ export default function SpecificationPage() {
                                 {spec.name}
                               </div>
                               <div className="text-[10px] text-on-surface-variant">
-                                Modified {formatDate(spec.updatedAt)}
+                                {t("specifications.modified")} {modifiedDate ? formatDate(modifiedDate) : "—"}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-6">
                           <span className="px-3 py-1 bg-surface-container dark:bg-slate-800 text-on-secondary-container dark:text-slate-300 text-[10px] font-bold rounded-full">
-                            {spec.type}
+                            {specType}
                           </span>
                         </td>
                         <td className="px-6 py-6 text-center">
@@ -456,7 +466,7 @@ export default function SpecificationPage() {
                               setSelectedSpec(spec);
                               setIsDeleteModalOpen(true);
                             }}
-                            className="text-error dark:text-rose-400 hover:opacity-80 font-bold text-[10px] uppercase tracking-widest"
+                            className="text-red-600 dark:text-red-400 hover:opacity-80 font-bold text-[10px] uppercase tracking-widest cursor-pointer"
                           >
                             {t("specifications.recent.actions.delete")}
                           </button>
@@ -483,7 +493,7 @@ export default function SpecificationPage() {
             file: null,
           });
         }}
-        title="Upload Specification"
+        title={t("specifications.upload.modalTitle")}
         footer={
           <>
             <button
@@ -499,15 +509,15 @@ export default function SpecificationPage() {
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("specifications.upload.cancel")}
             </button>
             <button
               onClick={handleUpload}
               disabled={isSubmitting || !uploadForm.file}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Upload
+              {t("specifications.upload.uploadButton")}
             </button>
           </>
         }
@@ -515,7 +525,7 @@ export default function SpecificationPage() {
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Name
+              {t("specifications.upload.nameLabel")}
             </label>
             <input
               type="text"
@@ -524,12 +534,12 @@ export default function SpecificationPage() {
                 setUploadForm({ ...uploadForm, name: e.target.value })
               }
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="My API Specification"
+              placeholder={t("specifications.upload.namePlaceholder")}
             />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description (Optional)
+              {t("specifications.upload.descLabel")}
             </label>
             <textarea
               rows={3}
@@ -538,12 +548,12 @@ export default function SpecificationPage() {
                 setUploadForm({ ...uploadForm, description: e.target.value })
               }
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="Brief description of this specification"
+              placeholder={t("specifications.upload.descPlaceholder")}
             />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Type
+              {t("specifications.upload.typeLabel")}
             </label>
             <select
               value={uploadForm.type}
@@ -559,7 +569,7 @@ export default function SpecificationPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              File
+              {t("specifications.upload.fileLabel")}
             </label>
             <input
               type="file"
@@ -569,7 +579,7 @@ export default function SpecificationPage() {
             />
             {uploadForm.file && (
               <p className="text-xs text-on-surface-variant">
-                Selected: {uploadForm.file.name}
+                {t("specifications.upload.selected")} {uploadForm.file.name}
               </p>
             )}
           </div>
@@ -583,7 +593,7 @@ export default function SpecificationPage() {
           setIsDeleteModalOpen(false);
           setSelectedSpec(null);
         }}
-        title="Delete Specification"
+        title={t("specifications.delete.title")}
         footer={
           <>
             <button
@@ -594,27 +604,26 @@ export default function SpecificationPage() {
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("specifications.delete.cancel")}
             </button>
             <button
               onClick={handleDelete}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-red-600 dark:bg-red-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t("specifications.delete.button")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-on-surface">
-            Are you sure you want to delete{" "}
+            {t("specifications.delete.confirm")}{" "}
             <span className="font-bold">{selectedSpec?.name}</span>?
           </p>
           <p className="text-sm text-on-surface-variant">
-            This action cannot be undone. All endpoints extracted from this
-            specification will also be removed.
+            {t("specifications.delete.warning")}
           </p>
         </div>
       </Modal>

@@ -77,7 +77,7 @@ export default function TestSuitesPage() {
       setSpecifications(Array.isArray(specs) ? specs : []);
     } catch (err) {
       console.error("Failed to load specifications:", err);
-      showErrorToast("Failed to load API specifications");
+      showErrorToast(t("testSuites.toast.loadSpecsFailed"));
     } finally {
       setIsLoadingSpecs(false);
     }
@@ -93,7 +93,7 @@ export default function TestSuitesPage() {
       setAvailableEndpoints(response.items || []);
     } catch (err) {
       console.error("Failed to load endpoints:", err);
-      showErrorToast("Failed to load endpoints");
+      showErrorToast(t("testSuites.toast.loadEndpointsFailed"));
     } finally {
       setIsLoadingEndpoints(false);
     }
@@ -157,17 +157,17 @@ export default function TestSuitesPage() {
 
   const handleCreate = async () => {
     if (!formData.name) {
-      showErrorToast("Please provide a test suite name");
+      showErrorToast(t("testSuites.toast.nameRequired"));
       return;
     }
 
     if (!selectedSpecId) {
-      showErrorToast("Please select an API specification");
+      showErrorToast(t("testSuites.toast.specRequired"));
       return;
     }
 
     if (selectedEndpointIds.length === 0) {
-      showErrorToast("Please select at least one endpoint");
+      showErrorToast(t("testSuites.toast.endpointsRequired"));
       return;
     }
 
@@ -208,13 +208,11 @@ export default function TestSuitesPage() {
             "Failed to auto-propose API test order after suite creation",
             proposalError,
           );
-          showErrorToast(
-            "Suite created, but auto order approval failed. You can approve/recreate order in suite detail.",
-          );
+          showErrorToast(t("endpoints.toast.suiteOrderFailed"));
         }
       }
 
-      showSuccessToast("Test suite created successfully");
+      showSuccessToast(t("testSuites.toast.created"));
       setIsCreateModalOpen(false);
       setFormData({ name: "", description: "", environmentId: "" });
       setSelectedSpecId("");
@@ -242,7 +240,7 @@ export default function TestSuitesPage() {
         selectedSuite.id,
         selectedSuite.rowVersion || "",
       );
-      showSuccessToast("Test suite deleted successfully");
+      showSuccessToast(t("testSuites.toast.deleted"));
       setIsDeleteModalOpen(false);
       setSelectedSuite(null);
     } catch (err) {
@@ -256,7 +254,7 @@ export default function TestSuitesPage() {
     try {
       const newName = `${suiteName} (Copy)`;
       await cloneTestSuite(suiteId, newName);
-      showSuccessToast("Test suite cloned successfully");
+      showSuccessToast(t("testSuites.toast.cloned"));
     } catch (err) {
       handleError(err);
     }
@@ -293,10 +291,10 @@ export default function TestSuitesPage() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 30) return `${diffDays} days ago`;
+    if (diffMins < 60) return t("projects.minutesAgo", { count: diffMins });
+    if (diffHours < 24) return t("projects.hoursAgo", { count: diffHours });
+    if (diffDays === 1) return t("specifications.yesterday");
+    if (diffDays < 30) return t("projects.daysAgo", { count: diffDays });
     return date.toLocaleDateString();
   };
 
@@ -315,9 +313,9 @@ export default function TestSuitesPage() {
             <p className="text-on-surface-variant mb-4">{error}</p>
             <button
               onClick={refetch}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 cursor-pointer"
             >
-              Try Again
+              {t("testSuites.tryAgain")}
             </button>
           </div>
         </div>
@@ -349,16 +347,16 @@ export default function TestSuitesPage() {
             <button
               onClick={refetch}
               disabled={isLoading}
-              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw
                 className={cn("w-5 h-5", isLoading && "animate-spin")}
               />
-              Refresh
+              {t("testSuites.refreshButton")}
             </button>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-6 py-3 rounded-xl bg-gradient-to-br from-primary to-primary-container dark:from-indigo-600 dark:to-indigo-800 text-on-primary font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-6 py-3 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
               <Plus className="w-5 h-5" />
               {t("testSuites.createButton")}
@@ -372,7 +370,7 @@ export default function TestSuitesPage() {
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-on-surface-variant" />
               <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                Filter by API Spec
+                {t("testSuites.filterBySpec")}
               </span>
             </div>
             <select
@@ -381,7 +379,7 @@ export default function TestSuitesPage() {
               className="flex-1 max-w-md px-4 py-2 bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-sm text-on-surface font-medium"
             >
               <option value="">
-                All API Specifications ({testSuites.length})
+                {t("testSuites.allSpecs", { count: testSuites.length })}
               </option>
               {Object.values(specificationsMap).map((spec) => {
                 const count = testSuites.filter(
@@ -407,19 +405,19 @@ export default function TestSuitesPage() {
           <div className="bg-surface-container-lowest dark:bg-slate-900 p-12 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-center">
             <Layers className="w-16 h-16 text-on-surface-variant mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-on-surface mb-2">
-              {filterSpecId ? "No test suites found" : "No test suites yet"}
+              {filterSpecId ? t("testSuites.noSuitesFiltered") : t("testSuites.noSuites")}
             </h3>
             <p className="text-on-surface-variant mb-6">
               {filterSpecId
-                ? "Try selecting a different API specification"
-                : "Create your first test suite to get started"}
+                ? t("testSuites.noSuitesFilteredDesc")
+                : t("testSuites.noSuitesDesc")}
             </p>
             {!filterSpecId && (
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-all"
+                className="px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all cursor-pointer"
               >
-                Create Test Suite
+                {t("testSuites.createButton")}
               </button>
             )}
           </div>
@@ -469,14 +467,14 @@ export default function TestSuitesPage() {
                           </p>
                         )}
                       <p className="text-xs text-on-surface-variant font-medium mt-1">
-                        Created {formatDate(suite.createdDateTime)}
+                        {t("testSuites.createdAt")} {formatDate(suite.createdDateTime)}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-4 pt-2">
                       <div className="flex-1 bg-surface-container-low dark:bg-slate-800 p-3 rounded-xl text-center">
                         <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                          Endpoints
+                          {t("testSuites.endpoints")}
                         </p>
                         <p className="text-lg font-black text-on-surface">
                           {suite.selectedEndpointCount || 0}
@@ -484,7 +482,7 @@ export default function TestSuitesPage() {
                       </div>
                       <div className="flex-1 bg-surface-container-low dark:bg-slate-800 p-3 rounded-xl text-center">
                         <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                          Test Cases
+                          {t("testSuites.testCases")}
                         </p>
                         <p className="text-lg font-black text-on-surface">
                           {suite.testCaseCount || 0}
@@ -497,18 +495,18 @@ export default function TestSuitesPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenSuite(suite)}
-                        className="px-3 py-2 bg-white dark:bg-slate-700 text-on-surface dark:text-slate-300 font-bold text-xs rounded-lg shadow-sm border border-outline-variant/20 dark:border-slate-600 flex items-center gap-2 hover:bg-surface-container dark:hover:bg-slate-600 transition-all"
+                        className="px-3 py-2 bg-white dark:bg-slate-700 text-on-surface dark:text-slate-300 font-bold text-xs rounded-lg shadow-sm border border-outline-variant/20 dark:border-slate-600 flex items-center gap-2 hover:bg-surface-container dark:hover:bg-slate-600 transition-all cursor-pointer"
                       >
                         <Settings className="w-3 h-3" />
-                        Open
+                        {t("testSuites.openButton")}
                       </button>
                       <button
                         onClick={() => {
                           setSelectedSuite(suite);
                           setIsDeleteModalOpen(true);
                         }}
-                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-on-surface-variant hover:text-error dark:hover:text-rose-400"
-                        title="Delete"
+                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-on-surface-variant hover:text-error dark:hover:text-rose-400 cursor-pointer"
+                        title={t("testSuites.deleteButton")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -559,7 +557,7 @@ export default function TestSuitesPage() {
                 setAvailableEndpoints([]);
               }}
               disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
             >
               {t("testSuites.modal.cancel")}
             </button>
@@ -571,7 +569,7 @@ export default function TestSuitesPage() {
                 !selectedSpecId ||
                 selectedEndpointIds.length === 0
               }
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("testSuites.modal.confirm")}
@@ -596,7 +594,7 @@ export default function TestSuitesPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description (Optional)
+              {t("testSuites.modal.descLabel")}
             </label>
             <textarea
               rows={3}
@@ -605,14 +603,14 @@ export default function TestSuitesPage() {
                 setFormData({ ...formData, description: e.target.value })
               }
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
-              placeholder="Brief description of this test suite"
+              placeholder={t("testSuites.modal.descPlaceholder")}
             />
           </div>
 
           {/* API Specification Selector */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              API Specification
+              {t("testSuites.modal.specLabel")}
             </label>
             {isLoadingSpecs ? (
               <div className="flex items-center justify-center py-4">
@@ -627,7 +625,7 @@ export default function TestSuitesPage() {
                 }}
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
               >
-                <option value="">Select an API specification</option>
+                <option value="">{t("testSuites.modal.specPlaceholder")}</option>
                 {specifications.map((spec) => (
                   <option key={spec.id} value={spec.id}>
                     {spec.name}
@@ -642,16 +640,16 @@ export default function TestSuitesPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                  Select Endpoints ({selectedEndpointIds.length} selected)
+                  {t("testSuites.modal.selectEndpoints", { count: selectedEndpointIds.length })}
                 </label>
                 {availableEndpoints.length > 0 && (
                   <button
                     onClick={toggleAllEndpoints}
-                    className="text-xs font-bold text-primary dark:text-indigo-400 hover:underline"
+                    className="text-xs font-bold text-primary dark:text-indigo-400 hover:underline cursor-pointer"
                   >
                     {selectedEndpointIds.length === availableEndpoints.length
-                      ? "Deselect All"
-                      : "Select All"}
+                      ? t("testSuites.modal.deselectAll")
+                      : t("testSuites.modal.selectAll")}
                   </button>
                 )}
               </div>
@@ -661,7 +659,7 @@ export default function TestSuitesPage() {
                 </div>
               ) : availableEndpoints.length === 0 ? (
                 <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                  No endpoints found in this specification
+                  {t("testSuites.modal.noEndpoints")}
                 </div>
               ) : (
                 <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
@@ -671,7 +669,7 @@ export default function TestSuitesPage() {
                       className={cn(
                         "flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-b-0",
                         selectedEndpointIds.includes(endpoint.id) &&
-                          "bg-primary/5 dark:bg-indigo-900/20",
+                        "bg-primary/5 dark:bg-indigo-900/20",
                       )}
                     >
                       <div className="relative flex items-center justify-center">
@@ -686,15 +684,15 @@ export default function TestSuitesPage() {
                         className={cn(
                           "px-2 py-1 rounded text-xs font-bold min-w-[60px] text-center",
                           endpoint.method === "GET" &&
-                            "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
+                          "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
                           endpoint.method === "POST" &&
-                            "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+                          "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
                           endpoint.method === "PUT" &&
-                            "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+                          "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
                           endpoint.method === "DELETE" &&
-                            "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
+                          "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
                           endpoint.method === "PATCH" &&
-                            "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
+                          "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
                         )}
                       >
                         {endpoint.method}
@@ -725,7 +723,7 @@ export default function TestSuitesPage() {
           setIsDeleteModalOpen(false);
           setSelectedSuite(null);
         }}
-        title="Delete Test Suite"
+        title={t("testSuites.modal.deleteTitle")}
         footer={
           <>
             <button
@@ -734,29 +732,28 @@ export default function TestSuitesPage() {
                 setSelectedSuite(null);
               }}
               disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
             >
-              Cancel
+              {t("testSuites.modal.cancel")}
             </button>
             <button
               onClick={handleDelete}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-red-600 dark:bg-red-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t("testSuites.modal.deleteButton")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-on-surface">
-            Are you sure you want to delete{" "}
+            {t("testSuites.modal.deleteConfirm")}{" "}
             <span className="font-bold">{selectedSuite?.name}</span>?
           </p>
           <p className="text-sm text-on-surface-variant">
-            This action cannot be undone. All test cases in this suite will also
-            be deleted.
+            {t("testSuites.modal.deleteWarning")}
           </p>
         </div>
       </Modal>

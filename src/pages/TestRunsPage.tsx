@@ -240,17 +240,17 @@ export default function TestRunsPage() {
 
   const handleStartTestRun = async () => {
     if (!selectedTestSuiteId) {
-      showErrorToast("Please select a test suite");
+      showErrorToast(t("testRuns.modal.suiteRequired"));
       return;
     }
 
     if (environments.length === 0) {
-      showErrorToast("No execution environment found for this project");
+      showErrorToast(t("testRuns.modal.noEnvFound"));
       return;
     }
 
     if (!selectedEnvironmentId) {
-      showErrorToast("Please select an execution environment");
+      showErrorToast(t("testRuns.modal.envRequired"));
       return;
     }
 
@@ -338,7 +338,7 @@ export default function TestRunsPage() {
       }
 
       setActiveSuiteId(selectedTestSuiteId);
-      showSuccessToast("Test run started successfully");
+      showSuccessToast(t("testRuns.toast.started"));
       setIsStartModalOpen(false);
       setSelectedTestSuiteId("");
       setSelectedTestCaseIds([]);
@@ -353,7 +353,7 @@ export default function TestRunsPage() {
   const handleCancel = async (testRunId: string) => {
     try {
       await cancelTestRun(testRunId);
-      showSuccessToast("Test run cancelled");
+      showSuccessToast(t("testRuns.toast.cancelled"));
     } catch (err) {
       handleError(err);
     }
@@ -362,7 +362,7 @@ export default function TestRunsPage() {
   const handleRetry = async (testRunId: string) => {
     try {
       await retryFailedTests(testRunId);
-      showSuccessToast("Retrying failed tests");
+      showSuccessToast(t("testRuns.toast.retrying"));
     } catch (err) {
       handleError(err);
     }
@@ -382,7 +382,7 @@ export default function TestRunsPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showSuccessToast("Export downloaded");
+      showSuccessToast(t("testRuns.toast.exported"));
     } catch (err) {
       handleError(err);
     }
@@ -425,7 +425,7 @@ export default function TestRunsPage() {
   };
 
   const formatDuration = (ms?: number) => {
-    if (!ms) return "N/A";
+    if (!ms) return t("testRuns.na");
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -440,15 +440,15 @@ export default function TestRunsPage() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 30) return `${diffDays} days ago`;
+    if (diffMins < 60) return t("projects.minutesAgo", { count: diffMins });
+    if (diffHours < 24) return t("projects.hoursAgo", { count: diffHours });
+    if (diffDays === 1) return t("specifications.yesterday");
+    if (diffDays < 30) return t("projects.daysAgo", { count: diffDays });
     return date.toLocaleDateString();
   };
 
   const formatDateTime = (dateString?: string) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t("testRuns.na");
     return new Date(dateString).toLocaleString();
   };
 
@@ -529,9 +529,9 @@ export default function TestRunsPage() {
     avgDuration:
       testRuns.length > 0
         ? formatDuration(
-            testRuns.reduce((sum, r) => sum + (r.duration || 0), 0) /
-              testRuns.length,
-          )
+          testRuns.reduce((sum, r) => sum + (r.duration || 0), 0) /
+          testRuns.length,
+        )
         : "N/A",
   };
 
@@ -555,9 +555,9 @@ export default function TestRunsPage() {
             <p className="text-on-surface-variant mb-4">{error}</p>
             <button
               onClick={refetch}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 cursor-pointer"
             >
-              Try Again
+              {t("testRuns.tryAgain")}
             </button>
           </div>
         </div>
@@ -579,16 +579,16 @@ export default function TestRunsPage() {
             <button
               onClick={refetch}
               disabled={isLoading}
-              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw
                 className={cn("w-5 h-5", isLoading && "animate-spin")}
               />
-              Refresh
+              {t("testRuns.refreshButton")}
             </button>
             <button
               onClick={() => setIsStartModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
               <Play className="w-5 h-5" />
               {t("testRuns.runNew")}
@@ -598,9 +598,9 @@ export default function TestRunsPage() {
 
         <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
           <p className="text-sm text-on-surface-variant">
-            Viewing runs for suite{" "}
+            {t("testRuns.viewingRunsFor")}{" "}
             <span className="font-bold text-on-surface">
-              {activeSuiteName || "N/A"}
+              {activeSuiteName || t("testRuns.na")}
             </span>
           </p>
           <select
@@ -609,7 +609,7 @@ export default function TestRunsPage() {
             className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface font-medium focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all"
           >
             {testSuites.length === 0 ? (
-              <option value="">No test suites available</option>
+              <option value="">{t("testRuns.noSuites")}</option>
             ) : (
               testSuites.map((suite) => (
                 <option key={suite.id} value={suite.id}>
@@ -628,7 +628,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Total Runs
+                {t("testRuns.stats.total")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.total}
@@ -641,7 +641,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Passed
+                {t("testRuns.stats.success")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.passed}
@@ -654,7 +654,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Failed
+                {t("testRuns.stats.failures")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.failed}
@@ -667,7 +667,7 @@ export default function TestRunsPage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Avg Duration
+                {t("testRuns.stats.duration")}
               </p>
               <p className="text-2xl font-black text-on-surface">
                 {stats.avgDuration}
@@ -682,7 +682,7 @@ export default function TestRunsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input
               className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
-              placeholder="Search test runs..."
+              placeholder={t("testRuns.searchPlaceholder")}
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -690,25 +690,25 @@ export default function TestRunsPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
-              Status
+              {t("testRuns.statusLabel")}
             </span>
-            {["All", "Running", "Completed", "Failed"].map((s) => (
-              <button
-                key={s}
-                onClick={() =>
-                  setStatusFilter(s === "All" ? "" : s.toLowerCase())
-                }
-                className={cn(
-                  "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
-                  (s === "All" && !statusFilter) ||
-                    s.toLowerCase() === statusFilter
-                    ? "bg-primary dark:bg-indigo-600 text-on-primary"
-                    : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
-                )}
-              >
-                {s}
-              </button>
-            ))}
+            {[t("testRuns.filterAll"), t("testRuns.filterRunning"), t("testRuns.filterCompleted"), t("testRuns.filterFailed")].map((s, i) => {
+              const values = ["", "running", "completed", "failed"];
+              return (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(values[i])}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                    values[i] === statusFilter
+                      ? "bg-indigo-600 dark:bg-indigo-500 text-white"
+                      : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
+                  )}
+                >
+                  {s}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -719,22 +719,22 @@ export default function TestRunsPage() {
               <thead>
                 <tr className="bg-surface-container-low/50 dark:bg-slate-800/50">
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Run ID
+                    {t("testRuns.table.id")}
                   </th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Test Suite
+                    {t("testRuns.table.suite")}
                   </th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Status
+                    {t("testRuns.table.status")}
                   </th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Tests
+                    {t("testRuns.table.tests")}
                   </th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Duration
+                    {t("testRuns.table.duration")}
                   </th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-right">
-                    Actions
+                    {t("testRuns.table.actions")}
                   </th>
                 </tr>
               </thead>
@@ -751,7 +751,7 @@ export default function TestRunsPage() {
                       colSpan={6}
                       className="px-8 py-12 text-center text-on-surface-variant"
                     >
-                      No test runs found
+                      {t("testRuns.noRuns")}
                     </td>
                   </tr>
                 ) : (
@@ -814,8 +814,8 @@ export default function TestRunsPage() {
                             {run.status === "running" && (
                               <button
                                 onClick={() => handleCancel(run.id)}
-                                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-error"
-                                title="Cancel"
+                                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-error cursor-pointer"
+                                title={t("testRuns.cancelTitle")}
                               >
                                 <StopCircle className="w-4 h-4" />
                               </button>
@@ -824,8 +824,8 @@ export default function TestRunsPage() {
                               run.failedTests > 0 && (
                                 <button
                                   onClick={() => handleRetry(run.id)}
-                                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-amber-500"
-                                  title="Retry Failed"
+                                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-amber-500 cursor-pointer"
+                                  title={t("testRuns.retryTitle")}
                                 >
                                   <RotateCcw className="w-4 h-4" />
                                 </button>
@@ -845,9 +845,9 @@ export default function TestRunsPage() {
 
                                 handleToggleRunDetails(run.id, run.testSuiteId);
                               }}
-                              className="px-4 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface dark:text-slate-200 font-bold text-[10px] uppercase tracking-widest rounded-lg hover:bg-primary dark:hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2"
+                              className="px-4 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface dark:text-slate-200 font-bold text-[10px] uppercase tracking-widest rounded-lg hover:bg-primary dark:hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2 cursor-pointer"
                             >
-                              Details
+                              {t("testRuns.detailsButton")}
                               <ArrowRight className="w-3 h-3" />
                             </button>
                           </div>
@@ -860,14 +860,14 @@ export default function TestRunsPage() {
                             {loadingRunDetailsById[run.id] ? (
                               <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Loading run details...
+                                {t("testRuns.loadingDetails")}
                               </div>
                             ) : (
                               <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                                   <div>
                                     <span className="text-on-surface-variant">
-                                      Started:
+                                      {t("testRuns.detail.started")}
                                     </span>{" "}
                                     <span className="text-on-surface font-medium">
                                       {formatDateTime(run.startedAt)}
@@ -875,7 +875,7 @@ export default function TestRunsPage() {
                                   </div>
                                   <div>
                                     <span className="text-on-surface-variant">
-                                      Completed:
+                                      {t("testRuns.detail.completed")}
                                     </span>{" "}
                                     <span className="text-on-surface font-medium">
                                       {formatDateTime(run.completedAt)}
@@ -883,7 +883,7 @@ export default function TestRunsPage() {
                                   </div>
                                   <div>
                                     <span className="text-on-surface-variant">
-                                      Passed:
+                                      {t("testRuns.detail.passed")}
                                     </span>{" "}
                                     <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                                       {run.passedTests}
@@ -891,7 +891,7 @@ export default function TestRunsPage() {
                                   </div>
                                   <div>
                                     <span className="text-on-surface-variant">
-                                      Failed:
+                                      {t("testRuns.detail.failed")}
                                     </span>{" "}
                                     <span className="text-rose-600 dark:text-rose-400 font-semibold">
                                       {run.failedTests}
@@ -899,7 +899,7 @@ export default function TestRunsPage() {
                                   </div>
                                   <div>
                                     <span className="text-on-surface-variant">
-                                      Skipped:
+                                      {t("testRuns.detail.skipped")}
                                     </span>{" "}
                                     <span className="text-on-surface font-medium">
                                       {run.skippedTests}
@@ -907,7 +907,7 @@ export default function TestRunsPage() {
                                   </div>
                                   <div>
                                     <span className="text-on-surface-variant">
-                                      Results Expire:
+                                      {t("testRuns.detail.resultsExpire")}
                                     </span>{" "}
                                     <span className="text-on-surface font-medium">
                                       {formatDateTime(run.resultsExpireAt)}
@@ -915,17 +915,17 @@ export default function TestRunsPage() {
                                   </div>
                                   <div className="md:col-span-2">
                                     <span className="text-on-surface-variant">
-                                      Has Detailed Results:
+                                      {t("testRuns.detail.hasDetailed")}
                                     </span>{" "}
                                     <span className="text-on-surface font-medium">
-                                      {run.hasDetailedResults ? "Yes" : "No"}
+                                      {run.hasDetailedResults ? t("testRuns.yes") : t("testRuns.no")}
                                     </span>
                                   </div>
                                 </div>
 
                                 <div className="mt-4 pt-4 border-t border-outline-variant/10 dark:border-slate-700">
                                   <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">
-                                    Test Cases In This Run
+                                    {t("testRuns.detail.testCasesInRun")}
                                   </p>
 
                                   {runDetailsById[run.id]?.cases?.length ? (
@@ -947,8 +947,8 @@ export default function TestRunsPage() {
                                                     {testCase.name}
                                                   </p>
                                                   <p className="text-xs text-on-surface-variant">
-                                                    Status: {testCase.status} •
-                                                    Duration:{" "}
+                                                    {t("testRuns.detail.caseStatus")} {testCase.status} •
+                                                    {t("testRuns.detail.caseDuration")}{" "}
                                                     {formatDuration(
                                                       testCase.durationMs,
                                                     )}
@@ -965,53 +965,53 @@ export default function TestRunsPage() {
                                                   className="px-3 py-1.5 text-xs font-semibold rounded-md bg-surface-container-high dark:bg-slate-700 text-on-surface hover:bg-primary hover:text-white dark:hover:bg-indigo-600 transition-all"
                                                 >
                                                   {isExpanded
-                                                    ? "Hide detail"
-                                                    : "View detail"}
+                                                    ? t("testRuns.detail.hideDetail")
+                                                    : t("testRuns.detail.viewDetail")}
                                                 </button>
                                               </div>
 
                                               {isExpanded && (
                                                 <div className="px-3 pb-3 space-y-2 text-xs text-on-surface-variant">
                                                   <p>
-                                                    URL:{" "}
+                                                    {t("testRuns.detail.url")}{" "}
                                                     <span className="text-on-surface">
                                                       {testCase.resolvedUrl ||
-                                                        "N/A"}
+                                                        t("testRuns.na")}
                                                     </span>
                                                   </p>
                                                   <p>
-                                                    HTTP Status:{" "}
+                                                    {t("testRuns.detail.httpStatus")}{" "}
                                                     <span className="text-on-surface">
                                                       {testCase.httpStatusCode ??
-                                                        "N/A"}
+                                                        t("testRuns.na")}
                                                     </span>
                                                   </p>
                                                   {testCase.failureReasons
                                                     ?.length > 0 && (
-                                                    <div>
-                                                      <p className="font-semibold text-rose-600 dark:text-rose-400">
-                                                        Failure Reasons:
-                                                      </p>
-                                                      {testCase.failureReasons.map(
-                                                        (reason, index) => (
-                                                          <p
-                                                            key={`${testCase.testCaseId}-${index}`}
-                                                          >
-                                                            -{" "}
-                                                            {(reason.code ||
-                                                              "") +
-                                                              (reason.message
-                                                                ? `: ${reason.message}`
-                                                                : "")}
-                                                          </p>
-                                                        ),
-                                                      )}
-                                                    </div>
-                                                  )}
+                                                      <div>
+                                                        <p className="font-semibold text-rose-600 dark:text-rose-400">
+                                                          {t("testRuns.detail.failureReasons")}
+                                                        </p>
+                                                        {testCase.failureReasons.map(
+                                                          (reason, index) => (
+                                                            <p
+                                                              key={`${testCase.testCaseId}-${index}`}
+                                                            >
+                                                              -{" "}
+                                                              {(reason.code ||
+                                                                "") +
+                                                                (reason.message
+                                                                  ? `: ${reason.message}`
+                                                                  : "")}
+                                                            </p>
+                                                          ),
+                                                        )}
+                                                      </div>
+                                                    )}
                                                   {testCase.responseBodyPreview && (
                                                     <div>
                                                       <p className="font-semibold text-on-surface">
-                                                        Response Preview:
+                                                        {t("testRuns.detail.responsePreview")}
                                                       </p>
                                                       <pre className="mt-1 p-2 rounded bg-slate-900 text-slate-100 overflow-x-auto whitespace-pre-wrap break-all">
                                                         {
@@ -1032,8 +1032,8 @@ export default function TestRunsPage() {
                                       <p className="text-sm text-on-surface-variant">
                                         {runDetailsById[run.id]
                                           ?.resultsSource === "unavailable"
-                                          ? "Detailed run results are unavailable because cache (Redis) was unavailable or expired."
-                                          : "No detailed test case data available for this run."}
+                                          ? t("testRuns.detail.unavailable")
+                                          : t("testRuns.detail.noDetailedData")}
                                       </p>
                                       <button
                                         type="button"
@@ -1044,7 +1044,7 @@ export default function TestRunsPage() {
                                         }
                                         className="text-sm font-semibold text-primary dark:text-indigo-400 hover:underline"
                                       >
-                                        View test case definitions in suite
+                                        {t("testRuns.detail.viewInSuite")}
                                       </button>
                                     </div>
                                   )}
@@ -1065,27 +1065,29 @@ export default function TestRunsPage() {
           {totalPages > 1 && (
             <div className="px-8 py-6 flex items-center justify-between bg-surface-container-low/30 dark:bg-slate-800/30">
               <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                Showing{" "}
-                {testRuns.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                {t("projects.showing")}{" "}
+                {testRuns.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}{" "}
+                {t("projects.to")}{" "}
+                {Math.min(currentPage * pageSize, totalCount)}{" "}
+                {t("projects.of")} {totalCount}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1 || isLoading}
-                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
+                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4 text-on-surface" />
                 </button>
                 <span className="text-sm font-medium text-on-surface px-4">
-                  Page {currentPage} of {totalPages}
+                  {t("projects.page")} {currentPage} / {totalPages}
                 </span>
                 <button
                   onClick={() =>
                     setCurrentPage((p) => Math.min(totalPages, p + 1))
                   }
                   disabled={currentPage >= totalPages || isLoading}
-                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
+                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4 text-on-surface" />
                 </button>
@@ -1105,7 +1107,7 @@ export default function TestRunsPage() {
           setSuiteTestCases([]);
           setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
         }}
-        title="Start New Test Run"
+        title={t("testRuns.modal.title")}
         footer={
           <>
             <button
@@ -1117,17 +1119,17 @@ export default function TestRunsPage() {
                 setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
               }}
               disabled={isSubmitting}
-              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
             >
-              Cancel
+              {t("testRuns.modal.cancel")}
             </button>
             <button
               onClick={handleStartTestRun}
               disabled={isSubmitting || !selectedTestSuiteId}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Start Run
+              {t("testRuns.modal.startButton")}
             </button>
           </>
         }
@@ -1135,7 +1137,7 @@ export default function TestRunsPage() {
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Select Test Suite
+              {t("testRuns.modal.suiteLabel")}
             </label>
             <select
               value={selectedTestSuiteId}
@@ -1146,7 +1148,7 @@ export default function TestRunsPage() {
               }}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
             >
-              <option value="">Choose a test suite...</option>
+              <option value="">{t("testRuns.modal.suitePlaceholder")}</option>
               {testSuites.map((suite) => (
                 <option key={suite.id} value={suite.id}>
                   {suite.name} (
@@ -1160,23 +1162,23 @@ export default function TestRunsPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                Select Test Cases (Optional)
+                {t("testRuns.modal.testCasesLabel")}
               </label>
               {suiteTestCases.length > 0 && (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleSelectAllTestCases}
-                    className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline"
+                    className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline cursor-pointer"
                   >
-                    Select all
+                    {t("testRuns.modal.selectAll")}
                   </button>
                   <button
                     type="button"
                     onClick={handleClearSelectedTestCases}
-                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:underline"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:underline cursor-pointer"
                   >
-                    Clear
+                    {t("testRuns.modal.clear")}
                   </button>
                 </div>
               )}
@@ -1184,16 +1186,16 @@ export default function TestRunsPage() {
 
             {!selectedTestSuiteId ? (
               <p className="text-sm text-on-surface-variant">
-                Select a test suite to load test cases.
+                {t("testRuns.modal.selectSuiteFirst")}
               </p>
             ) : isLoadingTestCases ? (
               <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Loading test cases...
+                {t("testRuns.modal.loadingTestCases")}
               </div>
             ) : suiteTestCases.length === 0 ? (
               <p className="text-sm text-on-surface-variant">
-                No test cases found in this suite.
+                {t("testRuns.modal.noTestCases")}
               </p>
             ) : (
               <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
@@ -1227,7 +1229,7 @@ export default function TestRunsPage() {
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Select Environment
+              {t("testRuns.modal.envLabel")}
             </label>
             <select
               value={selectedEnvironmentId}
@@ -1236,7 +1238,7 @@ export default function TestRunsPage() {
               disabled={environments.length === 0}
             >
               {environments.length === 0 ? (
-                <option value="">No environment found</option>
+                <option value="">{t("testRuns.modal.noEnvOption")}</option>
               ) : (
                 environments.map((env) => (
                   <option key={env.id} value={env.id}>
@@ -1251,8 +1253,7 @@ export default function TestRunsPage() {
           {environments.length === 0 && (
             <div className="space-y-2">
               <p className="text-sm text-amber-600 dark:text-amber-400">
-                Please create an execution environment in Environments page
-                before starting a run.
+                {t("testRuns.modal.noEnvWarning")}
               </p>
               <button
                 type="button"
@@ -1271,18 +1272,18 @@ export default function TestRunsPage() {
                 }}
                 className="text-sm font-semibold text-primary dark:text-indigo-400 hover:underline"
               >
-                Go to Environments
+                {t("testRuns.modal.goToEnvs")}
               </button>
             </div>
           )}
           <p className="text-sm text-on-surface-variant">
             {selectedTestCaseIds.length > 0
-              ? `This run will execute ${selectedTestCaseIds.length} selected test case(s) in the suite.`
-              : "The test run will execute all test cases in the selected suite."}
+              ? t("testRuns.modal.selectedCasesInfo", { count: selectedTestCaseIds.length })
+              : t("testRuns.modal.allCasesInfo")}
           </p>
           {!activeSuiteId && testSuites.length === 0 && (
             <p className="text-sm text-on-surface-variant">
-              Please create a test suite first.
+              {t("testRuns.modal.noSuitesWarning")}
             </p>
           )}
         </div>

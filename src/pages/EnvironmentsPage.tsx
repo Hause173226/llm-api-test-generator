@@ -264,7 +264,7 @@ export default function EnvironmentsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 rounded-xl bg-primary text-on-primary font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-6 py-3 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
               <Plus className="w-5 h-5" />
               {t("environments.add")}
@@ -321,34 +321,34 @@ export default function EnvironmentsPage() {
                     </div>
                   </div>
                   <div className="relative group/menu">
-                    <button className="p-2 hover:bg-surface-container rounded-lg transition-colors">
+                    <button className="p-2 hover:bg-surface-container rounded-lg transition-colors cursor-pointer">
                       <MoreVertical className="w-5 h-5 text-on-surface-variant" />
                     </button>
                     <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant/10 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-10">
                       <button
                         onClick={() => openEditModal(env)}
-                        className="w-full px-4 py-3 text-left text-sm font-bold text-on-surface hover:bg-surface-container flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-sm font-bold text-on-surface hover:bg-surface-container flex items-center gap-2 cursor-pointer"
                       >
                         <Edit className="w-4 h-4" />
                         {t("common.edit")}
                       </button>
                       <button
                         onClick={() => handleSetDefault(env.id)}
-                        className="w-full px-4 py-3 text-left text-sm font-bold text-on-surface hover:bg-surface-container flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-sm font-bold text-on-surface hover:bg-surface-container flex items-center gap-2 cursor-pointer"
                       >
                         <Star className="w-4 h-4" />
                         {t("environments.actions.setDefault")}
                       </button>
                       <button
                         onClick={() => handleClone(env.id, env.name)}
-                        className="w-full px-4 py-3 text-left text-sm font-bold text-on-surface hover:bg-surface-container flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-sm font-bold text-on-surface hover:bg-surface-container flex items-center gap-2 cursor-pointer"
                       >
                         <Copy className="w-4 h-4" />
                         {t("common.clone")}
                       </button>
                       <button
                         onClick={() => handleDelete(env.id)}
-                        className="w-full px-4 py-3 text-left text-sm font-bold text-error hover:bg-surface-container flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-sm font-bold text-error hover:bg-surface-container flex items-center gap-2 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                         {t("common.delete")}
@@ -404,7 +404,7 @@ export default function EnvironmentsPage() {
                 <button
                   onClick={() => handleTest(env.id)}
                   disabled={testing === env.id}
-                  className="flex items-center gap-2 text-sm font-bold text-on-surface hover:text-primary transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 text-sm font-bold text-on-surface hover:text-primary transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {testing === env.id ? (
                     <div className="w-4 h-4 border-2 border-on-surface/30 border-t-on-surface rounded-full animate-spin" />
@@ -415,7 +415,7 @@ export default function EnvironmentsPage() {
                 </button>
                 <button
                   onClick={() => openVariablesModal(env)}
-                  className="text-sm font-bold text-primary hover:underline flex items-center gap-2"
+                  className="text-sm font-bold text-primary hover:underline flex items-center gap-2 cursor-pointer"
                 >
                   {t("environments.details.configureVariables")}
                   <Key className="w-4 h-4" />
@@ -517,7 +517,7 @@ export default function EnvironmentsPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={showCreateModal ? handleCreate : handleEdit}
-                  className="flex-1 px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:scale-[1.02] transition-all"
+                  className="flex-1 px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:scale-[1.02] transition-all cursor-pointer"
                 >
                   {showCreateModal ? t("common.create") : t("common.save")}
                 </button>
@@ -528,7 +528,7 @@ export default function EnvironmentsPage() {
                     setSelectedEnvId(null);
                     resetForm();
                   }}
-                  className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all"
+                  className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all cursor-pointer"
                 >
                   {t("common.cancel")}
                 </button>
@@ -569,7 +569,7 @@ export default function EnvironmentsPage() {
                   />
                   <button
                     onClick={addVariable}
-                    className="px-4 py-2 bg-primary text-on-primary rounded-xl font-bold hover:scale-105 transition-all"
+                    className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:scale-105 transition-all cursor-pointer"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -590,7 +590,7 @@ export default function EnvironmentsPage() {
                       </div>
                       <button
                         onClick={() => removeVariable(key)}
-                        className="p-1 hover:bg-surface-container rounded-lg transition-colors"
+                        className="p-1 hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
                       >
                         <X className="w-4 h-4 text-error" />
                       </button>
@@ -625,7 +625,7 @@ export default function EnvironmentsPage() {
                   />
                   <button
                     onClick={addHeader}
-                    className="px-4 py-2 bg-primary text-on-primary rounded-xl font-bold hover:scale-105 transition-all"
+                    className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:scale-105 transition-all cursor-pointer"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -646,7 +646,7 @@ export default function EnvironmentsPage() {
                       </div>
                       <button
                         onClick={() => removeHeader(key)}
-                        className="p-1 hover:bg-surface-container rounded-lg transition-colors"
+                        className="p-1 hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
                       >
                         <X className="w-4 h-4 text-error" />
                       </button>
@@ -658,7 +658,7 @@ export default function EnvironmentsPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={saveVariables}
-                  className="flex-1 px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:scale-[1.02] transition-all"
+                  className="flex-1 px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:scale-[1.02] transition-all cursor-pointer"
                 >
                   {t("common.save")}
                 </button>
@@ -668,7 +668,7 @@ export default function EnvironmentsPage() {
                     setSelectedEnvId(null);
                     resetForm();
                   }}
-                  className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all"
+                  className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all cursor-pointer"
                 >
                   {t("common.cancel")}
                 </button>

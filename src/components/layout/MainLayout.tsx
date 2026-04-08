@@ -16,19 +16,19 @@ export default function MainLayout({ children, title }: MainLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen w-full bg-surface">
+    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950">
       <Sidebar isCollapsed={isSidebarCollapsed} />
-      <main 
+      <main
         className={cn(
           "flex-1 flex flex-col relative transition-all duration-300 ease-in-out h-screen overflow-hidden",
           isSidebarCollapsed ? "ml-20" : "ml-72"
         )}
       >
-        <div className="flex-1 overflow-y-auto bg-surface-container-low/30">
-          <TopAppBar 
-            title={title} 
-            isSidebarCollapsed={isSidebarCollapsed} 
-            onToggleSidebar={toggleSidebar} 
+        <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+          <TopAppBar
+            title={title}
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={toggleSidebar}
           />
           <div className="p-8 pb-24">
             <div className="max-w-7xl mx-auto">
