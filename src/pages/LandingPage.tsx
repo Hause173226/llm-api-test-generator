@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Sparkles,
@@ -26,6 +26,19 @@ export default function LandingPage() {
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
+  const [splineVisible, setSplineVisible] = useState(false);
+  const splineRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = splineRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setSplineVisible(true); },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (isDark) {
@@ -43,41 +56,43 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface dark:bg-surface-container-lowest selection:bg-primary selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-slate-950 selection:bg-primary selection:text-white overflow-x-hidden">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/10">
+      <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-black tracking-tighter text-on-surface">
-              TestFlow Intelligence
-            </span>
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 bg-indigo-600 dark:bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">
+                TestFlow Intelligence
+              </span>
+            </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-10">
             <Link
               to="/product"
-              className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+              className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {t("landing.nav.product")}
             </Link>
             <Link
               to="/intelligence"
-              className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+              className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {t("landing.nav.intelligence")}
             </Link>
             <Link
               to="/enterprise"
-              className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+              className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {t("landing.nav.enterprise")}
             </Link>
             <Link
               to="/pricing"
-              className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+              className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {t("landing.nav.pricing")}
             </Link>
@@ -86,12 +101,9 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => setIsDark(!isDark)}
-              className="p-2 hover:bg-surface-container-high dark:hover:bg-surface-container rounded-lg transition-colors text-on-surface-variant hover:text-primary"
-              title={
-                isDark
-                  ? t("common.switchToLightMode")
-                  : t("common.switchToDarkMode")
-              }
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+              aria-label={isDark ? t("common.switchToLightMode") : t("common.switchToDarkMode")}
+              title={isDark ? t("common.switchToLightMode") : t("common.switchToDarkMode")}
             >
               {isDark ? (
                 <Sun className="w-5 h-5" />
@@ -101,7 +113,8 @@ export default function LandingPage() {
             </button>
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-container rounded-lg transition-colors text-on-surface-variant hover:text-primary font-bold text-xs"
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs cursor-pointer"
+              aria-label="Toggle language"
             >
               <Languages className="w-4 h-4" />
               <span className="uppercase">
@@ -110,13 +123,13 @@ export default function LandingPage() {
             </button>
             <Link
               to="/login"
-              className="text-sm font-bold text-on-surface hover:text-primary transition-colors"
+              className="text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {t("landing.nav.signIn")}
             </Link>
             <Link
               to="/register"
-              className="px-6 py-2.5 bg-on-surface dark:bg-on-surface-variant text-surface dark:text-on-surface rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-on-surface/10"
+              className="px-6 py-2.5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-500/30"
             >
               {t("landing.nav.getStarted")}
             </Link>
@@ -125,35 +138,35 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero: copy left, Spline 3D right (stacked on small screens) */}
-      <section className="relative pt-20 pb-20 lg:pb-24 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
-        <div className="absolute top-[18%] -right-8 lg:right-0 w-[28rem] h-0 rotate-[-30deg] shadow-[0_0_700px_15px_rgba(255,255,255,0.12)] dark:shadow-[0_0_500px_12px_rgba(195,192,255,0.15)] -z-10 pointer-events-none hidden lg:block" />
+      <section className="relative pt-20 pb-20 lg:pb-24 overflow-hidden bg-white dark:bg-slate-950">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-indigo-500/8 dark:bg-indigo-500/10 rounded-full blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute top-[18%] -right-8 lg:right-0 w-[28rem] h-0 rotate-[-30deg] shadow-[0_0_700px_15px_rgba(99,102,241,0.08)] dark:shadow-[0_0_500px_12px_rgba(165,180,252,0.12)] -z-10 pointer-events-none hidden lg:block" />
 
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-8 xl:gap-12 items-center">
             <div className="text-center lg:text-left space-y-8 lg:space-y-10">
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-on-surface leading-[0.9] max-w-5xl mx-auto lg:mx-0">
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-slate-900 dark:text-white leading-[0.9] max-w-5xl mx-auto lg:mx-0">
                 <Trans i18nKey="landing.hero.title">
                   Autonomous API Testing{" "}
-                  <span className="text-primary">Powered by Intelligence.</span>
+                  <span className="text-indigo-600 dark:text-indigo-400">Powered by Intelligence.</span>
                 </Trans>
               </h1>
 
-              <p className="text-lg sm:text-xl text-on-surface-variant max-w-2xl mx-auto lg:mx-0 font-medium leading-relaxed">
+              <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto lg:mx-0 font-medium leading-relaxed">
                 {t("landing.hero.subtitle")}
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-4 sm:gap-6 pt-2">
                 <Link
                   to="/register"
-                  className="w-full sm:w-auto px-10 py-5 bg-primary text-on-primary rounded-2xl font-bold text-lg shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
+                  className="w-full sm:w-auto px-10 py-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group whitespace-nowrap"
                 >
                   {t("landing.hero.cta")}
                   <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <button
                   type="button"
-                  className="w-full sm:w-auto px-10 py-5 bg-surface-container-highest dark:bg-surface-container-high text-on-secondary-container rounded-2xl font-bold text-lg hover:bg-surface-container-high transition-all flex items-center justify-center gap-3"
+                  className="w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-3 whitespace-nowrap cursor-pointer"
                 >
                   <PlayCircle className="w-6 h-6" />
                   {t("landing.hero.watchDemo")}
@@ -161,26 +174,29 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="relative w-full flex justify-center lg:justify-end lg:-mr-[8%] xl:-mr-[10%] min-w-0">
-              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/15 via-transparent to-secondary/10 rounded-[40px] blur-3xl scale-110 opacity-80" />
+            <div ref={splineRef} className="relative w-full flex justify-center lg:justify-end lg:-mr-[8%] xl:-mr-[10%] min-w-0">
+              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/8 dark:from-indigo-500/10 via-transparent to-purple-500/5 rounded-[40px] blur-3xl scale-110 opacity-80" />
               {/* Clip viewport only (no card frame); position hides Spline badge corner */}
-              <div className="relative w-full max-w-[540px] lg:max-w-none lg:min-w-0 h-[min(48vh,380px)] sm:h-[min(54vh,440px)] lg:h-[min(72vh,560px)] xl:h-[min(78vh,620px)] overflow-hidden">
+              <div className="relative w-full max-w-[540px] lg:max-w-none lg:min-w-0 h-[min(48vh,380px)] sm:h-[min(54vh,440px)] lg:h-[min(72vh,560px)] xl:h-[min(78vh,620px)] overflow-hidden will-change-transform" style={{ contain: 'layout style paint' }}>
                 <img
                   src="/images/landing/gradient.png"
                   alt=""
                   aria-hidden
+                  loading="lazy"
                   className="pointer-events-none absolute inset-0 z-0 h-full w-full select-none object-cover object-right-top opacity-90 dark:opacity-50"
                 />
-                <div className="absolute inset-0 z-10 overflow-hidden">
-                  <spline-viewer
-                    url={SPLINE_SCENE_URL}
-                    className="pointer-events-auto absolute block max-w-none
-                      h-[90%] w-[90%] left-[4%] -top-[0%] 
-                      sm:h-[102%] sm:w-[102%] sm:left-[5%] sm:-top-[0%]
-                      lg:h-[106%] lg:w-[106%] lg:left-[7%] lg:-top-[0%]
-                      xl:h-[110%] xl:w-[110%] xl:left-[9%] xl:-top-[0%]"
-                  />
-                </div>
+                {splineVisible && (
+                  <div className="absolute inset-0 z-10 overflow-hidden">
+                    <spline-viewer
+                      url={SPLINE_SCENE_URL}
+                      className="pointer-events-auto absolute block max-w-none
+                        h-[90%] w-[90%] left-[4%] -top-[0%] 
+                        sm:h-[102%] sm:w-[102%] sm:left-[5%] sm:-top-[0%]
+                        lg:h-[106%] lg:w-[106%] lg:left-[7%] lg:-top-[0%]
+                        xl:h-[110%] xl:w-[110%] xl:left-[9%] xl:-top-[0%]"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -188,13 +204,13 @@ export default function LandingPage() {
       </section>
 
       {/* Features Grid */}
-      <section className="py-32 bg-surface-container-low/30 dark:bg-surface-container-low/10">
+      <section className="py-32 bg-slate-50 dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-24 space-y-4">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface">
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
               {t("landing.features.title")}
             </h2>
-            <p className="text-on-surface-variant max-w-2xl mx-auto font-medium">
+            <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-medium">
               {t("landing.features.subtitle")}
             </p>
           </div>
@@ -234,15 +250,15 @@ export default function LandingPage() {
             ].map((feature, i) => (
               <div
                 key={i}
-                className="bg-surface-container-lowest dark:bg-surface-container-low p-10 rounded-[32px] border border-outline-variant/10 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group"
+                className="bg-white dark:bg-slate-800 p-10 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group"
               >
-                <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-primary group-hover:text-white transition-colors">
+                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-indigo-600 group-hover:text-white dark:group-hover:bg-indigo-500 transition-colors">
                   <feature.icon className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold text-on-surface mb-4 tracking-tight">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
                   {feature.title}
                 </h3>
-                <p className="text-on-surface-variant leading-relaxed font-medium">
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                   {feature.desc}
                 </p>
               </div>
@@ -252,36 +268,36 @@ export default function LandingPage() {
       </section>
 
       {/* Social Proof / Stats */}
-      <section className="py-32">
+      <section className="py-32 bg-white dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="bg-on-surface dark:bg-surface-container-high rounded-[48px] p-16 md:p-24 text-surface dark:text-on-surface relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px]"></div>
+          <div className="bg-slate-900 dark:bg-slate-800 rounded-[48px] p-16 md:p-24 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px]"></div>
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
               <div className="space-y-8">
-                <h2 className="text-5xl md:text-6xl font-black tracking-tight leading-[0.95]">
+                <h2 className="text-5xl md:text-6xl font-black tracking-tight leading-[0.95] text-white">
                   {t("landing.social.title")}
                 </h2>
-                <p className="text-xl text-surface/70 dark:text-on-surface/70 font-medium leading-relaxed">
+                <p className="text-xl text-slate-400 font-medium leading-relaxed">
                   {t("landing.social.subtitle")}
                 </p>
                 <div className="flex flex-wrap gap-8 pt-4">
                   <div>
-                    <p className="text-4xl font-black">12M+</p>
-                    <p className="text-xs font-bold uppercase tracking-widest text-surface/50 dark:text-on-surface/50">
+                    <p className="text-4xl font-black text-white">12M+</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
                       {t("landing.social.stats.executed")}
                     </p>
                   </div>
-                  <div className="w-px h-12 bg-surface/10 dark:bg-on-surface/10 hidden sm:block"></div>
+                  <div className="w-px h-12 bg-slate-700 hidden sm:block"></div>
                   <div>
-                    <p className="text-4xl font-black">99.9%</p>
-                    <p className="text-xs font-bold uppercase tracking-widest text-surface/50 dark:text-on-surface/50">
+                    <p className="text-4xl font-black text-white">99.9%</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
                       {t("landing.social.stats.uptime")}
                     </p>
                   </div>
-                  <div className="w-px h-12 bg-surface/10 dark:bg-on-surface/10 hidden sm:block"></div>
+                  <div className="w-px h-12 bg-slate-700 hidden sm:block"></div>
                   <div>
-                    <p className="text-4xl font-black">4.8/5</p>
-                    <p className="text-xs font-bold uppercase tracking-widest text-surface/50 dark:text-on-surface/50">
+                    <p className="text-4xl font-black text-white">4.8/5</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
                       {t("landing.social.stats.rating")}
                     </p>
                   </div>
@@ -295,10 +311,10 @@ export default function LandingPage() {
                 ).map((item, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-4 bg-surface/5 dark:bg-on-surface/5 p-6 rounded-2xl border border-surface/10 dark:border-on-surface/10"
+                    className="flex items-center gap-4 bg-white/5 p-6 rounded-2xl border border-white/10"
                   >
-                    <CheckCircle2 className="w-6 h-6 text-primary" />
-                    <span className="text-lg font-bold">{item}</span>
+                    <CheckCircle2 className="w-6 h-6 text-indigo-400 shrink-0" />
+                    <span className="text-lg font-bold text-white">{item}</span>
                   </div>
                 ))}
               </div>
@@ -308,50 +324,50 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 text-center space-y-12">
-        <h2 className="text-5xl md:text-7xl font-black tracking-tight text-on-surface max-w-4xl mx-auto leading-[0.9]">
+      <section className="py-32 text-center space-y-12 bg-slate-50 dark:bg-slate-900">
+        <h2 className="text-5xl md:text-7xl font-black tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-[0.9]">
           {t("landing.cta.title")}
         </h2>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <Link
             to="/register"
-            className="w-full sm:w-auto px-12 py-6 bg-primary text-on-primary rounded-2xl font-bold text-xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+            className="w-full sm:w-auto px-12 py-6 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-xl shadow-2xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all"
           >
             {t("landing.cta.button")}
           </Link>
-          <button className="w-full sm:w-auto px-12 py-6 bg-surface-container-highest dark:bg-surface-container-high text-on-secondary-container rounded-2xl font-bold text-xl hover:bg-surface-container-high transition-all">
+          <button className="w-full sm:w-auto px-12 py-6 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition-all cursor-pointer">
             {t("landing.cta.contact")}
           </button>
         </div>
-        <p className="text-on-surface-variant font-bold text-sm uppercase tracking-widest">
+        <p className="text-slate-500 dark:text-slate-500 font-bold text-sm uppercase tracking-widest">
           {t("landing.cta.trial")}
         </p>
       </section>
 
       {/* Footer */}
-      <footer className="py-20 border-t border-outline-variant/10">
+      <footer className="py-20 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-10">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-indigo-600 dark:bg-indigo-500 rounded-lg flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-black tracking-tighter text-on-surface">
+            <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">
               TestFlow Intelligence
             </span>
           </div>
-          <p className="text-on-surface-variant text-sm font-medium">
+          <p className="text-slate-500 dark:text-slate-500 text-sm font-medium">
             {t("landing.footer.rights")}
           </p>
           <div className="flex items-center gap-8">
             <a
               href="#"
-              className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+              className="text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {t("landing.footer.privacy")}
             </a>
             <a
               href="#"
-              className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+              className="text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {t("landing.footer.terms")}
             </a>

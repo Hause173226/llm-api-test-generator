@@ -358,8 +358,8 @@
       "title": "Profile Information",
       "subtitle": "Update your personal details and contact information.",
       "name": "Full Legal Name",
-      "email": "Electronic Mail Address",
-      "emailWarning": "Changing your electronic mail address will require a new verification process. You will receive a confirmation link at your new address."
+      "email": "Mail Address",
+      "emailWarning": "Changing your mail address will require a new verification process. You will receive a confirmation link at your new address."
     },
     "security": {
       "title": "Security and Password",
@@ -775,7 +775,7 @@
     "loginDescription": "Access your autonomous testing dashboard and monitor your API health.",
     "registerDescription": "Join the next generation of API testing and automate your entire workflow.",
     "fullName": "Full Legal Name",
-    "email": "Electronic Mail Address",
+    "email": "Mail Address",
     "password": "Password",
     "createPassword": "Create Password",
     "confirmPassword": "Confirm Password",
@@ -799,7 +799,7 @@
     "joinedBy": "Joined by 12k+ developers",
     "passwordMismatch": "Confirm Password must match Create Password.",
     "forgotTitle": "Recover Your Credentials",
-    "forgotSubtitle": "Enter your registered electronic mail address to receive a secure reset link.",
+    "forgotSubtitle": "Enter your registered mail address to receive a secure reset link.",
     "sendReset": "Send Reset Instruction",
     "returnToSignIn": "Return to Sign In Page",
     "instructionsSent": "Instructions Sent",
