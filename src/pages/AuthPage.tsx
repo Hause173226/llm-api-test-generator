@@ -128,22 +128,24 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface dark:bg-surface-container-lowest flex items-center justify-center p-6 relative overflow-hidden transition-colors">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden transition-colors">
       <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
         <button
           onClick={() => setIsDark(!isDark)}
-          className="p-2 hover:bg-surface-container-high dark:hover:bg-surface-container rounded-lg transition-colors text-on-surface-variant hover:text-primary"
+          className="p-2 hover:bg-white/50 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
           title={
             isDark
               ? t("common.switchToLightMode")
               : t("common.switchToDarkMode")
           }
+          aria-label={isDark ? t("common.switchToLightMode") : t("common.switchToDarkMode")}
         >
           {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
         <button
           onClick={toggleLanguage}
-          className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-container rounded-lg transition-colors text-on-surface-variant hover:text-primary font-bold text-xs"
+          className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/50 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs cursor-pointer"
+          aria-label="Toggle language"
         >
           <Languages className="w-4 h-4" />
           <span className="uppercase">
@@ -154,31 +156,31 @@ export default function AuthPage() {
 
       {/* Background Elements */}
       <div
-        className="absolute top-0 left-0 w-full h-full opacity-[0.03] dark:opacity-[0.08] pointer-events-none"
+        className="absolute top-0 left-0 w-full h-full opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
         style={{
           backgroundImage: "radial-gradient(currentColor 1px, transparent 1px)",
           backgroundSize: "32px 32px",
         }}
       ></div>
-      <div className="absolute -top-48 -right-48 w-96 h-96 bg-primary/10 rounded-full blur-[120px]"></div>
-      <div className="absolute -bottom-48 -left-48 w-96 h-96 bg-secondary/10 rounded-full blur-[120px]"></div>
+      <div className="absolute -top-48 -right-48 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px]"></div>
+      <div className="absolute -bottom-48 -left-48 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px]"></div>
 
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 bg-surface-container-lowest dark:bg-surface-container-low rounded-[40px] shadow-[0_50px_100px_rgba(11,28,48,0.1)] border border-outline-variant/10 dark:border-slate-800 overflow-hidden relative z-10">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-slate-900 rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.12)] dark:shadow-[0_50px_100px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-700 overflow-hidden relative z-10">
         {/* Left Side: Form */}
         <div className="p-10 md:p-16 flex flex-col justify-center space-y-8">
           <div className="space-y-3">
             <Link to="/" className="flex items-center gap-2 mb-6 group">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 bg-indigo-600 dark:bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-black tracking-tighter text-on-surface">
+              <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">
                 TestFlow Intelligence
               </span>
             </Link>
-            <h1 className="text-3xl font-black tracking-tight text-on-surface">
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
               {isLogin ? t("auth.welcomeBack") : t("auth.registerAccount")}
             </h1>
-            <p className="text-on-surface-variant font-medium text-sm">
+            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">
               {isLogin
                 ? t("auth.loginDescription")
                 : t("auth.registerDescription")}
@@ -186,7 +188,7 @@ export default function AuthPage() {
           </div>
 
           {error && (
-            <div className="bg-error-container/30 border border-error/20 p-4 rounded-2xl flex items-center gap-3 text-error text-sm font-bold">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-bold">
               <AlertCircle className="w-5 h-5" />
               {error}
             </div>
@@ -196,17 +198,19 @@ export default function AuthPage() {
             <div className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">
+                  <label htmlFor="fullName" className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">
                     {t("auth.fullName")}
                   </label>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors" />
                     <input
+                      id="fullName"
                       required
                       name="fullName"
                       value={formData.fullName}
                       onChange={handleChange}
-                      className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low dark:bg-slate-900 rounded-2xl border-none focus:ring-4 focus:ring-primary-fixed dark:focus:ring-indigo-900/30 transition-all text-on-surface placeholder:text-on-surface-variant/60 font-medium text-sm"
+                      autoComplete="name"
+                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium text-sm"
                       placeholder="Alex Rivera"
                       type="text"
                     />
@@ -215,17 +219,19 @@ export default function AuthPage() {
               )}
 
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">
+                <label htmlFor="email" className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">
                   {t("auth.email")}
                 </label>
                 <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors" />
                   <input
+                    id="email"
                     required
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low dark:bg-slate-900 rounded-2xl border-none focus:ring-4 focus:ring-primary-fixed dark:focus:ring-indigo-900/30 transition-all text-on-surface placeholder:text-on-surface-variant/60 font-medium text-sm"
+                    autoComplete="email"
+                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium text-sm"
                     placeholder="alex@company.com"
                     type="email"
                   />
@@ -234,34 +240,37 @@ export default function AuthPage() {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center ml-1">
-                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                  <label htmlFor="password" className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                     {isLogin ? t("auth.password") : t("auth.createPassword")}
                   </label>
                   {isLogin && (
                     <Link
                       to="/forgot-password"
                       title={t("auth.forgotTitle")}
-                      className="text-[10px] font-bold text-primary uppercase tracking-widest hover:underline"
+                      className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest hover:underline"
                     >
                       {t("auth.forgotPassword")}
                     </Link>
                   )}
                 </div>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors" />
                   <input
+                    id="password"
                     required
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full pl-12 pr-12 py-3.5 bg-surface-container-low dark:bg-slate-900 rounded-2xl border-none focus:ring-4 focus:ring-primary-fixed dark:focus:ring-indigo-900/30 transition-all text-on-surface placeholder:text-on-surface-variant/60 font-medium text-sm"
+                    autoComplete={isLogin ? "current-password" : "new-password"}
+                    className="w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium text-sm"
                     placeholder="••••••••••••"
                     type={showPassword ? "text" : "password"}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer"
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -274,26 +283,27 @@ export default function AuthPage() {
 
               {!isLogin && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">
+                  <label htmlFor="confirmPassword" className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">
                     {t("auth.confirmPassword")}
                   </label>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors" />
                     <input
+                      id="confirmPassword"
                       required
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      className="w-full pl-12 pr-12 py-3.5 bg-surface-container-low dark:bg-slate-900 rounded-2xl border-none focus:ring-4 focus:ring-primary-fixed dark:focus:ring-indigo-900/30 transition-all text-on-surface placeholder:text-on-surface-variant/60 font-medium text-sm"
+                      autoComplete="new-password"
+                      className="w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium text-sm"
                       placeholder="••••••••••••"
                       type={showConfirmPassword ? "text" : "password"}
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer"
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -308,7 +318,7 @@ export default function AuthPage() {
 
             <button
               disabled={isLoading}
-              className="w-full py-4 bg-primary text-on-primary rounded-2xl font-bold text-base shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full py-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-base shadow-2xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isLoading ? (
                 <>
@@ -328,31 +338,31 @@ export default function AuthPage() {
 
           <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-outline-variant/20"></div>
+              <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
             </div>
             <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest">
-              <span className="bg-surface-container-lowest dark:bg-surface-container-low px-4 text-on-surface-variant">
+              <span className="bg-white dark:bg-slate-900 px-4 text-slate-400 dark:text-slate-500">
                 {t("auth.orContinueWith")}
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <button className="flex items-center justify-center gap-3 py-3.5 bg-surface-container-low dark:bg-slate-900 rounded-2xl font-bold text-xs hover:bg-surface-container-high dark:hover:bg-slate-800 transition-colors">
+            <button className="flex items-center justify-center gap-3 py-3.5 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
               <Chrome className="w-5 h-5" />
               Google
             </button>
-            <button className="flex items-center justify-center gap-3 py-3.5 bg-surface-container-low dark:bg-slate-900 rounded-2xl font-bold text-xs hover:bg-surface-container-high dark:hover:bg-slate-800 transition-colors">
+            <button className="flex items-center justify-center gap-3 py-3.5 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
               <Github className="w-5 h-5" />
               GitHub
             </button>
           </div>
 
-          <p className="text-center text-sm font-medium text-on-surface-variant">
+          <p className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
             {isLogin ? t("auth.dontHaveAccount") : t("auth.alreadyHaveAccount")}{" "}
             <Link
               to={isLogin ? "/register" : "/login"}
-              className="text-primary font-bold hover:underline"
+              className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
             >
               {isLogin ? t("auth.registerFree") : t("auth.signIn")}
             </Link>
@@ -360,29 +370,29 @@ export default function AuthPage() {
         </div>
 
         {/* Right Side: Visual/Info */}
-        <div className="hidden lg:block bg-on-surface dark:bg-slate-950 p-16 relative overflow-hidden">
+        <div className="hidden lg:block bg-slate-900 dark:bg-slate-800 p-16 relative overflow-hidden">
           <div
-            className="absolute top-0 right-0 w-full h-full opacity-20 pointer-events-none"
+            className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none"
             style={{
               backgroundImage:
                 "radial-gradient(circle at 2px 2px, #fff 1px, transparent 0)",
               backgroundSize: "40px 40px",
             }}
           ></div>
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/30 rounded-full blur-[100px]"></div>
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500/30 rounded-full blur-[100px]"></div>
 
-          <div className="relative z-10 h-full flex flex-col justify-between text-surface">
+          <div className="relative z-10 h-full flex flex-col justify-between text-white">
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface/10 rounded-full border border-surface/10">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-widest">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/10">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">
                   {t("auth.enterpriseReady")}
                 </span>
               </div>
-              <h2 className="text-4xl font-black tracking-tight leading-[0.95]">
+              <h2 className="text-4xl font-black tracking-tight leading-[0.95] text-white">
                 {t("auth.panelTitle")}
               </h2>
-              <p className="text-lg text-surface/70 font-medium leading-relaxed">
+              <p className="text-lg text-slate-400 font-medium leading-relaxed">
                 {t("auth.panelDescription")}
               </p>
             </div>
@@ -392,22 +402,22 @@ export default function AuthPage() {
                 (item, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-4 bg-surface/5 p-4 rounded-2xl border border-surface/10"
+                    className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10"
                   >
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                    <span className="text-base font-bold">{item}</span>
+                    <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0" />
+                    <span className="text-base font-bold text-white">{item}</span>
                   </div>
                 ),
               )}
             </div>
 
-            <div className="pt-8 border-t border-surface/10">
+            <div className="pt-8 border-t border-white/10">
               <div className="flex items-center gap-4">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
-                      className="w-10 h-10 rounded-full border-2 border-on-surface bg-surface-container overflow-hidden"
+                      className="w-10 h-10 rounded-full border-2 border-slate-700 overflow-hidden"
                     >
                       <img
                         src={`https://i.pravatar.cc/100?img=${i + 10}`}
@@ -416,7 +426,7 @@ export default function AuthPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] font-bold text-surface/60 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   {t("auth.joinedBy")}
                 </p>
               </div>

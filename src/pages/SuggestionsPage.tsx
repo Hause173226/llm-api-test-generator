@@ -153,7 +153,7 @@ export default function SuggestionsPage() {
       setRunDetail(detail);
       setRunDetailsUnavailable(
         (detail?.resultsSource || "").toLowerCase() === "unavailable" &&
-          (detail?.cases?.length || 0) === 0,
+        (detail?.cases?.length || 0) === 0,
       );
       setExplanationsByCaseId({});
     } catch (err) {
@@ -277,7 +277,7 @@ export default function SuggestionsPage() {
                 `/runs${selectedProjectId ? `?projectId=${selectedProjectId}` : ""}`,
               )
             }
-            className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all"
+            className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all cursor-pointer"
           >
             Back to Runs
           </button>
@@ -335,7 +335,7 @@ export default function SuggestionsPage() {
             disabled={
               !selectedRunId || isGeneratingAll || failedCases.length === 0
             }
-            className="px-5 py-2.5 rounded-xl bg-primary dark:bg-indigo-600 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {isGeneratingAll ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -353,7 +353,7 @@ export default function SuggestionsPage() {
               }
             }}
             disabled={!selectedSuiteId || isLoadingRuns || isLoadingDetail}
-            className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-60"
+            className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {isLoadingRuns || isLoadingDetail ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -459,7 +459,7 @@ export default function SuggestionsPage() {
                             generateExplanation(testCase.testCaseId)
                           }
                           disabled={loadingExplanation}
-                          className="px-3 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white text-xs font-semibold flex items-center gap-2 disabled:opacity-60"
+                          className="px-3 py-2 rounded-lg bg-indigo-600 dark:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                         >
                           {loadingExplanation ? (
                             <RefreshCw className="w-3 h-3 animate-spin" />
@@ -471,7 +471,7 @@ export default function SuggestionsPage() {
                         <button
                           onClick={() => getExplanation(testCase.testCaseId)}
                           disabled={loadingExplanation}
-                          className="px-3 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold flex items-center gap-2 disabled:opacity-60"
+                          className="px-3 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                         >
                           <RefreshCw
                             className={cn(

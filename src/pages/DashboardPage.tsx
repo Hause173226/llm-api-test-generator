@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   TrendingUp,
-  Plus,
+  Eye,
   FolderOpen,
   CheckCircle2,
   AlertTriangle,
@@ -31,6 +31,13 @@ export default function DashboardPage() {
   const { metrics, activity, topEndpoints, isLoading, error, refetch } =
     useDashboard(selectedProject?.id);
 
+  // Pass rate color helper
+  const getPassRateColor = (rate: number) => {
+    if (rate >= 80) return "text-emerald-600 dark:text-emerald-400";
+    if (rate >= 50) return "text-amber-500 dark:text-amber-400";
+    return "text-rose-600 dark:text-rose-400";
+  };
+
   // Connect to SignalR for real-time updates
   useEffect(() => {
     signalRService.connect().catch(console.error);
@@ -57,9 +64,9 @@ export default function DashboardPage() {
             <p className="text-on-surface-variant">{error}</p>
             <button
               onClick={refetch}
-              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              className="mt-4 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-colors cursor-pointer"
             >
-              Try Again
+              {t("dashboard.refresh")}
             </button>
           </div>
         </div>
@@ -78,12 +85,12 @@ export default function DashboardPage() {
               {user?.fullName && `, ${user.fullName}`}
             </h1>
             <p className="text-on-surface-variant max-w-lg">
-              Autonomous testing is currently monitoring{" "}
+              {t("dashboard.monitoringDesc")}{" "}
               <span className="text-primary font-semibold">
-                {metrics.activeProjects} active projects
+                {metrics.activeProjects} {t("dashboard.activeProjectsCount", { count: metrics.activeProjects }).replace(/^\d+ /, "")}
               </span>{" "}
-              with an overall pass rate of{" "}
-              <span className="text-emerald-600 font-semibold">
+              {t("dashboard.passRateDesc")}{" "}
+              <span className={cn("font-semibold", getPassRateColor(metrics.passRate))}>
                 {metrics.passRate.toFixed(1)}%
               </span>
               .
@@ -98,14 +105,14 @@ export default function DashboardPage() {
               <RefreshCw
                 className={cn("w-5 h-5", isLoading && "animate-spin")}
               />
-              Refresh
+              {t("dashboard.refresh")}
             </button>
             <button
               onClick={() => navigate("/projects")}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-primary to-primary-container text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
-              <Plus className="w-5 h-5" />
-              New Project
+              <Eye className="w-5 h-5" />
+              {t("dashboard.viewProject")}
             </button>
           </div>
         </section>
@@ -122,63 +129,63 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* Active Projects */}
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
-                    <FolderOpen className="w-5 h-5 text-primary dark:text-indigo-400" />
-                  </div>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl shrink-0">
+                  <FolderOpen className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
-                  {t("dashboard.activeProjects")}
-                </p>
-                <h3 className="text-3xl font-bold text-on-surface">
-                  {metrics.activeProjects}
-                </h3>
+                <div>
+                  <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
+                    {t("dashboard.activeProjects")}
+                  </p>
+                  <h3 className="text-3xl font-bold text-on-surface">
+                    {metrics.activeProjects}
+                  </h3>
+                </div>
               </div>
 
               {/* Total Endpoints */}
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                    <Network className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  </div>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl shrink-0">
+                  <Network className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
-                  {t("dashboard.totalEndpoints")}
-                </p>
-                <h3 className="text-3xl font-bold text-on-surface">
-                  {metrics.totalEndpoints}
-                </h3>
+                <div>
+                  <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
+                    {t("dashboard.totalEndpoints")}
+                  </p>
+                  <h3 className="text-3xl font-bold text-on-surface">
+                    {metrics.totalEndpoints}
+                  </h3>
+                </div>
               </div>
 
               {/* Monthly Test Runs */}
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
-                    <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl shrink-0">
+                  <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
-                  Monthly Test Runs
-                </p>
-                <h3 className="text-3xl font-bold text-on-surface">
-                  {metrics.monthlyTestRuns.toLocaleString()}
-                </h3>
+                <div>
+                  <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
+                    {t("dashboard.monthlyTestRuns")}
+                  </p>
+                  <h3 className="text-3xl font-bold text-on-surface">
+                    {metrics.monthlyTestRuns.toLocaleString()}
+                  </h3>
+                </div>
               </div>
 
               {/* Pass Rate */}
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                <div className="p-3 bg-rose-50 dark:bg-rose-900/30 rounded-xl shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-rose-500 dark:text-rose-400" />
                 </div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
-                  Pass Rate
-                </p>
-                <h3 className="text-3xl font-bold text-on-surface">
-                  {metrics.passRate.toFixed(1)}%
-                </h3>
+                <div>
+                  <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
+                    {t("dashboard.passRate")}
+                  </p>
+                  <h3 className={cn("text-3xl font-bold", getPassRateColor(metrics.passRate))}>
+                    {metrics.passRate.toFixed(1)}%
+                  </h3>
+                </div>
               </div>
             </>
           )}
@@ -233,7 +240,7 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <p className="text-sm text-on-surface-variant text-center py-4">
-                  No recent activity
+                  {t("dashboard.noRecentActivity")}
                 </p>
               )}
             </div>
@@ -243,16 +250,16 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 bg-surface-container-lowest dark:bg-slate-900 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800 overflow-hidden">
             <div className="px-8 py-6">
               <h3 className="text-xl font-bold text-on-surface">
-                Top API Endpoints
+                {t("dashboard.topEndpoints")}
               </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="text-xs uppercase tracking-widest text-on-surface-variant border-b border-slate-50 dark:border-slate-800">
-                    <th className="px-8 py-4 font-bold">Endpoint</th>
-                    <th className="px-8 py-4 font-bold">Method</th>
-                
+                    <th className="px-8 py-4 font-bold">{t("dashboard.endpointCol")}</th>
+                    <th className="px-8 py-4 font-bold">{t("dashboard.methodCol")}</th>
+
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50/50 dark:divide-slate-800/50">
@@ -283,7 +290,7 @@ export default function DashboardPage() {
                             {endpoint.method}
                           </span>
                         </td>
-                 
+
                       </tr>
                     ))
                   ) : (
@@ -292,7 +299,7 @@ export default function DashboardPage() {
                         colSpan={5}
                         className="px-8 py-8 text-center text-on-surface-variant"
                       >
-                        No endpoints found
+                        {t("dashboard.noEndpoints")}
                       </td>
                     </tr>
                   )}

@@ -104,7 +104,7 @@ export default function BillingPage() {
             <p className="text-on-surface-variant">{error}</p>
             <button
               onClick={refetch}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 cursor-pointer"
             >
               Try Again
             </button>
@@ -167,7 +167,7 @@ export default function BillingPage() {
           <button
             onClick={refetch}
             disabled={loading}
-            className="px-5 py-2.5 rounded-xl bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-high dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+            className="px-5 py-2.5 rounded-xl bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-high dark:hover:bg-slate-700 transition-all disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
             Refresh
@@ -345,10 +345,8 @@ export default function BillingPage() {
                       className={cn(
                         "w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2",
                         isCurrentPlan
-                          ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-default"
-                          : isPopular
-                            ? "bg-primary text-white hover:bg-primary-container shadow-lg shadow-primary/20 active:scale-[0.98]"
-                            : "bg-surface-container-high dark:bg-surface-container-highest text-on-surface hover:bg-surface-container-highest active:scale-[0.98]",
+                          ? "bg-indigo-600 dark:bg-indigo-500 text-white opacity-50 cursor-not-allowed hover:bg-indigo-600 dark:hover:bg-indigo-500"
+                          : "bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-400 shadow-lg shadow-indigo-500/20 active:scale-[0.98] cursor-pointer",
                       )}
                     >
                       {isCurrentPlan ? "Current Plan" : "Subscribe"}
@@ -424,7 +422,7 @@ export default function BillingPage() {
                         </span>
                       </td>
                       <td className="px-8 py-5 text-right">
-                        <button className="text-on-surface-variant hover:text-primary transition-colors">
+                        <button className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
                           <CreditCard className="w-4 h-4" />
                         </button>
                       </td>

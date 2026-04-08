@@ -161,7 +161,7 @@ export default function AccountSettingsPage() {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
           >
             {isSaving ? (
               <div className="w-5 h-5 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
@@ -188,7 +188,7 @@ export default function AccountSettingsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all text-left",
+                  "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all text-left cursor-pointer",
                   activeTab === tab.id
                     ? "bg-primary text-on-primary shadow-lg shadow-primary/10"
                     : "text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-low",
@@ -229,7 +229,7 @@ export default function AccountSettingsPage() {
                     </div>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-0 right-0 p-2 bg-primary text-on-primary rounded-full shadow-lg hover:scale-110 transition-transform"
+                      className="absolute bottom-0 right-0 p-2 bg-primary text-on-primary rounded-full shadow-lg hover:scale-110 transition-transform cursor-pointer"
                     >
                       <Camera className="w-4 h-4" />
                     </button>
@@ -251,7 +251,7 @@ export default function AccountSettingsPage() {
                     {profile?.avatarUrl && (
                       <button
                         onClick={handleDeleteAvatar}
-                        className="flex items-center gap-2 text-xs text-error hover:underline"
+                        className="flex items-center gap-2 text-xs text-error hover:underline cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
                         {t("settings.profile.deleteAvatar")}

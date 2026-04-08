@@ -75,7 +75,7 @@ export default function ProjectManagementPage() {
 
   const handleCreateProject = async () => {
     if (!formData.name || !formData.description || !formData.specType) {
-      showErrorToast("Please fill in all required fields");
+      showErrorToast(t("projects.toast.fillRequired"));
       return;
     }
 
@@ -92,7 +92,7 @@ export default function ProjectManagementPage() {
         });
       }
 
-      showSuccessToast("Project created successfully");
+      showSuccessToast(t("projects.toast.created"));
       setIsCreateModalOpen(false);
       setFormData({ name: "", description: "", specType: "", specFile: null });
 
@@ -109,7 +109,7 @@ export default function ProjectManagementPage() {
 
   const handleUpdateProject = async () => {
     if (!selectedProject || !formData.name || !formData.description) {
-      showErrorToast("Please fill in all required fields");
+      showErrorToast(t("projects.toast.fillRequired"));
       return;
     }
 
@@ -119,7 +119,7 @@ export default function ProjectManagementPage() {
         name: formData.name,
         description: formData.description,
       });
-      showSuccessToast("Project updated successfully");
+      showSuccessToast(t("projects.toast.updated"));
       setIsEditModalOpen(false);
       setSelectedProject(null);
       setFormData({ name: "", description: "", specType: "", specFile: null });
@@ -136,7 +136,7 @@ export default function ProjectManagementPage() {
     try {
       setIsSubmitting(true);
       await deleteProject(selectedProject.id);
-      showSuccessToast("Project deleted successfully");
+      showSuccessToast(t("projects.toast.deleted"));
       setIsDeleteModalOpen(false);
       setSelectedProject(null);
     } catch (err) {
@@ -162,14 +162,8 @@ export default function ProjectManagementPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const getSpecIcon = (specType: string) => {
-    if (specType?.toLowerCase().includes("openapi")) return FileText;
-    if (specType?.toLowerCase().includes("graphql")) return Network;
-    return Database;
-  };
-
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Never";
+    if (!dateString) return t("projects.never");
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -177,9 +171,9 @@ export default function ProjectManagementPage() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) return `${diffMins} Minutes Ago`;
-    if (diffHours < 24) return `${diffHours} Hours Ago`;
-    if (diffDays < 30) return `${diffDays} Days Ago`;
+    if (diffMins < 60) return t("projects.minutesAgo", { count: diffMins });
+    if (diffHours < 24) return t("projects.hoursAgo", { count: diffHours });
+    if (diffDays < 30) return t("projects.daysAgo", { count: diffDays });
     return date.toLocaleDateString();
   };
 
@@ -192,9 +186,9 @@ export default function ProjectManagementPage() {
             <p className="text-on-surface-variant mb-4">{error}</p>
             <button
               onClick={refetch}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-colors cursor-pointer"
             >
-              Try Again
+              {t("projects.actions.tryAgain")}
             </button>
           </div>
         </div>
@@ -236,7 +230,7 @@ export default function ProjectManagementPage() {
             </button>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all active:scale-95"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all active:scale-95 cursor-pointer"
             >
               <PlusCircle className="w-5 h-5" />
               {t("projects.createButton")}
@@ -280,14 +274,15 @@ export default function ProjectManagementPage() {
                       colSpan={5}
                       className="px-8 py-12 text-center text-on-surface-variant"
                     >
-                      No projects found
+                      {t("projects.noProjects")}
                     </td>
                   </tr>
                 ) : (
                   projects.map((project) => {
-                    const specLabel =
-                      project.specType || project.type || "No specification";
-                    const SpecIcon = getSpecIcon(specLabel);
+                    const p = project as any;
+                    const specLabel = p.activeSpecName || t("projects.noSpecification");
+                    const isActive = p.status?.toLowerCase() === 'active';
+                    const SpecIcon = p.activeSpecName ? FileText : Database;
                     return (
                       <tr
                         key={project.id}
@@ -315,27 +310,27 @@ export default function ProjectManagementPage() {
                         </td>
                         <td className="px-8 py-8">
                           <span className="text-on-surface-variant text-sm">
-                            {formatDate(project.lastRunAt)}
+                            {formatDate(p.updatedDateTime || p.lastRunAt)}
                           </span>
                         </td>
                         <td className="px-8 py-8">
                           <span
                             className={cn(
                               "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter",
-                              project.isActive
+                              isActive
                                 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400"
                                 : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400",
                             )}
                           >
-                            {project.isActive ? "Active" : "Archived"}
+                            {p.status || "Unknown"}
                           </span>
                         </td>
                         <td className="px-8 py-8 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => openEditModal(project)}
-                              className="p-2 text-on-surface-variant hover:text-primary dark:hover:text-indigo-400 hover:bg-primary-fixed/30 dark:hover:bg-indigo-900/30 rounded-lg transition-all"
-                              title="Edit Project"
+                              className="p-2 text-on-surface-variant hover:text-primary dark:hover:text-indigo-400 hover:bg-primary-fixed/30 dark:hover:bg-indigo-900/30 rounded-lg transition-all cursor-pointer"
+                              title={t("projects.actions.edit")}
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -344,15 +339,15 @@ export default function ProjectManagementPage() {
                                 handleSelectProject(project);
                                 navigate(`/project/${project.id}`);
                               }}
-                              className="p-2 text-on-surface-variant hover:text-primary dark:hover:text-indigo-400 hover:bg-primary-fixed/30 dark:hover:bg-indigo-900/30 rounded-lg transition-all"
-                              title="View Details"
+                              className="p-2 text-on-surface-variant hover:text-primary dark:hover:text-indigo-400 hover:bg-primary-fixed/30 dark:hover:bg-indigo-900/30 rounded-lg transition-all cursor-pointer"
+                              title={t("projects.actions.view")}
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => openDeleteModal(project)}
-                              className="p-2 text-on-surface-variant hover:text-error dark:hover:text-rose-400 hover:bg-error-container/30 dark:hover:bg-rose-900/30 rounded-lg transition-all"
-                              title="Delete Project"
+                              className="p-2 text-on-surface-variant hover:text-error dark:hover:text-rose-400 hover:bg-error-container/30 dark:hover:bg-rose-900/30 rounded-lg transition-all cursor-pointer"
+                              title={t("projects.actions.delete")}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -369,10 +364,12 @@ export default function ProjectManagementPage() {
           {/* Pagination Footer */}
           <footer className="px-8 py-6 border-t border-outline-variant/20 dark:border-slate-800 flex items-center justify-between bg-surface-container-low dark:bg-slate-900">
             <p className="text-sm font-medium text-on-surface-variant">
-              Showing{" "}
-              {projects.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-              {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
-              projects
+              {t("projects.showing")}{" "}
+              {projects.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}{" "}
+              {t("projects.to")}{" "}
+              {Math.min(currentPage * pageSize, totalCount)}{" "}
+              {t("projects.of")} {totalCount}{" "}
+              {t("projects.projects")}
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -383,14 +380,14 @@ export default function ProjectManagementPage() {
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="text-sm font-medium text-on-surface">
-                Page {currentPage} of {totalPages || 1}
+                {t("projects.page")} {currentPage} / {totalPages || 1}
               </span>
               <button
                 onClick={() =>
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
                 disabled={currentPage >= totalPages || isLoading}
-                className="px-6 py-2 bg-primary dark:bg-indigo-600 text-on-primary font-semibold rounded-lg hover:bg-primary-container dark:hover:bg-indigo-500 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -432,7 +429,7 @@ export default function ProjectManagementPage() {
             <button
               onClick={handleCreateProject}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("projects.modal.confirm")}
@@ -502,7 +499,7 @@ export default function ProjectManagementPage() {
             specFile: null,
           });
         }}
-        title="Edit Project"
+        title={t("projects.modal.editTitle")}
         footer={
           <>
             <button
@@ -519,15 +516,15 @@ export default function ProjectManagementPage() {
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("projects.actions.cancel")}
             </button>
             <button
               onClick={handleUpdateProject}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Update
+              {t("projects.actions.update")}
             </button>
           </>
         }
@@ -535,7 +532,7 @@ export default function ProjectManagementPage() {
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Project Name
+              {t("projects.modal.nameEditLabel")}
             </label>
             <input
               type="text"
@@ -548,7 +545,7 @@ export default function ProjectManagementPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Description
+              {t("projects.modal.descEditLabel")}
             </label>
             <textarea
               rows={3}
@@ -569,7 +566,7 @@ export default function ProjectManagementPage() {
           setIsDeleteModalOpen(false);
           setSelectedProject(null);
         }}
-        title="Delete Project"
+        title={t("projects.modal.deleteTitle")}
         footer={
           <>
             <button
@@ -580,27 +577,26 @@ export default function ProjectManagementPage() {
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("projects.actions.cancel")}
             </button>
             <button
               onClick={handleDeleteProject}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-error text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-red-600 dark:bg-red-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t("projects.actions.delete")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-on-surface">
-            Are you sure you want to delete{" "}
+            {t("projects.deleteConfirm")}{" "}
             <span className="font-bold">{selectedProject?.name}</span>?
           </p>
           <p className="text-sm text-on-surface-variant">
-            This action cannot be undone. All test suites, test cases, and
-            results associated with this project will be permanently deleted.
+            {t("projects.deleteWarning")}
           </p>
         </div>
       </Modal>

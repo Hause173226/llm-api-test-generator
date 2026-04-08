@@ -197,7 +197,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
             <button
               onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
               className={cn(
-                "w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors",
+                "w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-pointer",
                 selectedProject && "pr-10",
               )}
             >
@@ -243,7 +243,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
                       className={cn(
                         "w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-b border-slate-100 dark:border-slate-700 last:border-0",
                         selectedProject?.id === project.id &&
-                          "bg-indigo-50 dark:bg-indigo-900/20",
+                        "bg-indigo-50 dark:bg-indigo-900/20",
                       )}
                     >
                       <div className="text-sm font-medium text-slate-700 dark:text-slate-300">

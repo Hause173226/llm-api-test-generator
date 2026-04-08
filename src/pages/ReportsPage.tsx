@@ -224,7 +224,7 @@ export default function ReportsPage() {
             </select>
             <button
               onClick={() => setShowGenerateModal(true)}
-              className="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
               <Plus className="w-5 h-5" />
               {t("reports.generate")}
@@ -451,7 +451,7 @@ export default function ReportsPage() {
                     <button
                       onClick={() => handleExport(report.id, "pdf")}
                       disabled={exportingId === report.id}
-                      className="px-4 py-2 bg-primary text-on-primary rounded-xl font-bold text-sm hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2"
+                      className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold text-sm hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                     >
                       {exportingId === report.id ? (
                         <div className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
@@ -462,7 +462,7 @@ export default function ReportsPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(report.id)}
-                      className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors"
+                      className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4 text-error" />
                     </button>
@@ -566,13 +566,13 @@ export default function ReportsPage() {
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="flex-1 px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:scale-[1.02] transition-all disabled:opacity-50"
+                  className="flex-1 px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:scale-[1.02] transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {generating ? t("common.generating") : t("common.generate")}
                 </button>
                 <button
                   onClick={() => setShowGenerateModal(false)}
-                  className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all"
+                  className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all cursor-pointer"
                 >
                   {t("common.cancel")}
                 </button>

@@ -35,18 +35,10 @@ export function useProjects(pageNumber: number = 1, pageSize: number = 10, searc
       setIsLoading(true);
       setError(null);
       const response = await projectService.getProjects(pageNumber, pageSize, searchTerm);
-      // Filter out archived projects - check both isActive and status fields
-      const activeProjects = response.items.filter(p => {
-        const project = p as Project;
-        // Check isActive boolean field
-        if (project.isActive === false) return false;
-        // Check status string field (if exists)
-        if ((project as any).status?.toLowerCase() === 'archived') return false;
-        return true;
-      });
-      setProjects(activeProjects);
-      setTotalCount(activeProjects.length);
-      setTotalPages(Math.ceil(activeProjects.length / pageSize));
+      const allProjects = response.items as Project[];
+      setProjects(allProjects);
+      setTotalCount(response.totalCount || allProjects.length);
+      setTotalPages(response.totalPages || Math.ceil(allProjects.length / pageSize));
     } catch (err) {
       const errorMessage = handleError(err);
       setError(errorMessage);
