@@ -30,9 +30,11 @@ import {
 } from "../utils/errorHandler";
 import specificationService from "../services/specificationService";
 import endpointService from "../services/endpointService";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 export default function TestSuitesPage() {
   const { t } = useTranslation();
+  const breadcrumbs = useProjectBreadcrumbs(t("testSuites.title"));
   const { projectId: urlProjectId } = useParams<{ projectId: string }>();
   const { selectedProject } = useProject();
   const navigate = useNavigate();
@@ -306,7 +308,7 @@ export default function TestSuitesPage() {
 
   if (error) {
     return (
-      <MainLayout title={t("testSuites.title")}>
+      <MainLayout title={t("testSuites.title")} breadcrumbs={breadcrumbs}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
@@ -325,14 +327,14 @@ export default function TestSuitesPage() {
 
   if (!projectId) {
     return (
-      <MainLayout title={t("testSuites.title")}>
+      <MainLayout title={t("testSuites.title")} breadcrumbs={breadcrumbs}>
         <NoProjectSelected />
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title={t("testSuites.title")}>
+    <MainLayout title={t("testSuites.title")} breadcrumbs={breadcrumbs}>
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-1">

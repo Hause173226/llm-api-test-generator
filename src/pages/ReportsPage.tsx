@@ -23,9 +23,11 @@ import { useReports } from "../hooks/useReports";
 import { useProjects } from "../hooks/useProjects";
 import toast from "react-hot-toast";
 import Skeleton from "../components/ui/Skeleton";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 export default function ReportsPage() {
   const { t } = useTranslation();
+  const breadcrumbs = useProjectBreadcrumbs(t("reports.title"));
   const { projects } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [dateRange, setDateRange] = useState<number>(30);
@@ -176,7 +178,7 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <MainLayout title={t("reports.title")}>
+      <MainLayout title={t("reports.title")} breadcrumbs={breadcrumbs}>
         <div className="space-y-8">
           <Skeleton className="h-10 w-64" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -192,7 +194,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <MainLayout title={t("reports.title")}>
+    <MainLayout title={t("reports.title")} breadcrumbs={breadcrumbs}>
       <div className="space-y-10">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-1">

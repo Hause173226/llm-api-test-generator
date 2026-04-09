@@ -9,8 +9,6 @@ import {
   FileText,
   FileCode,
   FlaskConical,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Trash2,
   Loader2,
@@ -28,9 +26,11 @@ import {
   showErrorToast,
   showSuccessToast,
 } from "../utils/errorHandler";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 export default function SpecificationPage() {
   const { t } = useTranslation();
+  const breadcrumbs = useProjectBreadcrumbs(t("specifications.title"));
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { selectedProject } = useProject();
@@ -202,7 +202,7 @@ export default function SpecificationPage() {
 
   if (error) {
     return (
-      <MainLayout title={t("specifications.title")}>
+      <MainLayout title={t("specifications.title")} breadcrumbs={breadcrumbs}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
@@ -221,7 +221,7 @@ export default function SpecificationPage() {
 
   if (!projectId) {
     return (
-      <MainLayout title={t("specifications.title")}>
+      <MainLayout title={t("specifications.title")} breadcrumbs={breadcrumbs}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
@@ -244,28 +244,8 @@ export default function SpecificationPage() {
   }
 
   return (
-    <MainLayout title={t("specifications.title")}>
+    <MainLayout title={t("specifications.title")} breadcrumbs={breadcrumbs}>
       <div className="space-y-12">
-        {/* Breadcrumb */}
-        {project && (
-          <div className="flex items-center gap-2 text-sm">
-            <Link
-              to="/projects"
-              className="text-primary hover:underline font-medium"
-            >
-              {t("common.projectManagement")}
-            </Link>
-            <ChevronRight className="w-4 h-4 text-on-surface-variant" />
-            <Link
-              to={`/projects/${projectId}`}
-              className="text-primary hover:underline font-medium"
-            >
-              {project.name}
-            </Link>
-            <ChevronRight className="w-4 h-4 text-on-surface-variant" />
-            <span className="text-on-surface-variant">{t("specifications.title")}</span>
-          </div>
-        )}
 
         <header className="mb-16">
           <h1 className="text-4xl font-bold tracking-tight text-on-surface mt-10 mb-2">
@@ -438,9 +418,16 @@ export default function SpecificationPage() {
                               <SpecIcon className="w-5 h-5" />
                             </div>
                             <div>
-                              <div className="font-semibold text-on-surface text-sm">
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/endpoints?projectId=${projectId}&specId=${spec.id}`,
+                                  )
+                                }
+                                className="font-semibold text-on-surface text-sm hover:text-primary dark:hover:text-indigo-400 hover:underline cursor-pointer transition-colors text-left"
+                              >
                                 {spec.name}
-                              </div>
+                              </button>
                               <div className="text-[10px] text-on-surface-variant">
                                 {t("specifications.modified")} {modifiedDate ? formatDate(modifiedDate) : "—"}
                               </div>

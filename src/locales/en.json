@@ -683,15 +683,50 @@
     "back": "Go Back to Dashboard",
     "metrics": {
       "totalSuites": "Total Test Suites",
-      "successRate": "Last Execution Success Rate",
+      "successRate": "Last Run",
       "endpoints": "Associated API Endpoints"
     },
     "dataSource": {
       "title": "Data Source Configuration",
       "format": "Configuration Format",
       "fileName": "Source File Name",
-      "uploadedAt": "Last Uploaded Date",
-      "update": "Update Data Source Configuration"
+      "uploadedAt": "Uploaded At",
+      "update": "Update Data Source Configuration",
+      "totalSpecs": "Total Specifications",
+      "activeSpec": "Active Specification",
+      "latestSpec": "Latest Specification",
+      "type": "Type",
+      "sourceType": "Source Type",
+      "parseStatus": "Parse Status",
+      "parseStatusMap": {
+        "success": "Success",
+        "failed": "Failed",
+        "processing": "Processing",
+        "pending": "Pending"
+      },
+      "totalEndpoints": "Total Endpoints",
+      "lastUpdated": "Last Updated",
+      "noSpec": "No Specification Uploaded",
+      "noSpecDesc": "Upload an API specification file (OpenAPI, Swagger, Postman) to get started.",
+      "uploadSpec": "Upload Specification",
+      "manageSpecs": "Manage Specifications",
+      "viewSpecs": "View Specifications"
+    },
+    "testSuites": {
+      "title": "Test Suites",
+      "createSuite": "Create Suite",
+      "noSpec": "No API Specification Yet",
+      "noSpecDesc": "You need to upload an API specification before creating test suites.",
+      "parsing": "Specification is Being Parsed",
+      "parsingDesc": "Your specification is being parsed automatically. This may take a few moments.",
+      "parseFailed": "Specification Parse Failed",
+      "parseFailedDesc": "The uploaded specification could not be parsed. Please review the file and upload again.",
+      "noEndpoints": "No Endpoints Detected",
+      "noEndpointsDesc": "Parsing completed but no endpoints were detected. Please verify the file content.",
+      "empty": "No test suites yet",
+      "emptyDesc": "Create your first test suite to start testing this project",
+      "createFirst": "Create First Test Suite",
+      "manage": "Manage Test Suites"
     },
     "timeline": {
       "title": "Activity Timeline"

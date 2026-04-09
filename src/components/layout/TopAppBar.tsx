@@ -9,21 +9,29 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
 
+export interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
 interface TopAppBarProps {
   title: string;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
+  breadcrumbs?: BreadcrumbItem[];
 }
 
 export default function TopAppBar({
   title,
   isSidebarCollapsed,
   onToggleSidebar,
+  breadcrumbs,
 }: TopAppBarProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -90,9 +98,43 @@ export default function TopAppBar({
         >
           <Menu className="w-5 h-5 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform" />
         </button>
-        <h2 className="font-sans text-lg font-semibold tracking-tight text-on-surface">
-          {title}
-        </h2>
+        {breadcrumbs && breadcrumbs.length > 0 ? (
+          <nav className="flex items-center gap-1.5">
+            {breadcrumbs.map((crumb, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+              return (
+                <React.Fragment key={index}>
+                  {index > 0 && (
+                    <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                  )}
+                  {crumb.href && !isLast ? (
+                    <button
+                      onClick={() => navigate(crumb.href!)}
+                      className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                    >
+                      {crumb.label}
+                    </button>
+                  ) : (
+                    <span
+                      className={cn(
+                        "text-sm font-semibold tracking-tight",
+                        isLast
+                          ? "text-on-surface"
+                          : "text-slate-500 dark:text-slate-400",
+                      )}
+                    >
+                      {crumb.label}
+                    </span>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </nav>
+        ) : (
+          <h2 className="font-sans text-lg font-semibold tracking-tight text-on-surface">
+            {title}
+          </h2>
+        )}
       </div>
       <div className="flex items-center gap-4 sm:gap-6">
         <div className="hidden md:flex items-center gap-2 bg-primary-fixed/30 px-3 py-1.5 rounded-full">

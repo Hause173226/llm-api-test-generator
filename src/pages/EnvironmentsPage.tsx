@@ -25,9 +25,11 @@ import { useProject } from "../contexts/ProjectContext";
 import NoProjectSelected from "../components/common/NoProjectSelected";
 import toast from "react-hot-toast";
 import Skeleton from "../components/ui/Skeleton";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 export default function EnvironmentsPage() {
   const { t } = useTranslation();
+  const breadcrumbs = useProjectBreadcrumbs(t("environments.title"));
   const { selectedProject } = useProject();
   const projectId = selectedProject?.id || "";
 
@@ -229,7 +231,7 @@ export default function EnvironmentsPage() {
 
   if (loading) {
     return (
-      <MainLayout title={t("environments.title")}>
+      <MainLayout title={t("environments.title")} breadcrumbs={breadcrumbs}>
         <div className="space-y-8">
           <Skeleton className="h-10 w-64" />
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -243,14 +245,14 @@ export default function EnvironmentsPage() {
 
   if (!projectId) {
     return (
-      <MainLayout title={t("environments.title")}>
+      <MainLayout title={t("environments.title")} breadcrumbs={breadcrumbs}>
         <NoProjectSelected />
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title={t("environments.title")}>
+    <MainLayout title={t("environments.title")} breadcrumbs={breadcrumbs}>
       <div className="space-y-12">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-2">
