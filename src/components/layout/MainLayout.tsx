@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
-import TopAppBar from './TopAppBar';
+import TopAppBar, { BreadcrumbItem } from './TopAppBar';
 import { cn } from '../../lib/utils';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   title: string;
+  breadcrumbs?: BreadcrumbItem[];
 }
 
-export default function MainLayout({ children, title }: MainLayoutProps) {
+export default function MainLayout({ children, title, breadcrumbs }: MainLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -29,6 +30,7 @@ export default function MainLayout({ children, title }: MainLayoutProps) {
             title={title}
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={toggleSidebar}
+            breadcrumbs={breadcrumbs}
           />
           <div className="p-8 pb-24">
             <div className="max-w-7xl mx-auto">

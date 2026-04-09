@@ -16,6 +16,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from "../utils/errorHandler";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 interface FailureExplanationModel {
   testSuiteId: string;
@@ -28,6 +29,7 @@ interface FailureExplanationModel {
 
 export default function SuggestionsPage() {
   const { t } = useTranslation();
+  const breadcrumbs = useProjectBreadcrumbs(t("suggestions.title"));
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { selectedProject } = useProject();
@@ -261,7 +263,7 @@ export default function SuggestionsPage() {
   };
 
   return (
-    <MainLayout title={t("suggestions.pageTitle")}>
+    <MainLayout title={t("suggestions.pageTitle")} breadcrumbs={breadcrumbs}>
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-2">

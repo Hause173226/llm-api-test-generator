@@ -1,14 +1,35 @@
 import { apiService } from './apiService';
 
 // Types
+export interface ActiveSpecSummary {
+  endpointCount?: number;
+  parseStatus?: string;
+  sourceType?: string;
+  updatedDateTime?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   description: string;
   specificationDocument: string;
   lastExecutionDate?: string;
+  lastRunAt?: string;
   status: 'active' | 'archived';
   type: 'REST' | 'GraphQL' | 'gRPC';
+  // Overview fields from BE
+  totalSpecifications?: number;
+  activeSpecName?: string;
+  activeSpecSummary?: ActiveSpecSummary;
+  // Fallback fields
+  endpointCount?: number;
+  parseStatus?: string;
+  sourceType?: string;
+  updatedDateTime?: string;
+  totalEndpoints?: number;
+  TotalEndpoints?: number;
+  totalTestSuites?: number;
+  totalSuites?: number;
 }
 
 export interface ProjectListResponse {

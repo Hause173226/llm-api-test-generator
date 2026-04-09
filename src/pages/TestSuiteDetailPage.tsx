@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   GripVertical,
@@ -31,6 +32,7 @@ import testSuiteLlmSuggestionService, {
   SuiteSuggestionQuery,
 } from "../services/testSuiteLlmSuggestionService";
 import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 type ProposalApiResponse = {
   proposalId?: string;
@@ -71,6 +73,7 @@ export default function TestSuiteDetailPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { selectedProject } = useProject();
+  const { t } = useTranslation();
 
   const projectId = selectedProject?.id || searchParams.get("projectId") || "";
   const tabFromQuery = (searchParams.get("tab") || "details").toLowerCase();
@@ -112,6 +115,11 @@ export default function TestSuiteDetailPage() {
   const hasGeneratedSuggestions = allSuggestions.length > 0;
   const isStep1Completed = !hasChanges && hasGeneratedSuggestions;
 
+  const breadcrumbs = useProjectBreadcrumbs(
+    t("testSuites.title"),
+    suite?.name || undefined,
+  );
+
   const generationStorageKey = suiteId
     ? `suite-generation-runs:${suiteId}`
     : "suite-generation-runs:unknown";
@@ -127,11 +135,11 @@ export default function TestSuiteDetailPage() {
       const parsed = raw ? JSON.parse(raw) : [];
       const items = Array.isArray(parsed)
         ? parsed.filter(
-            (item) =>
-              item &&
-              typeof item.id === "string" &&
-              typeof item.generatedAt === "string",
-          )
+          (item) =>
+            item &&
+            typeof item.id === "string" &&
+            typeof item.generatedAt === "string",
+        )
         : [];
 
       setGenerationRuns(
@@ -481,8 +489,8 @@ export default function TestSuiteDetailPage() {
               suggestionErr?.status ?? suggestionErr?.response?.status;
             const message = String(
               suggestionErr?.message ||
-                suggestionErr?.response?.data?.message ||
-                "",
+              suggestionErr?.response?.data?.message ||
+              "",
             );
             const alreadyHasPendingSuggestions =
               statusCode === 400 &&
@@ -858,37 +866,37 @@ export default function TestSuiteDetailPage() {
     helper: string;
     isDone: boolean;
   }> = [
-    {
-      id: "details",
-      title: "Step 1: Configure",
-      helper: hasChanges
-        ? "Endpoint changes pending approval"
-        : suggestions.length > 0
-          ? "Order approved and AI preview is available"
-          : "Approve order to generate AI preview",
-      isDone: isStep1Completed,
-    },
-    {
-      id: "suggestions",
-      title: "Step 2: AI Review",
-      helper:
-        reviewableSuggestions.length === 0
-          ? "Generate AI suggestions"
-          : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
-      isDone:
-        reviewableSuggestions.length > 0 &&
-        pendingSuggestionsCount === 0 &&
-        approvedSuggestionsCount > 0,
-    },
-    {
-      id: "testcases",
-      title: "Step 3: Test Cases",
-      helper: hasAnyTestCases
-        ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
-        : "No test cases yet",
-      isDone: hasAnyTestCases,
-    },
-  ];
+      {
+        id: "details",
+        title: "Step 1: Configure",
+        helper: hasChanges
+          ? "Endpoint changes pending approval"
+          : suggestions.length > 0
+            ? "Order approved and AI preview is available"
+            : "Approve order to generate AI preview",
+        isDone: isStep1Completed,
+      },
+      {
+        id: "suggestions",
+        title: "Step 2: AI Review",
+        helper:
+          reviewableSuggestions.length === 0
+            ? "Generate AI suggestions"
+            : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
+        isDone:
+          reviewableSuggestions.length > 0 &&
+          pendingSuggestionsCount === 0 &&
+          approvedSuggestionsCount > 0,
+      },
+      {
+        id: "testcases",
+        title: "Step 3: Test Cases",
+        helper: hasAnyTestCases
+          ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
+          : "No test cases yet",
+        isDone: hasAnyTestCases,
+      },
+    ];
 
   const activeStepIndex = steps.findIndex((step) => step.id === activeTab);
 
@@ -1147,7 +1155,7 @@ export default function TestSuiteDetailPage() {
 
   if (isLoading) {
     return (
-      <MainLayout title="Test Suite Details">
+      <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -1157,7 +1165,7 @@ export default function TestSuiteDetailPage() {
 
   if (error) {
     return (
-      <MainLayout title="Test Suite Details">
+      <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
@@ -1176,7 +1184,7 @@ export default function TestSuiteDetailPage() {
 
   if (!suite) {
     return (
-      <MainLayout title="Test Suite Details">
+      <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
         <div className="text-center py-20">
           <p className="text-on-surface-variant">Test suite not found</p>
         </div>
@@ -1185,7 +1193,7 @@ export default function TestSuiteDetailPage() {
   }
 
   return (
-    <MainLayout title={suite.name}>
+    <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
       <div className="space-y-8">
         {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">

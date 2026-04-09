@@ -683,15 +683,50 @@
     "back": "Quay lại Bảng điều khiển",
     "metrics": {
       "totalSuites": "Tổng số Bộ Kiểm thử",
-      "successRate": "Tỷ lệ Thành công Lần thực thi Cuối",
+      "successRate": "Lần chạy cuối",
       "endpoints": "Các Điểm cuối API Liên kết"
     },
     "dataSource": {
       "title": "Cấu hình Nguồn Dữ liệu",
       "format": "Định dạng Cấu hình",
       "fileName": "Tên Tệp Nguồn",
-      "uploadedAt": "Ngày Tải lên Cuối",
-      "update": "Cập nhật Cấu hình Nguồn Dữ liệu"
+      "uploadedAt": "Ngày tải lên",
+      "update": "Cập nhật Cấu hình Nguồn Dữ liệu",
+      "totalSpecs": "Tổng số Đặc tả",
+      "activeSpec": "Đặc tả đang hoạt động",
+      "latestSpec": "Đặc tả Mới nhất",
+      "type": "Loại",
+      "sourceType": "Loại nguồn",
+      "parseStatus": "Trạng thái Phân tích",
+      "parseStatusMap": {
+        "success": "Thành công",
+        "failed": "Thất bại",
+        "processing": "Đang phân tích",
+        "pending": "Chờ xử lý"
+      },
+      "totalEndpoints": "Tổng số Điểm cuối",
+      "lastUpdated": "Cập nhật gần nhất",
+      "noSpec": "Chưa tải lên Đặc tả",
+      "noSpecDesc": "Tải lên tệp đặc tả API (OpenAPI, Swagger, Postman) để bắt đầu.",
+      "uploadSpec": "Tải lên Đặc tả",
+      "manageSpecs": "Quản lý Đặc tả",
+      "viewSpecs": "Xem Đặc tả"
+    },
+    "testSuites": {
+      "title": "Bộ Kiểm thử",
+      "createSuite": "Tạo Bộ kiểm thử",
+      "noSpec": "Chưa có Đặc tả API",
+      "noSpecDesc": "Bạn cần tải lên đặc tả API trước khi tạo bộ kiểm thử.",
+      "parsing": "Đặc tả đang được Phân tích",
+      "parsingDesc": "Đặc tả của bạn đang được phân tích tự động. Quá trình này có thể mất vài giây.",
+      "parseFailed": "Phân tích Đặc tả Thất bại",
+      "parseFailedDesc": "Không thể phân tích đặc tả đã tải lên. Vui lòng kiểm tra lại tệp và tải lên lại.",
+      "noEndpoints": "Không phát hiện Điểm cuối nào",
+      "noEndpointsDesc": "Phân tích hoàn tất nhưng không phát hiện điểm cuối nào. Vui lòng kiểm tra nội dung tệp.",
+      "empty": "Chưa có bộ kiểm thử nào",
+      "emptyDesc": "Tạo bộ kiểm thử đầu tiên để bắt đầu kiểm thử dự án này",
+      "createFirst": "Tạo Bộ kiểm thử Đầu tiên",
+      "manage": "Quản lý Bộ Kiểm thử"
     },
     "timeline": {
       "title": "Dòng thời gian Hoạt động"

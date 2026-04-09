@@ -31,11 +31,16 @@ import {
   showSuccessToast,
 } from "../utils/errorHandler";
 import { testSuiteService } from "../services/testSuiteService";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export default function EndpointsPage() {
   const { t } = useTranslation();
+  const breadcrumbs = useProjectBreadcrumbs(
+    t("common.apiSpecifications"),
+    t("common.endpointsManagement"),
+  );
   const { projectId: urlProjectId } = useParams<{ projectId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -49,7 +54,9 @@ export default function EndpointsPage() {
   const [selectedMethod, setSelectedMethod] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [specifications, setSpecifications] = useState<any[]>([]);
-  const [selectedSpecId, setSelectedSpecId] = useState<string>("");
+  const [selectedSpecId, setSelectedSpecId] = useState<string>(
+    searchParams.get("specId") || "",
+  );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
@@ -319,7 +326,7 @@ export default function EndpointsPage() {
 
   if (error) {
     return (
-      <MainLayout title={t("endpoints.title")}>
+      <MainLayout title={t("endpoints.title")} breadcrumbs={breadcrumbs}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
@@ -338,14 +345,14 @@ export default function EndpointsPage() {
 
   if (!projectId) {
     return (
-      <MainLayout title={t("endpoints.title")}>
+      <MainLayout title={t("endpoints.title")} breadcrumbs={breadcrumbs}>
         <NoProjectSelected />
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title={t("endpoints.title")}>
+    <MainLayout title={t("endpoints.title")} breadcrumbs={breadcrumbs}>
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-1">
