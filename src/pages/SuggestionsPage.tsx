@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
+import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { cn } from "../lib/utils";
 import { useProject } from "../contexts/ProjectContext";
 import { useTestSuites } from "../hooks/useTestSuites";
@@ -14,6 +15,7 @@ import testRunService, {
 import {
   handleError,
   showErrorToast,
+  showInfoToast,
   showSuccessToast,
 } from "../utils/errorHandler";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
@@ -214,7 +216,9 @@ export default function SuggestionsPage() {
   };
 
   const normalizeStatus = (status?: string) =>
-    String(status || "").trim().toLowerCase();
+    String(status || "")
+      .trim()
+      .toLowerCase();
 
   const failedCaseIds = new Set(
     (runDetail?.cases || [])
@@ -270,6 +274,42 @@ export default function SuggestionsPage() {
     (testCase) => normalizeStatus(testCase.status) === "failed",
   );
 
+  const getCheckStateClass = (value?: boolean) => {
+    if (value === true) {
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+    }
+    if (value === false) {
+      return "bg-rose-500/10 text-rose-700 dark:text-rose-300";
+    }
+    return "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant";
+  };
+
+  const getCheckStateLabel = (value?: boolean) => {
+    if (value === true) {
+      return t("suggestions.checkPassed");
+    }
+    if (value === false) {
+      return t("suggestions.checkFailed");
+    }
+    return t("suggestions.checkNotAvailable");
+  };
+
+  const getExecutionModeLabel = (testType?: string) => {
+    const key = String(testType || "")
+      .trim()
+      .toLowerCase();
+    if (key === "happypath" || key === "happy_path" || key === "happy-path") {
+      return t("suggestions.modeHappyPath");
+    }
+    if (key === "boundary") {
+      return t("suggestions.modeBoundary");
+    }
+    if (key === "negative") {
+      return t("suggestions.modeNegative");
+    }
+    return t("suggestions.modeUnknown");
+  };
+
   const generateAllFailed = async () => {
     if (failedCases.length === 0) {
       showErrorToast(t("suggestions.toast.noFailed"));
@@ -308,6 +348,12 @@ export default function SuggestionsPage() {
 
   return (
     <MainLayout title={t("suggestions.pageTitle")} breadcrumbs={breadcrumbs}>
+      <StepTransitionOverlay
+        isVisible={isGeneratingAll}
+        title={t("overlay.suggestions.generatingTitle")}
+        message={t("overlay.suggestions.generatingMessage")}
+        stepLabel={t("overlay.suggestions.generatingStep")}
+      />
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-2">
@@ -462,6 +508,35 @@ export default function SuggestionsPage() {
               {t("suggestions.runDetails", { count: runDetail.cases.length })}
             </h2>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800">
+                <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant">
+                  {t("suggestions.runExecutedAt")}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-on-surface break-all">
+                  {runDetail.executedAt
+                    ? new Date(runDetail.executedAt).toLocaleString()
+                    : t("suggestions.none")}
+                </p>
+              </div>
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800">
+                <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant">
+                  {t("suggestions.runEnvironment")}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-on-surface break-all">
+                  {runDetail.resolvedEnvironmentName || t("suggestions.none")}
+                </p>
+              </div>
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800">
+                <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant">
+                  {t("suggestions.runSource")}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-on-surface break-all">
+                  {runDetail.resultsSource || t("suggestions.none")}
+                </p>
+              </div>
+            </div>
+
             {runDetailsUnavailable && (
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
                 {t("suggestions.cacheUnavailable")}
@@ -484,6 +559,9 @@ export default function SuggestionsPage() {
                       {testCase.status || "Unknown"}
                     </span>
                     <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                      {testCase.testType || t("suggestions.none")}
+                    </span>
+                    <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
                       HTTP: {testCase.httpStatusCode ?? "N/A"}
                     </span>
                   </div>
@@ -494,6 +572,286 @@ export default function SuggestionsPage() {
                   <p className="text-on-surface-variant mt-1">
                     {testCase.resolvedUrl || t("suggestions.noUrl")}
                   </p>
+
+                  <details className="mt-4 rounded-xl border border-outline-variant/10 dark:border-slate-700 bg-surface-container-low dark:bg-slate-800/70">
+                    <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-on-surface">
+                      {t("suggestions.executionDetails")}
+                    </summary>
+                    <div className="px-4 pb-4 pt-1 space-y-4 text-sm">
+                      <div className="rounded-lg px-3 py-2 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
+                        <span className="font-semibold">
+                          {t("suggestions.executionMode")}:
+                        </span>{" "}
+                        {getExecutionModeLabel(testCase.testType)}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                          <span className="font-semibold">
+                            {t("suggestions.orderIndex")}:{" "}
+                          </span>
+                          <span>{testCase.orderIndex}</span>
+                        </div>
+                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                          <span className="font-semibold">
+                            {t("suggestions.httpMethod")}:{" "}
+                          </span>
+                          <span>
+                            {testCase.httpMethod || t("suggestions.none")}
+                          </span>
+                        </div>
+                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                          <span className="font-semibold">
+                            {t("suggestions.bodyType")}:{" "}
+                          </span>
+                          <span>
+                            {testCase.bodyType || t("suggestions.none")}
+                          </span>
+                        </div>
+                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                          <span className="font-semibold">
+                            {t("suggestions.timeoutMs")}:{" "}
+                          </span>
+                          <span>
+                            {typeof testCase.timeoutMs === "number"
+                              ? `${testCase.timeoutMs} ms`
+                              : t("suggestions.none")}
+                          </span>
+                        </div>
+                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant lg:col-span-2">
+                          <span className="font-semibold">
+                            {t("suggestions.expectedStatus")}:{" "}
+                          </span>
+                          <span>
+                            {testCase.expectedStatus || t("suggestions.none")}
+                          </span>
+                        </div>
+                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                          <span className="font-semibold">
+                            {t("suggestions.durationMs")}:{" "}
+                          </span>
+                          <span>{testCase.durationMs} ms</span>
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg px-3 py-2",
+                            getCheckStateClass(testCase.statusCodeMatched),
+                          )}
+                        >
+                          <span className="font-semibold">
+                            {t("suggestions.statusCodeCheck")}:
+                          </span>
+                          <span>
+                            {getCheckStateLabel(testCase.statusCodeMatched)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg px-3 py-2",
+                            getCheckStateClass(testCase.schemaMatched),
+                          )}
+                        >
+                          <span className="font-semibold">
+                            {t("suggestions.schemaCheck")}:
+                          </span>
+                          <span>
+                            {getCheckStateLabel(testCase.schemaMatched)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg px-3 py-2",
+                            getCheckStateClass(testCase.headerChecksPassed),
+                          )}
+                        >
+                          <span className="font-semibold">
+                            {t("suggestions.headerChecks")}:
+                          </span>
+                          <span>
+                            {getCheckStateLabel(testCase.headerChecksPassed)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg px-3 py-2",
+                            getCheckStateClass(testCase.bodyContainsPassed),
+                          )}
+                        >
+                          <span className="font-semibold">
+                            {t("suggestions.bodyContainsCheck")}:
+                          </span>
+                          <span>
+                            {getCheckStateLabel(testCase.bodyContainsPassed)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg px-3 py-2",
+                            getCheckStateClass(testCase.bodyNotContainsPassed),
+                          )}
+                        >
+                          <span className="font-semibold">
+                            {t("suggestions.bodyNotContainsCheck")}:
+                          </span>
+                          <span>
+                            {getCheckStateLabel(testCase.bodyNotContainsPassed)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg px-3 py-2",
+                            getCheckStateClass(testCase.jsonPathChecksPassed),
+                          )}
+                        >
+                          <span className="font-semibold">
+                            {t("suggestions.jsonPathCheck")}:
+                          </span>
+                          <span>
+                            {getCheckStateLabel(testCase.jsonPathChecksPassed)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg px-3 py-2",
+                            getCheckStateClass(testCase.responseTimePassed),
+                          )}
+                        >
+                          <span className="font-semibold">
+                            {t("suggestions.responseTimeCheck")}:
+                          </span>
+                          <span>
+                            {getCheckStateLabel(testCase.responseTimePassed)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                            {t("suggestions.queryParams")}
+                          </p>
+                          <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                            {Object.keys(testCase.queryParams || {}).length > 0
+                              ? JSON.stringify(testCase.queryParams, null, 2)
+                              : t("suggestions.none")}
+                          </pre>
+                        </div>
+
+                        <div>
+                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                            {t("suggestions.dependencies")}
+                          </p>
+                          <p className="text-on-surface break-all">
+                            {testCase.dependencyIds.length > 0
+                              ? testCase.dependencyIds.join(", ")
+                              : t("suggestions.none")}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                            {t("suggestions.skippedByDependencies")}
+                          </p>
+                          <p className="text-on-surface break-all">
+                            {testCase.skippedBecauseDependencyIds.length > 0
+                              ? testCase.skippedBecauseDependencyIds.join(", ")
+                              : t("suggestions.none")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                            {t("suggestions.requestHeaders")}
+                          </p>
+                          <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                            {Object.keys(testCase.requestHeaders || {}).length >
+                            0
+                              ? JSON.stringify(testCase.requestHeaders, null, 2)
+                              : t("suggestions.none")}
+                          </pre>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                            {t("suggestions.responseHeaders")}
+                          </p>
+                          <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                            {Object.keys(testCase.responseHeaders || {})
+                              .length > 0
+                              ? JSON.stringify(
+                                  testCase.responseHeaders,
+                                  null,
+                                  2,
+                                )
+                              : t("suggestions.none")}
+                          </pre>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                          {t("suggestions.requestBody")}
+                        </p>
+                        <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                          {testCase.requestBody || t("suggestions.none")}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                          {t("suggestions.responseBodyPreview")}
+                        </p>
+                        <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                          {testCase.responseBodyPreview ||
+                            t("suggestions.none")}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                          {t("suggestions.extractedVariables")}
+                        </p>
+                        <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                          {Object.keys(testCase.extractedVariables || {})
+                            .length > 0
+                            ? JSON.stringify(
+                                testCase.extractedVariables,
+                                null,
+                                2,
+                              )
+                            : t("suggestions.none")}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                          {t("suggestions.failureReasons")}
+                        </p>
+                        {testCase.failureReasons.length > 0 ? (
+                          <div className="space-y-2">
+                            {testCase.failureReasons.map((reason, index) => (
+                              <div
+                                key={`${testCase.testCaseId}-reason-${index}`}
+                                className="rounded-lg px-3 py-2 bg-rose-500/5 border border-rose-500/20"
+                              >
+                                <p className="text-xs text-rose-700 dark:text-rose-300 font-semibold">
+                                  {reason.code || "VALIDATION"}
+                                </p>
+                                <p className="text-xs text-on-surface mt-1">
+                                  {reason.message || t("suggestions.none")}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-on-surface-variant">
+                            {t("suggestions.noFailureReason")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </details>
 
                   {isFailed && (
                     <div className="mt-4 pt-4 border-t border-outline-variant/10 dark:border-slate-700 space-y-3">

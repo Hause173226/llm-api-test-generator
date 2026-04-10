@@ -6,12 +6,15 @@ export interface Specification {
   name: string;
   description?: string;
   type: 'openapi' | 'postman' | 'graphql';
+  sourceType?: 'openapi' | 'postman' | 'graphql' | string;
   content: string;
   version?: string;
   parseStatus: 'Pending' | 'Success' | 'Failed';
   parsedAt?: string;
   createdAt: string;
   updatedAt: string;
+  createdDateTime?: string;
+  updatedDateTime?: string;
 }
 
 export interface SpecificationUploadRequest {

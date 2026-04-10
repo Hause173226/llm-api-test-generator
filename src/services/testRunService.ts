@@ -37,11 +37,18 @@ export interface TestCaseRunDetail {
   testCaseId: string;
   endpointId?: string;
   name: string;
+  testType?: string;
   orderIndex: number;
   status: string;
   httpStatusCode?: number;
   durationMs: number;
   resolvedUrl?: string;
+  httpMethod?: string;
+  bodyType?: string;
+  requestBody?: string;
+  queryParams?: Record<string, string>;
+  timeoutMs?: number;
+  expectedStatus?: string;
   requestHeaders: Record<string, string>;
   responseHeaders: Record<string, string>;
   responseBodyPreview?: string;
@@ -118,11 +125,18 @@ interface BackendTestCaseRunDetail {
   testCaseId?: string;
   endpointId?: string;
   name?: string;
+  testType?: string;
   orderIndex?: number;
   status?: string;
   httpStatusCode?: number;
   durationMs?: number;
   resolvedUrl?: string;
+  httpMethod?: string;
+  bodyType?: string;
+  requestBody?: string;
+  queryParams?: Record<string, string>;
+  timeoutMs?: number;
+  expectedStatus?: string;
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
   responseBodyPreview?: string;
@@ -183,11 +197,18 @@ const mapBackendTestCaseRunDetail = (
   testCaseId: (detail as any).testCaseId || (detail as any).TestCaseId || '',
   endpointId: (detail as any).endpointId || (detail as any).EndpointId,
   name: (detail as any).name || (detail as any).Name || 'Unnamed test case',
+  testType: (detail as any).testType || (detail as any).TestType,
   orderIndex: (detail as any).orderIndex ?? (detail as any).OrderIndex ?? 0,
   status: (detail as any).status || (detail as any).Status || 'Unknown',
   httpStatusCode: (detail as any).httpStatusCode ?? (detail as any).HttpStatusCode,
   durationMs: (detail as any).durationMs ?? (detail as any).DurationMs ?? 0,
   resolvedUrl: (detail as any).resolvedUrl || (detail as any).ResolvedUrl,
+  httpMethod: (detail as any).httpMethod || (detail as any).HttpMethod,
+  bodyType: (detail as any).bodyType || (detail as any).BodyType,
+  requestBody: (detail as any).requestBody || (detail as any).RequestBody,
+  queryParams: (detail as any).queryParams || (detail as any).QueryParams || {},
+  timeoutMs: (detail as any).timeoutMs ?? (detail as any).TimeoutMs,
+  expectedStatus: (detail as any).expectedStatus || (detail as any).ExpectedStatus,
   requestHeaders: (detail as any).requestHeaders || (detail as any).RequestHeaders || {},
   responseHeaders: (detail as any).responseHeaders || (detail as any).ResponseHeaders || {},
   responseBodyPreview: (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,

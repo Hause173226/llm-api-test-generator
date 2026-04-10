@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
+import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { cn } from "../lib/utils";
 import { useTestSuites } from "../hooks/useTestSuites";
 import { useProject } from "../contexts/ProjectContext";
@@ -30,6 +31,7 @@ import {
 } from "../utils/errorHandler";
 import specificationService from "../services/specificationService";
 import endpointService from "../services/endpointService";
+import { testSuiteService } from "../services/testSuiteService";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 export default function TestSuitesPage() {
@@ -57,6 +59,12 @@ export default function TestSuitesPage() {
   const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(false);
   const [specifications, setSpecifications] = useState<any[]>([]);
   const [isLoadingSpecs, setIsLoadingSpecs] = useState(false);
+  const [overlayState, setOverlayState] = useState({
+    isVisible: false,
+    title: "",
+    message: "",
+    stepLabel: "",
+  });
 
   // Load specifications when modal opens
   useEffect(() => {
@@ -175,6 +183,12 @@ export default function TestSuitesPage() {
 
     try {
       setIsSubmitting(true);
+      setOverlayState({
+        isVisible: true,
+        title: t("overlay.testSuites.createTitle"),
+        message: t("overlay.testSuites.createMessage"),
+        stepLabel: t("overlay.testSuites.createStep"),
+      });
       const newSuite = await createTestSuite({
         name: formData.name,
         description: formData.description,
@@ -229,6 +243,12 @@ export default function TestSuitesPage() {
       handleError(err);
     } finally {
       setIsSubmitting(false);
+      setOverlayState({
+        isVisible: false,
+        title: "",
+        message: "",
+        stepLabel: "",
+      });
     }
   };
 
@@ -237,6 +257,12 @@ export default function TestSuitesPage() {
 
     try {
       setIsSubmitting(true);
+      setOverlayState({
+        isVisible: true,
+        title: t("overlay.testSuites.deleteTitle"),
+        message: t("overlay.testSuites.deleteMessage"),
+        stepLabel: t("overlay.testSuites.deleteStep"),
+      });
       await deleteTestSuite(
         projectId,
         selectedSuite.id,
@@ -249,16 +275,35 @@ export default function TestSuitesPage() {
       handleError(err);
     } finally {
       setIsSubmitting(false);
+      setOverlayState({
+        isVisible: false,
+        title: "",
+        message: "",
+        stepLabel: "",
+      });
     }
   };
 
   const handleClone = async (suiteId: string, suiteName: string) => {
     try {
+      setOverlayState({
+        isVisible: true,
+        title: t("overlay.testSuites.cloneTitle"),
+        message: t("overlay.testSuites.cloneMessage"),
+        stepLabel: t("overlay.testSuites.cloneStep"),
+      });
       const newName = `${suiteName} (Copy)`;
       await cloneTestSuite(suiteId, newName);
       showSuccessToast(t("testSuites.toast.cloned"));
     } catch (err) {
       handleError(err);
+    } finally {
+      setOverlayState({
+        isVisible: false,
+        title: "",
+        message: "",
+        stepLabel: "",
+      });
     }
   };
 
@@ -335,6 +380,12 @@ export default function TestSuitesPage() {
 
   return (
     <MainLayout title={t("testSuites.title")} breadcrumbs={breadcrumbs}>
+      <StepTransitionOverlay
+        isVisible={overlayState.isVisible}
+        title={overlayState.title}
+        message={overlayState.message}
+        stepLabel={overlayState.stepLabel}
+      />
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-1">
@@ -407,7 +458,9 @@ export default function TestSuitesPage() {
           <div className="bg-surface-container-lowest dark:bg-slate-900 p-12 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-center">
             <Layers className="w-16 h-16 text-on-surface-variant mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-on-surface mb-2">
-              {filterSpecId ? t("testSuites.noSuitesFiltered") : t("testSuites.noSuites")}
+              {filterSpecId
+                ? t("testSuites.noSuitesFiltered")
+                : t("testSuites.noSuites")}
             </h3>
             <p className="text-on-surface-variant mb-6">
               {filterSpecId
@@ -469,7 +522,8 @@ export default function TestSuitesPage() {
                           </p>
                         )}
                       <p className="text-xs text-on-surface-variant font-medium mt-1">
-                        {t("testSuites.createdAt")} {formatDate(suite.createdDateTime)}
+                        {t("testSuites.createdAt")}{" "}
+                        {formatDate(suite.createdDateTime)}
                       </p>
                     </div>
 
@@ -627,7 +681,9 @@ export default function TestSuitesPage() {
                 }}
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface"
               >
-                <option value="">{t("testSuites.modal.specPlaceholder")}</option>
+                <option value="">
+                  {t("testSuites.modal.specPlaceholder")}
+                </option>
                 {specifications.map((spec) => (
                   <option key={spec.id} value={spec.id}>
                     {spec.name}
@@ -642,7 +698,9 @@ export default function TestSuitesPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                  {t("testSuites.modal.selectEndpoints", { count: selectedEndpointIds.length })}
+                  {t("testSuites.modal.selectEndpoints", {
+                    count: selectedEndpointIds.length,
+                  })}
                 </label>
                 {availableEndpoints.length > 0 && (
                   <button
@@ -671,7 +729,7 @@ export default function TestSuitesPage() {
                       className={cn(
                         "flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-b-0",
                         selectedEndpointIds.includes(endpoint.id) &&
-                        "bg-primary/5 dark:bg-indigo-900/20",
+                          "bg-primary/5 dark:bg-indigo-900/20",
                       )}
                     >
                       <div className="relative flex items-center justify-center">
@@ -686,15 +744,15 @@ export default function TestSuitesPage() {
                         className={cn(
                           "px-2 py-1 rounded text-xs font-bold min-w-[60px] text-center",
                           endpoint.method === "GET" &&
-                          "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
+                            "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
                           endpoint.method === "POST" &&
-                          "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+                            "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
                           endpoint.method === "PUT" &&
-                          "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+                            "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
                           endpoint.method === "DELETE" &&
-                          "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
+                            "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
                           endpoint.method === "PATCH" &&
-                          "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
+                            "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
                         )}
                       >
                         {endpoint.method}

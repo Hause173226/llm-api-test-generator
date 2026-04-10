@@ -35,6 +35,7 @@ import testSuiteLlmSuggestionService, {
 } from "../services/testSuiteLlmSuggestionService";
 import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
+import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 
 type ProposalApiResponse = {
   proposalId?: string;
@@ -69,6 +70,13 @@ type GenerationItem = {
   supersededSuggestions: number;
   testCaseIds: string[];
   suggestionIds: string[];
+};
+
+type TransitionOverlayState = {
+  isVisible: boolean;
+  title: string;
+  message: string;
+  stepLabel?: string;
 };
 
 export default function TestSuiteDetailPage() {
@@ -116,6 +124,12 @@ export default function TestSuiteDetailPage() {
   const [expandedGenerationItemId, setExpandedGenerationItemId] = useState<
     string | null
   >(null);
+  const [transitionOverlay, setTransitionOverlay] =
+    useState<TransitionOverlayState>({
+      isVisible: false,
+      title: "",
+      message: "",
+    });
   const hasAnyTestCases =
     Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
   const hasGeneratedSuggestions = allSuggestions.length > 0;
@@ -548,10 +562,27 @@ export default function TestSuiteDetailPage() {
   };
 
   const handleApproveOrderAndGoToReview = async () => {
+    setTransitionOverlay({
+      isVisible: true,
+      title: "Preparing AI Review",
+      message:
+        "Saving endpoint order, approving workflow, and regenerating AI preview.",
+      stepLabel: "Step 1 -> Step 2",
+    });
+
     const success = await handleSaveOrder();
+
+    await new Promise((resolve) => setTimeout(resolve, 850));
+
     if (success) {
       changeTab("suggestions");
     }
+
+    setTransitionOverlay({
+      isVisible: false,
+      title: "",
+      message: "",
+    });
   };
 
   const handleRunTests = () => {
@@ -701,7 +732,22 @@ export default function TestSuiteDetailPage() {
       nextTestCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
 
     if (!hasPending && hasCases) {
-      changeTab("testcases");
+      setTransitionOverlay({
+        isVisible: true,
+        title: "Moving to Test Cases",
+        message:
+          "All suggestions are reviewed. Preparing Step 3 with updated test cases.",
+        stepLabel: "Step 2 -> Step 3",
+      });
+
+      window.setTimeout(() => {
+        changeTab("testcases");
+        setTransitionOverlay({
+          isVisible: false,
+          title: "",
+          message: "",
+        });
+      }, 950);
     }
   };
 
@@ -1250,6 +1296,12 @@ export default function TestSuiteDetailPage() {
       title={suite?.name || "Test Suite Details"}
       breadcrumbs={breadcrumbs}
     >
+      <StepTransitionOverlay
+        isVisible={transitionOverlay.isVisible}
+        title={transitionOverlay.title}
+        message={transitionOverlay.message}
+        stepLabel={transitionOverlay.stepLabel}
+      />
       <div className="space-y-8">
         {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">

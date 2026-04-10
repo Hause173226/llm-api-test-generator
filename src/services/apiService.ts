@@ -14,6 +14,27 @@ class ApiService {
     this.inFlightGetRequests = new Map();
   }
 
+  private getCanonicalGetKey(fullUrl: string): string {
+    try {
+      const parsedUrl = new URL(fullUrl);
+      const sortedParams = new URLSearchParams(parsedUrl.search);
+      const sortedEntries = Array.from(sortedParams.entries()).sort((a, b) => {
+        if (a[0] === b[0]) {
+          return a[1].localeCompare(b[1]);
+        }
+        return a[0].localeCompare(b[0]);
+      });
+
+      const canonicalParams = new URLSearchParams();
+      sortedEntries.forEach(([key, value]) => canonicalParams.append(key, value));
+      const canonicalQuery = canonicalParams.toString();
+
+      return `${parsedUrl.origin}${parsedUrl.pathname}${canonicalQuery ? `?${canonicalQuery}` : ''}`;
+    } catch {
+      return fullUrl;
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: ApiRequestOptions = {}
@@ -135,18 +156,19 @@ class ApiService {
     };
 
     if (method === 'GET') {
-      const inFlightRequest = this.inFlightGetRequests.get(url);
+      const requestKey = this.getCanonicalGetKey(url);
+      const inFlightRequest = this.inFlightGetRequests.get(requestKey);
       if (inFlightRequest) {
         return inFlightRequest as Promise<T>;
       }
 
       const requestPromise = performRequest();
-      this.inFlightGetRequests.set(url, requestPromise as Promise<unknown>);
+      this.inFlightGetRequests.set(requestKey, requestPromise as Promise<unknown>);
 
       try {
         return await requestPromise;
       } finally {
-        this.inFlightGetRequests.delete(url);
+        this.inFlightGetRequests.delete(requestKey);
       }
     }
 

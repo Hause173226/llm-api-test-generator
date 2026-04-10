@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckSquare, Loader2, Play, Square } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
+import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { useProject } from "../contexts/ProjectContext";
-import environmentService, { Environment } from "../services/environmentService";
+import environmentService, {
+  Environment,
+} from "../services/environmentService";
 import endpointService, { Endpoint } from "../services/endpointService";
 import testCaseService, { TestCase } from "../services/testCaseService";
 import testRunService from "../services/testRunService";
@@ -19,12 +23,15 @@ const toEndpointKey = (
   endpointById: Record<string, Endpoint>,
 ) => {
   const endpoint = endpointById[testCase.endpointId];
-  const method = String(testCase.method || endpoint?.method || "GET").toUpperCase();
+  const method = String(
+    testCase.method || endpoint?.method || "GET",
+  ).toUpperCase();
   const path = testCase.path || endpoint?.path || "(unknown path)";
   return `${method} ${path}`.trim();
 };
 
 export default function GenerationRunExecutePage() {
+  const { t } = useTranslation();
   const { suiteId } = useParams<{ suiteId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -47,7 +54,9 @@ export default function GenerationRunExecutePage() {
   const [suiteName, setSuiteName] = useState("");
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [selectedTestCaseIds, setSelectedTestCaseIds] = useState<string[]>([]);
-  const [endpointById, setEndpointById] = useState<Record<string, Endpoint>>({});
+  const [endpointById, setEndpointById] = useState<Record<string, Endpoint>>(
+    {},
+  );
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -158,22 +167,27 @@ export default function GenerationRunExecutePage() {
       try {
         setIsLoading(true);
 
-        const suiteDetail = await testSuiteService.getTestSuiteDetail(projectId, suiteId);
-        const apiSpecId = suiteDetail?.apiSpecId || suiteDetail?.ApiSpecId;
+        const suiteDetail = await testSuiteService.getTestSuiteDetail(
+          projectId,
+          suiteId,
+        );
+        const apiSpecId = suiteDetail?.apiSpecId;
 
-        const [suiteCasesResponse, envs, endpointsResponse] = await Promise.all([
-          testCaseService.getTestCases(suiteId, 1, 500),
-          environmentService.getEnvironments(projectId),
-          apiSpecId
-            ? endpointService.getEndpoints(projectId, apiSpecId, 1, 1000)
-            : Promise.resolve({
-                items: [] as Endpoint[],
-                totalCount: 0,
-                pageNumber: 1,
-                pageSize: 0,
-                totalPages: 1,
-              }),
-        ]);
+        const [suiteCasesResponse, envs, endpointsResponse] = await Promise.all(
+          [
+            testCaseService.getTestCases(suiteId, 1, 500),
+            environmentService.getEnvironments(projectId),
+            apiSpecId
+              ? endpointService.getEndpoints(projectId, apiSpecId, 1, 1000)
+              : Promise.resolve({
+                  items: [] as Endpoint[],
+                  totalCount: 0,
+                  pageNumber: 1,
+                  pageSize: 0,
+                  totalPages: 1,
+                }),
+          ],
+        );
 
         setSuiteName(suiteDetail?.name || "");
         setEnvironments(envs);
@@ -207,6 +221,24 @@ export default function GenerationRunExecutePage() {
 
   return (
     <MainLayout title="Run Generated Test Cases">
+      <StepTransitionOverlay
+        isVisible={isLoading || isSubmitting}
+        title={
+          isSubmitting
+            ? t("overlay.execute.startRunTitle")
+            : t("overlay.execute.preparingTitle")
+        }
+        message={
+          isSubmitting
+            ? t("overlay.execute.startRunMessage")
+            : t("overlay.execute.preparingMessage")
+        }
+        stepLabel={
+          isSubmitting
+            ? t("overlay.execute.startRunStep")
+            : t("overlay.execute.preparingStep")
+        }
+      />
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <button
@@ -218,7 +250,10 @@ export default function GenerationRunExecutePage() {
             Back to Suite
           </button>
           <div className="text-sm text-on-surface-variant">
-            Suite: <span className="font-semibold text-on-surface">{suiteName || "N/A"}</span>
+            Suite:{" "}
+            <span className="font-semibold text-on-surface">
+              {suiteName || "N/A"}
+            </span>
           </div>
         </div>
 
@@ -240,7 +275,9 @@ export default function GenerationRunExecutePage() {
               Endpoints In This Item
             </p>
             {endpointList.length === 0 ? (
-              <p className="text-sm text-on-surface-variant">No endpoint detected yet.</p>
+              <p className="text-sm text-on-surface-variant">
+                No endpoint detected yet.
+              </p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {endpointList.map((item) => (
@@ -260,13 +297,17 @@ export default function GenerationRunExecutePage() {
               <p className="text-xs uppercase tracking-widest font-bold text-on-surface-variant mb-2">
                 Total Test Cases In This Item
               </p>
-              <p className="text-3xl font-black text-on-surface">{testCases.length}</p>
+              <p className="text-3xl font-black text-on-surface">
+                {testCases.length}
+              </p>
             </div>
             <div className="rounded-xl border border-outline-variant/10 dark:border-slate-800 p-4 bg-surface-container-low dark:bg-slate-800/40">
               <p className="text-xs uppercase tracking-widest font-bold text-on-surface-variant mb-2">
                 Selected To Execute
               </p>
-              <p className="text-3xl font-black text-on-surface">{selectedTestCaseIds.length}</p>
+              <p className="text-3xl font-black text-on-surface">
+                {selectedTestCaseIds.length}
+              </p>
             </div>
           </div>
 
@@ -401,7 +442,9 @@ export default function GenerationRunExecutePage() {
               type="button"
               onClick={() => handleExecute("all")}
               disabled={
-                isSubmitting || environments.length === 0 || testCases.length === 0
+                isSubmitting ||
+                environments.length === 0 ||
+                testCases.length === 0
               }
               className="px-5 py-2.5 rounded-lg bg-surface-container-high dark:bg-slate-700 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-50"
             >
