@@ -7,7 +7,7 @@
     "testSuites": "Test Suites",
     "testExecutionOrderGate": "Test Execution Order Gate",
     "testCaseStudio": "Test Case Studio",
-    "llmSuggestions": "LLM Suggestions",
+    "llmSuggestions": "Execute Details",
     "environments": "Environments",
     "testExecutionRuns": "Test Execution Runs",
     "failureExplanation": "Failure Explanation",
@@ -789,10 +789,10 @@
     }
   },
   "suggestions": {
-    "title": "LLM Suggestions",
+    "title": "Execute Details",
     "subtitle": "Our autonomous intelligence engine has analyzed your API specifications and test results to identify critical coverage gaps and optimizations.",
     "reAnalyze": "Re-Analyze Suite",
-    "pageTitle": "Execute Analysis",
+    "pageTitle": "Execute Details",
     "backToRuns": "Back to Runs",
     "suiteLabel": "Test Suite",
     "suitePlaceholder": "Select test suite...",

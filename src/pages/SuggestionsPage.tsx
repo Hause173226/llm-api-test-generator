@@ -157,7 +157,7 @@ export default function SuggestionsPage() {
       setRunDetail(detail);
       setRunDetailsUnavailable(
         (detail?.resultsSource || "").toLowerCase() === "unavailable" &&
-        (detail?.cases?.length || 0) === 0,
+          (detail?.cases?.length || 0) === 0,
       );
       setExplanationsByCaseId({});
     } catch (err) {
@@ -213,9 +213,28 @@ export default function SuggestionsPage() {
     }
   };
 
-  const generateExplanation = async (testCaseId: string) => {
+  const normalizeStatus = (status?: string) =>
+    String(status || "").trim().toLowerCase();
+
+  const failedCaseIds = new Set(
+    (runDetail?.cases || [])
+      .filter((testCase) => normalizeStatus(testCase.status) === "failed")
+      .map((testCase) => testCase.testCaseId),
+  );
+
+  const generateExplanation = async (
+    testCaseId: string,
+    options?: { suppressToast?: boolean },
+  ): Promise<boolean> => {
     if (!selectedSuiteId || !selectedRunId) {
       return;
+    }
+
+    if (!failedCaseIds.has(testCaseId)) {
+      if (!options?.suppressToast) {
+        showInfoToast("Chi tao giai thich cho test case FAILED.");
+      }
+      return false;
     }
 
     try {
@@ -230,9 +249,15 @@ export default function SuggestionsPage() {
         ...prev,
         [testCaseId]: data || null,
       }));
-      showSuccessToast(t("suggestions.toast.explanationGenerated"));
+      if (!options?.suppressToast) {
+        showSuccessToast(t("suggestions.toast.explanationGenerated"));
+      }
+      return true;
     } catch (err) {
-      handleError(err);
+      if (!options?.suppressToast) {
+        handleError(err);
+      }
+      return false;
     } finally {
       setLoadingExplanationByCaseId((prev) => ({
         ...prev,
@@ -242,7 +267,7 @@ export default function SuggestionsPage() {
   };
 
   const failedCases = (runDetail?.cases || []).filter(
-    (testCase) => (testCase.status || "").toLowerCase() === "failed",
+    (testCase) => normalizeStatus(testCase.status) === "failed",
   );
 
   const generateAllFailed = async () => {
@@ -253,10 +278,29 @@ export default function SuggestionsPage() {
 
     try {
       setIsGeneratingAll(true);
+      let succeeded = 0;
+      let failed = 0;
+
       for (const failedCase of failedCases) {
-        await generateExplanation(failedCase.testCaseId);
+        const ok = await generateExplanation(failedCase.testCaseId, {
+          suppressToast: true,
+        });
+        if (ok) {
+          succeeded += 1;
+        } else {
+          failed += 1;
+        }
       }
-      showSuccessToast(t("suggestions.toast.allGenerated"));
+
+      if (failed === 0) {
+        showSuccessToast(t("suggestions.toast.allGenerated"));
+      } else if (succeeded === 0) {
+        showErrorToast(`Failure Explanations: All ${failed} requests failed`);
+      } else {
+        showErrorToast(
+          `Failure Explanations: ${succeeded} succeeded, ${failed} failed`,
+        );
+      }
     } finally {
       setIsGeneratingAll(false);
     }
@@ -428,8 +472,7 @@ export default function SuggestionsPage() {
               const explanation = explanationsByCaseId[testCase.testCaseId];
               const loadingExplanation =
                 !!loadingExplanationByCaseId[testCase.testCaseId];
-              const isFailed =
-                (testCase.status || "").toLowerCase() === "failed";
+              const isFailed = normalizeStatus(testCase.status) === "failed";
 
               return (
                 <div
@@ -487,7 +530,8 @@ export default function SuggestionsPage() {
                       {explanation && (
                         <div className="text-sm text-on-surface-variant space-y-2">
                           <p className="text-on-surface font-semibold">
-                            {explanation.summaryVi || t("suggestions.noSummary")}
+                            {explanation.summaryVi ||
+                              t("suggestions.noSummary")}
                           </p>
 
                           {Array.isArray(explanation.possibleCauses) &&

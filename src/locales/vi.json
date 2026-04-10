@@ -7,7 +7,7 @@
     "testSuites": "Bộ kịch bản Kiểm thử",
     "testExecutionOrderGate": "Cổng Thực thi Kiểm thử",
     "testCaseStudio": "Phòng thiết kế Kịch bản Kiểm thử",
-    "llmSuggestions": "Gợi ý từ LLM",
+    "llmSuggestions": "Chi tiết Excute",
     "environments": "Môi trường",
     "testExecutionRuns": "Lượt thực thi Kiểm thử",
     "failureExplanation": "Giải thích Lỗi",
@@ -789,10 +789,10 @@
     }
   },
   "suggestions": {
-    "title": "Đề xuất từ LLM",
+    "title": "Chi tiết Excute",
     "subtitle": "Công cụ trí tuệ tự trị của chúng tôi đã phân tích các đặc tả API và kết quả kiểm thử của bạn để xác định các lỗ hổng bao phủ và tối ưu hóa quan trọng.",
     "reAnalyze": "Phân tích lại Bộ kiểm thử",
-    "pageTitle": "Phân tích Thực thi",
+    "pageTitle": "Chi tiết Excute",
     "backToRuns": "Quay lại Lượt chạy",
     "suiteLabel": "Bộ Kiểm thử",
     "suitePlaceholder": "Chọn bộ kiểm thử...",
