@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { projectService } from '../services';
 import { handleError } from '../utils/errorHandler';
 import type { Project as ServiceProject } from '../services/projectService';
@@ -29,8 +29,16 @@ export function useProjects(pageNumber: number = 1, pageSize: number = 10, searc
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const inFlightKeyRef = useRef<string>('');
 
   const fetchProjects = useCallback(async () => {
+    const requestKey = `${pageNumber}|${pageSize}|${searchTerm}`;
+    if (inFlightRef.current && inFlightKeyRef.current === requestKey) {
+      return inFlightRef.current;
+    }
+
+    const requestPromise = (async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -38,12 +46,29 @@ export function useProjects(pageNumber: number = 1, pageSize: number = 10, searc
       const allProjects = response.items as Project[];
       setProjects(allProjects);
       setTotalCount(response.totalCount || allProjects.length);
-      setTotalPages(response.totalPages || Math.ceil(allProjects.length / pageSize));
+      const computedTotalPages = Math.max(
+        1,
+        Math.ceil((response.totalCount || allProjects.length) / pageSize),
+      );
+      setTotalPages(computedTotalPages);
     } catch (err) {
       const errorMessage = handleError(err);
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+    }
+    })();
+
+    inFlightRef.current = requestPromise;
+    inFlightKeyRef.current = requestKey;
+
+    try {
+      await requestPromise;
+    } finally {
+      if (inFlightRef.current === requestPromise) {
+        inFlightRef.current = null;
+        inFlightKeyRef.current = '';
+      }
     }
   }, [pageNumber, pageSize, searchTerm]);
 

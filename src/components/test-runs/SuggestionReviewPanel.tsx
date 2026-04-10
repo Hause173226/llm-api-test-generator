@@ -190,33 +190,38 @@ export default function SuggestionReviewPanel({
   const getStatusBadgeClass = (reviewStatus?: string) => {
     const value = String(reviewStatus || "pending").toLowerCase();
     if (value === "approved" || value === "modifiedandapproved") {
-      return "bg-emerald-500/15 text-emerald-300 border border-emerald-400/25";
+      return "bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/25";
     }
     if (value === "rejected") {
-      return "bg-rose-500/15 text-rose-300 border border-rose-400/25";
+      return "bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/25";
     }
     if (value === "superseded") {
-      return "bg-slate-500/15 text-slate-300 border border-slate-400/25";
+      return "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-400/25";
     }
-    return "bg-amber-500/15 text-amber-300 border border-amber-400/25";
+    return "bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/25";
   };
 
   const getMethodBadgeClass = (method?: string) => {
     const value = String(method || "").toUpperCase();
-    if (value === "GET") return "bg-emerald-500/15 text-emerald-300";
-    if (value === "POST") return "bg-blue-500/15 text-blue-300";
-    if (value === "PUT") return "bg-amber-500/15 text-amber-300";
-    if (value === "PATCH") return "bg-fuchsia-500/15 text-fuchsia-300";
-    if (value === "DELETE") return "bg-rose-500/15 text-rose-300";
-    return "bg-slate-500/15 text-slate-300";
+    if (value === "GET")
+      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300";
+    if (value === "POST")
+      return "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300";
+    if (value === "PUT")
+      return "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300";
+    if (value === "PATCH")
+      return "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-500/15 dark:text-fuchsia-300";
+    if (value === "DELETE")
+      return "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300";
+    return "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300";
   };
 
   return (
     <div className="space-y-4">
       <div className="bg-surface-container-lowest dark:bg-slate-900/90 p-4 rounded-2xl border border-outline-variant/10 dark:border-slate-700 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4 text-cyan-300" />
-          <span className="text-xs font-black text-cyan-200 uppercase tracking-widest">
+          <Filter className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
+          <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
             AI Review Filters
           </span>
         </div>
@@ -277,7 +282,7 @@ export default function SuggestionReviewPanel({
             </button>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-cyan-200/80">
+        <p className="mt-2 text-[11px] text-cyan-700/85 dark:text-cyan-200/80">
           Tip: keep status at Pending to review the latest generation batch. Use
           Superseded only for historical inspection.
         </p>
@@ -288,32 +293,28 @@ export default function SuggestionReviewPanel({
           <Loader2 className="w-4 h-4 animate-spin" />
           Loading LLM suggestions...
         </div>
-      ) : suggestions.length === 0 ? (
-        <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant">
-          No LLM suggestions found for this suite.
-        </div>
-      ) : (
-        <div className="rounded-2xl bg-linear-to-r from-cyan-900/35 via-sky-900/30 to-indigo-900/35 border border-cyan-400/15 p-4 shadow-sm">
-          <p className="text-sm font-bold text-cyan-100">
+      ) : suggestions.length > 0 ? (
+        <div className="rounded-2xl bg-linear-to-r from-cyan-50 via-sky-50 to-indigo-100 border border-cyan-300 dark:from-cyan-900/35 dark:via-sky-900/30 dark:to-indigo-900/35 dark:border-cyan-400/15 p-4 shadow-sm">
+          <p className="text-sm font-extrabold text-slate-900 dark:text-cyan-100">
             AI Review Queue: {suggestions.length} items
           </p>
-          <p className="text-xs text-cyan-200/80 mt-1">
+          <p className="text-xs font-medium text-slate-700 dark:text-cyan-200/80 mt-1">
             Process pending suggestions to unlock automatic transition to Test
             Cases.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/25">
+            <span className="px-2.5 py-1 rounded-full font-semibold bg-amber-200 text-amber-900 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/25">
               Pending: {suggestionStats.pending}
             </span>
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/25">
+            <span className="px-2.5 py-1 rounded-full font-semibold bg-emerald-200 text-emerald-900 border border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/25">
               Approved: {suggestionStats.approved}
             </span>
-            <span className="px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-400/25">
+            <span className="px-2.5 py-1 rounded-full font-semibold bg-rose-200 text-rose-900 border border-rose-300 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/25">
               Rejected: {suggestionStats.rejected}
             </span>
           </div>
         </div>
-      )}
+      ) : null}
 
       {!isLoadingSuggestions && suggestions.length > 0 && (
         <div className="space-y-2">
@@ -337,7 +338,7 @@ export default function SuggestionReviewPanel({
                     >
                       {suggestion.reviewStatus || "Pending"}
                     </span>
-                    <span className="px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-300 text-[10px] font-black tracking-wider border border-slate-400/20">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300 text-[10px] font-black tracking-wider border border-slate-200 dark:border-slate-400/20">
                       {suggestion.testType ||
                         suggestion.suggestionType ||
                         "Unknown"}
@@ -356,7 +357,7 @@ export default function SuggestionReviewPanel({
                     {suggestion.suggestedDescription || "No description"}
                   </p>
                   <div className="mt-2 flex items-center gap-2 text-[11px] text-on-surface-variant">
-                    <Route className="w-3.5 h-3.5 text-cyan-300" />
+                    <Route className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />
                     <span className="font-semibold">Endpoint:</span>
                     {endpoint ? (
                       <>
@@ -368,12 +369,14 @@ export default function SuggestionReviewPanel({
                         >
                           {endpoint.method || "UNKNOWN"}
                         </span>
-                        <span className="text-cyan-100/90 font-mono break-all">
+                        <span className="text-cyan-800 dark:text-cyan-100/90 font-mono break-all">
                           {endpoint.path || "Unknown path"}
                         </span>
                       </>
                     ) : (
-                      <span className="text-slate-400">Unknown endpoint</span>
+                      <span className="text-slate-600 dark:text-slate-400">
+                        Unknown endpoint
+                      </span>
                     )}
                   </div>
 

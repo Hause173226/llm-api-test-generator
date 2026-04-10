@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   Check,
   X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
@@ -33,6 +35,7 @@ import testSuiteLlmSuggestionService, {
 } from "../services/testSuiteLlmSuggestionService";
 import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
+import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 
 type ProposalApiResponse = {
   proposalId?: string;
@@ -66,6 +69,14 @@ type GenerationItem = {
   rejectedSuggestions: number;
   supersededSuggestions: number;
   testCaseIds: string[];
+  suggestionIds: string[];
+};
+
+type TransitionOverlayState = {
+  isVisible: boolean;
+  title: string;
+  message: string;
+  stepLabel?: string;
 };
 
 export default function TestSuiteDetailPage() {
@@ -110,6 +121,15 @@ export default function TestSuiteDetailPage() {
     useState("Pending");
   const [suggestionTestTypeFilter, setSuggestionTestTypeFilter] = useState("");
   const [suggestionEndpointFilter, setSuggestionEndpointFilter] = useState("");
+  const [expandedGenerationItemId, setExpandedGenerationItemId] = useState<
+    string | null
+  >(null);
+  const [transitionOverlay, setTransitionOverlay] =
+    useState<TransitionOverlayState>({
+      isVisible: false,
+      title: "",
+      message: "",
+    });
   const hasAnyTestCases =
     Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
   const hasGeneratedSuggestions = allSuggestions.length > 0;
@@ -135,11 +155,11 @@ export default function TestSuiteDetailPage() {
       const parsed = raw ? JSON.parse(raw) : [];
       const items = Array.isArray(parsed)
         ? parsed.filter(
-          (item) =>
-            item &&
-            typeof item.id === "string" &&
-            typeof item.generatedAt === "string",
-        )
+            (item) =>
+              item &&
+              typeof item.id === "string" &&
+              typeof item.generatedAt === "string",
+          )
         : [];
 
       setGenerationRuns(
@@ -196,6 +216,10 @@ export default function TestSuiteDetailPage() {
   };
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
     if (
       tabFromQuery === "testcases" ||
       tabFromQuery === "details" ||
@@ -218,7 +242,7 @@ export default function TestSuiteDetailPage() {
         setActiveTab(tabFromQuery as SuiteTab);
       }
     }
-  }, [tabFromQuery, hasAnyTestCases, isStep1Completed]);
+  }, [tabFromQuery, hasAnyTestCases, isStep1Completed, isLoading]);
 
   const changeTab = (tab: SuiteTab) => {
     const nextTab = tab === "testcases" && !hasAnyTestCases ? "details" : tab;
@@ -313,10 +337,16 @@ export default function TestSuiteDetailPage() {
 
         const allEndpoints = response.items || [];
 
-        const normalizeOrder = (items?: Array<{ endpointId?: string; orderIndex?: number }>) =>
+        const normalizeOrder = (
+          items?: Array<{ endpointId?: string; orderIndex?: number }>,
+        ) =>
           (items || [])
             .filter((item) => Boolean(item?.endpointId))
-            .sort((a, b) => (a.orderIndex ?? Number.MAX_SAFE_INTEGER) - (b.orderIndex ?? Number.MAX_SAFE_INTEGER))
+            .sort(
+              (a, b) =>
+                (a.orderIndex ?? Number.MAX_SAFE_INTEGER) -
+                (b.orderIndex ?? Number.MAX_SAFE_INTEGER),
+            )
             .map((item) => item.endpointId as string);
 
         let orderedEndpointIds: string[] = suiteData.selectedEndpointIds || [];
@@ -330,7 +360,8 @@ export default function TestSuiteDetailPage() {
             latestProposal?.appliedOrder || latestProposal?.AppliedOrder,
           );
           const userModifiedOrder = normalizeOrder(
-            latestProposal?.userModifiedOrder || latestProposal?.UserModifiedOrder,
+            latestProposal?.userModifiedOrder ||
+              latestProposal?.UserModifiedOrder,
           );
           const proposedOrder = normalizeOrder(
             latestProposal?.proposedOrder || latestProposal?.ProposedOrder,
@@ -347,7 +378,10 @@ export default function TestSuiteDetailPage() {
             orderedEndpointIds = proposalOrder;
           }
         } catch (proposalErr) {
-          console.warn("Failed to load latest order proposal, fallback to suite selectedEndpointIds.", proposalErr);
+          console.warn(
+            "Failed to load latest order proposal, fallback to suite selectedEndpointIds.",
+            proposalErr,
+          );
         }
 
         // Filter and sort endpoints based on latest order proposal (fallback: selectedEndpointIds)
@@ -489,8 +523,8 @@ export default function TestSuiteDetailPage() {
               suggestionErr?.status ?? suggestionErr?.response?.status;
             const message = String(
               suggestionErr?.message ||
-              suggestionErr?.response?.data?.message ||
-              "",
+                suggestionErr?.response?.data?.message ||
+                "",
             );
             const alreadyHasPendingSuggestions =
               statusCode === 400 &&
@@ -528,10 +562,27 @@ export default function TestSuiteDetailPage() {
   };
 
   const handleApproveOrderAndGoToReview = async () => {
+    setTransitionOverlay({
+      isVisible: true,
+      title: "Preparing AI Review",
+      message:
+        "Saving endpoint order, approving workflow, and regenerating AI preview.",
+      stepLabel: "Step 1 -> Step 2",
+    });
+
     const success = await handleSaveOrder();
+
+    await new Promise((resolve) => setTimeout(resolve, 850));
+
     if (success) {
       changeTab("suggestions");
     }
+
+    setTransitionOverlay({
+      isVisible: false,
+      title: "",
+      message: "",
+    });
   };
 
   const handleRunTests = () => {
@@ -681,7 +732,22 @@ export default function TestSuiteDetailPage() {
       nextTestCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
 
     if (!hasPending && hasCases) {
-      changeTab("testcases");
+      setTransitionOverlay({
+        isVisible: true,
+        title: "Moving to Test Cases",
+        message:
+          "All suggestions are reviewed. Preparing Step 3 with updated test cases.",
+        stepLabel: "Step 2 -> Step 3",
+      });
+
+      window.setTimeout(() => {
+        changeTab("testcases");
+        setTransitionOverlay({
+          isVisible: false,
+          title: "",
+          message: "",
+        });
+      }, 950);
     }
   };
 
@@ -866,37 +932,37 @@ export default function TestSuiteDetailPage() {
     helper: string;
     isDone: boolean;
   }> = [
-      {
-        id: "details",
-        title: "Step 1: Configure",
-        helper: hasChanges
-          ? "Endpoint changes pending approval"
-          : suggestions.length > 0
-            ? "Order approved and AI preview is available"
-            : "Approve order to generate AI preview",
-        isDone: isStep1Completed,
-      },
-      {
-        id: "suggestions",
-        title: "Step 2: AI Review",
-        helper:
-          reviewableSuggestions.length === 0
-            ? "Generate AI suggestions"
-            : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
-        isDone:
-          reviewableSuggestions.length > 0 &&
-          pendingSuggestionsCount === 0 &&
-          approvedSuggestionsCount > 0,
-      },
-      {
-        id: "testcases",
-        title: "Step 3: Test Cases",
-        helper: hasAnyTestCases
-          ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
-          : "No test cases yet",
-        isDone: hasAnyTestCases,
-      },
-    ];
+    {
+      id: "details",
+      title: "Step 1: Configure",
+      helper: hasChanges
+        ? "Endpoint changes pending approval"
+        : suggestions.length > 0
+          ? "Order approved and AI preview is available"
+          : "Approve order to generate AI preview",
+      isDone: isStep1Completed,
+    },
+    {
+      id: "suggestions",
+      title: "Step 2: AI Review",
+      helper:
+        reviewableSuggestions.length === 0
+          ? "Generate AI suggestions"
+          : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
+      isDone:
+        reviewableSuggestions.length > 0 &&
+        pendingSuggestionsCount === 0 &&
+        approvedSuggestionsCount > 0,
+    },
+    {
+      id: "testcases",
+      title: "Step 3: Test Cases",
+      helper: hasAnyTestCases
+        ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
+        : "No test cases yet",
+      isDone: hasAnyTestCases,
+    },
+  ];
 
   const activeStepIndex = steps.findIndex((step) => step.id === activeTab);
 
@@ -1023,6 +1089,7 @@ export default function TestSuiteDetailPage() {
                 .filter((id): id is string => Boolean(id)),
             ),
           ),
+          suggestionIds: items.map((item) => item.id),
         } as GenerationItem;
       })
       .sort((a, b) => {
@@ -1121,6 +1188,7 @@ export default function TestSuiteDetailPage() {
                 .filter((id): id is string => Boolean(id)),
             ),
           ),
+          suggestionIds: items.map((item) => item.id),
         };
       })
       .filter((item) => item.totalSuggestions > 0)
@@ -1129,6 +1197,28 @@ export default function TestSuiteDetailPage() {
           new Date(b.generatedAt || 0).getTime() -
           new Date(a.generatedAt || 0).getTime(),
       );
+  })();
+
+  useEffect(() => {
+    if (
+      expandedGenerationItemId &&
+      !generationItems.some((item) => item.id === expandedGenerationItemId)
+    ) {
+      setExpandedGenerationItemId(null);
+    }
+  }, [expandedGenerationItemId, generationItems]);
+
+  const expandedGenerationItem = expandedGenerationItemId
+    ? generationItems.find((item) => item.id === expandedGenerationItemId)
+    : undefined;
+
+  const displayedSuggestions = (() => {
+    if (!expandedGenerationItem) {
+      return suggestions;
+    }
+
+    const suggestionIdSet = new Set(expandedGenerationItem.suggestionIds);
+    return allSuggestions.filter((item) => suggestionIdSet.has(item.id));
   })();
 
   const handleRunGenerationItem = (item: GenerationItem) => {
@@ -1155,7 +1245,10 @@ export default function TestSuiteDetailPage() {
 
   if (isLoading) {
     return (
-      <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
+      <MainLayout
+        title={suite?.name || "Test Suite Details"}
+        breadcrumbs={breadcrumbs}
+      >
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -1165,7 +1258,10 @@ export default function TestSuiteDetailPage() {
 
   if (error) {
     return (
-      <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
+      <MainLayout
+        title={suite?.name || "Test Suite Details"}
+        breadcrumbs={breadcrumbs}
+      >
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
@@ -1184,7 +1280,10 @@ export default function TestSuiteDetailPage() {
 
   if (!suite) {
     return (
-      <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
+      <MainLayout
+        title={suite?.name || "Test Suite Details"}
+        breadcrumbs={breadcrumbs}
+      >
         <div className="text-center py-20">
           <p className="text-on-surface-variant">Test suite not found</p>
         </div>
@@ -1193,7 +1292,16 @@ export default function TestSuiteDetailPage() {
   }
 
   return (
-    <MainLayout title={suite?.name || "Test Suite Details"} breadcrumbs={breadcrumbs}>
+    <MainLayout
+      title={suite?.name || "Test Suite Details"}
+      breadcrumbs={breadcrumbs}
+    >
+      <StepTransitionOverlay
+        isVisible={transitionOverlay.isVisible}
+        title={transitionOverlay.title}
+        message={transitionOverlay.message}
+        stepLabel={transitionOverlay.stepLabel}
+      />
       <div className="space-y-8">
         {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -1466,51 +1574,96 @@ export default function TestSuiteDetailPage() {
                       key={item.id}
                       className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
                     >
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-on-surface">
-                              {item.label}
-                            </p>
-                            {index === 0 && (
-                              <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
-                                Latest
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-on-surface-variant">
-                            {item.generatedAt
-                              ? new Date(item.generatedAt).toLocaleString()
-                              : "Unknown generate time"}
-                          </p>
-                        </div>
+                      {(() => {
+                        const isExpanded = expandedGenerationItemId === item.id;
 
-                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                          <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
-                            Total: {item.totalSuggestions}
-                          </span>
-                          <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
-                            Pending: {item.pendingSuggestions}
-                          </span>
-                          <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
-                            Approved: {item.approvedSuggestions}
-                          </span>
-                          <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
-                            Rejected: {item.rejectedSuggestions}
-                          </span>
-                          <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
-                            Superseded: {item.supersededSuggestions}
-                          </span>
-                        </div>
-                      </div>
+                        return (
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-on-surface">
+                                  {item.label}
+                                </p>
+                                {index === 0 && (
+                                  <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
+                                    Latest
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-on-surface-variant">
+                                {item.generatedAt
+                                  ? new Date(item.generatedAt).toLocaleString()
+                                  : "Unknown generate time"}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col items-start md:items-end gap-2">
+                              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                                <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                                  Total: {item.totalSuggestions}
+                                </span>
+                                <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                                  Pending: {item.pendingSuggestions}
+                                </span>
+                                <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
+                                  Approved: {item.approvedSuggestions}
+                                </span>
+                                <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                                  Rejected: {item.rejectedSuggestions}
+                                </span>
+                                <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                                  Superseded: {item.supersededSuggestions}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedGenerationItemId((prev) =>
+                                    prev === item.id ? null : item.id,
+                                  )
+                                }
+                                className="px-3 py-1.5 rounded-md bg-primary dark:bg-indigo-600 text-on-primary text-xs font-semibold flex items-center gap-1"
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="w-3.5 h-3.5" />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                )}
+                                {isExpanded ? "Hide" : "Open"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
+            {expandedGenerationItem && (
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-3 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex items-center justify-between gap-3">
+                <p className="text-sm text-on-surface">
+                  Showing suggestions for{" "}
+                  <span className="font-bold">
+                    {expandedGenerationItem.label}
+                  </span>
+                  {expandedGenerationItem.generatedAt
+                    ? ` (${new Date(expandedGenerationItem.generatedAt).toLocaleString()})`
+                    : ""}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setExpandedGenerationItemId(null)}
+                  className="px-3 py-1.5 rounded-md bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold"
+                >
+                  Show all
+                </button>
+              </div>
+            )}
+
             <SuggestionReviewPanel
-              suggestions={suggestions}
+              suggestions={displayedSuggestions}
               endpoints={endpoints}
               isLoadingSuggestions={isLoadingSuggestions}
               isReviewingSuggestion={isReviewingSuggestion}
@@ -1573,7 +1726,7 @@ export default function TestSuiteDetailPage() {
             </div>
 
             {/* Info Banner */}
-            {suite.testCaseCount === 0 && (
+            {!hasAnyTestCases && (
               <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
                 <p className="text-sm text-amber-800 dark:text-amber-400">
                   💡 No test cases yet. Continue to "AI Review" after saving

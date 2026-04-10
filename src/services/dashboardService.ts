@@ -1,4 +1,5 @@
 import { apiService } from './apiService';
+import { projectService } from './projectService';
 
 // Types
 export interface DashboardMetrics {
@@ -31,7 +32,7 @@ class DashboardService {
   async getMetrics(projectId?: string): Promise<DashboardMetrics> {
     try {
       // Always get total active projects (not filtered by project)
-      const projectsPromise = apiService.get<{ items: any[] }>('/projects')
+      const projectsPromise = projectService.getProjects(1, 50)
         .then(res => {
           console.log('Projects response:', res);
           const items = Array.isArray(res) ? res : (res.items || []);

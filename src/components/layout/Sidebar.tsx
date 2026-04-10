@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -44,19 +44,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
     return Number.isNaN(timestamp) ? 0 : timestamp;
   };
 
-  // Fetch projects on mount to validate selected project
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  // Fetch projects when dropdown opens
-  useEffect(() => {
-    if (isProjectDropdownOpen && projects.length === 0) {
-      fetchProjects();
-    }
-  }, [isProjectDropdownOpen]);
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       setIsLoadingProjects(true);
       const data = await projectService.getProjects(1, 50);
@@ -95,7 +83,19 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
     } finally {
       setIsLoadingProjects(false);
     }
-  };
+  }, [selectedProject, clearSelectedProject]);
+
+  // Lazy-fetch projects when dropdown opens to avoid duplicate global fetches.
+  useEffect(() => {
+    if (isProjectDropdownOpen && projects.length === 0 && !isLoadingProjects) {
+      fetchProjects();
+    }
+  }, [
+    isProjectDropdownOpen,
+    projects.length,
+    isLoadingProjects,
+    fetchProjects,
+  ]);
 
   const handleSelectProject = (project: any) => {
     console.log("Sidebar - Selecting project:", project);
@@ -136,7 +136,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
     },
     { icon: Layers, label: t("common.testSuites"), path: "/test-suites" },
     { icon: PlayCircle, label: t("common.testExecutionRuns"), path: "/runs" },
-    { icon: Sparkles, label: t("common.llmSuggestions"), path: "/suggestions" },
+   
     { icon: Settings2, label: t("common.environments"), path: "/environments" },
     { icon: BarChart3, label: t("common.reports"), path: "/reports" },
     {
@@ -243,7 +243,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
                       className={cn(
                         "w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-b border-slate-100 dark:border-slate-700 last:border-0",
                         selectedProject?.id === project.id &&
-                        "bg-indigo-50 dark:bg-indigo-900/20",
+                          "bg-indigo-50 dark:bg-indigo-900/20",
                       )}
                     >
                       <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
