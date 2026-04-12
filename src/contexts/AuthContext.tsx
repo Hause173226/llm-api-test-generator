@@ -20,10 +20,11 @@ interface AuthContextType {
     fullName: string,
     email: string,
     password: string,
+    confirmPassword: string,
   ) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -70,11 +71,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     fullName: string,
     email: string,
     password: string,
+    confirmPassword: string,
   ): Promise<void> => {
     try {
-      await authService.register({ fullName, email, password });
+      await authService.register({ fullName, email, password, confirmPassword });
     } catch (error) {
-      // Don't call handleApiError here, let the calling component handle it
       throw error;
     }
   };

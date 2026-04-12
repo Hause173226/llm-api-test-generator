@@ -28,6 +28,7 @@ export interface RegisterRequest {
   fullName: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 export interface RegisterResponse {
@@ -54,6 +55,14 @@ class AuthService {
 
   async register(data: RegisterRequest): Promise<RegisterResponse> {
     return await apiService.post<RegisterResponse>('/auth/register', data);
+  }
+
+  async confirmEmail(email: string, token: string): Promise<{ message: string }> {
+    return await apiService.post<{ message: string }>('/auth/confirm-email', { email, token });
+  }
+
+  async resendConfirmationEmail(email: string): Promise<void> {
+    await apiService.post('/auth/resend-confirmation-email', { email });
   }
 
   async logout(): Promise<void> {

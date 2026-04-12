@@ -27,6 +27,8 @@ import {
   showSuccessToast,
 } from "../utils/errorHandler";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
+import GlobalSpinner from "../components/ui/GlobalSpinner";
+import ManualSpecModal from "../components/specifications/ManualSpecModal";
 
 export default function SpecificationPage() {
   const { t } = useTranslation();
@@ -48,10 +50,12 @@ export default function SpecificationPage() {
     refetch,
     uploadSpecification,
     deleteSpecification,
+    createManualSpecification,
   } = useSpecifications(projectId);
 
   const [project, setProject] = useState<any>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSpec, setSelectedSpec] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -206,7 +210,12 @@ export default function SpecificationPage() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
-            <p className="text-on-surface-variant mb-4">{error}</p>
+            <p className="text-on-surface font-bold text-lg mb-2">
+              {t("specifications.loadError")}
+            </p>
+            <p className="text-sm text-on-surface-variant mb-6">
+              {t("specifications.loadErrorDesc")}
+            </p>
             <button
               onClick={refetch}
               className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-colors cursor-pointer"
@@ -327,7 +336,9 @@ export default function SpecificationPage() {
                   {t("specifications.manual.description")}
                 </p>
               </div>
-              <button className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer">
+              <button className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => setIsManualModalOpen(true)}
+              >
                 <Keyboard className="w-5 h-5" />
                 {t("specifications.manual.button")}
               </button>
@@ -468,17 +479,18 @@ export default function SpecificationPage() {
         </section>
       </div>
 
+      {/* Global spinner khi đang upload */}
+      {isSubmitting && (
+        <GlobalSpinner label={t("specifications.upload.uploading")} />
+      )}
+
       {/* Upload Modal */}
       <Modal
         isOpen={isUploadModalOpen}
         onClose={() => {
+          if (isSubmitting) return;
           setIsUploadModalOpen(false);
-          setUploadForm({
-            name: "",
-            description: "",
-            type: "openapi",
-            file: null,
-          });
+          setUploadForm({ name: "", description: "", type: "openapi", file: null });
         }}
         title={t("specifications.upload.modalTitle")}
         footer={
@@ -486,12 +498,7 @@ export default function SpecificationPage() {
             <button
               onClick={() => {
                 setIsUploadModalOpen(false);
-                setUploadForm({
-                  name: "",
-                  description: "",
-                  type: "openapi",
-                  file: null,
-                });
+                setUploadForm({ name: "", description: "", type: "openapi", file: null });
               }}
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
@@ -501,9 +508,8 @@ export default function SpecificationPage() {
             <button
               onClick={handleUpload}
               disabled={isSubmitting || !uploadForm.file}
-              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("specifications.upload.uploadButton")}
             </button>
           </>
@@ -614,6 +620,14 @@ export default function SpecificationPage() {
           </p>
         </div>
       </Modal>
+
+      <ManualSpecModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        projectId={projectId}
+        onSuccess={refetch}
+        createManualSpecification={createManualSpecification}
+      />
     </MainLayout>
   );
 }

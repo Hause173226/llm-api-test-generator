@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [registerSuccessEmail, setRegisterSuccessEmail] = useState("");
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
@@ -71,50 +72,84 @@ export default function AuthPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Client-side validation for register
+    if (!isLogin) {
+      if (!formData.fullName.trim()) {
+        setError(t("auth.validation.fullNameRequired"));
+        return;
+      }
+      if (formData.fullName.trim().length < 2) {
+        setError(t("auth.validation.fullNameMin"));
+        return;
+      }
+      if (!formData.email.trim()) {
+        setError(t("auth.validation.emailRequired"));
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError(t("auth.validation.emailInvalid"));
+        return;
+      }
+      if (!formData.password) {
+        setError(t("auth.validation.passwordRequired"));
+        return;
+      }
+      if (formData.password.length < 8) {
+        setError(t("auth.validation.passwordMin"));
+        return;
+      }
+      if (!/[A-Z]/.test(formData.password)) {
+        setError(t("auth.validation.passwordUppercase"));
+        return;
+      }
+      if (!/[a-z]/.test(formData.password)) {
+        setError(t("auth.validation.passwordLowercase"));
+        return;
+      }
+      if (!/[0-9]/.test(formData.password)) {
+        setError(t("auth.validation.passwordNumber"));
+        return;
+      }
+      if (!/[^A-Za-z0-9]/.test(formData.password)) {
+        setError(t("auth.validation.passwordSpecial"));
+        return;
+      }
+      if (!formData.confirmPassword) {
+        setError(t("auth.validation.confirmPasswordRequired"));
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError(t("auth.passwordMismatch"));
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
       if (!isLogin) {
-        // Register flow
-        if (formData.password !== formData.confirmPassword) {
-          setError(t("auth.passwordMismatch"));
-          setIsLoading(false);
-          return;
-        }
-
-        await register(formData.fullName, formData.email, formData.password);
-        showSuccessToast(
-          "Registration successful! Please check your email to verify your account.",
-        );
-        // Switch to login after successful registration
-        setIsLogin(true);
-        navigate("/login");
-        setFormData({
-          fullName: "",
-          email: formData.email,
-          password: "",
-          confirmPassword: "",
-        });
+        const res = await register(formData.fullName, formData.email, formData.password, formData.confirmPassword);
+        setRegisterSuccessEmail(formData.email);
+        setFormData({ fullName: "", email: "", password: "", confirmPassword: "" });
       } else {
-        // Login flow
         await login(formData.email, formData.password);
-        showSuccessToast("Login successful!");
+        showSuccessToast(t("auth.validation.loginSuccess"));
         navigate("/dashboard");
       }
     } catch (err: any) {
-      // Extract error message from ApiError
-      let errorMessage = "An error occurred. Please try again.";
-
-      if (err?.message) {
-        errorMessage = err.message;
-      } else if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err?.response?.data?.title) {
-        errorMessage = err.response.data.title;
+      // BE có thể trả errors array (ApiError.errors) hoặc message string
+      const errorsArray = err?.errors?.errors || err?.errors;
+      if (Array.isArray(errorsArray) && errorsArray.length > 0) {
+        setError(errorsArray.join("\n"));
+      } else {
+        const errorMessage =
+          err?.message ||
+          err?.errors?.message ||
+          t("auth.validation.genericError");
+        showErrorToast(errorMessage);
       }
-
-      // Only show toast, don't set error state (to avoid duplicate)
-      showErrorToast(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +161,37 @@ export default function AuthPage() {
       [e.target.name]: e.target.value,
     });
   };
+
+  // Màn check email sau khi register thành công
+  if (registerSuccessEmail) {
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-700 p-10 flex flex-col items-center text-center space-y-6">
+          <div className="w-10 h-10 bg-indigo-600 dark:bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+            <Mail className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              {t("auth.verify.checkEmailTitle")}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+              {t("auth.verify.checkEmailDesc", { email: registerSuccessEmail })}
+            </p>
+          </div>
+          <Link
+            to="/login"
+            onClick={() => setRegisterSuccessEmail("")}
+            className="w-full py-3.5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-colors text-center block"
+          >
+            {t("auth.verify.goToLogin")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden transition-colors">
@@ -188,9 +254,13 @@ export default function AuthPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-bold">
-              <AlertCircle className="w-5 h-5" />
-              {error}
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex items-start gap-3 text-red-600 dark:text-red-400 text-sm font-medium">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <ul className="space-y-1">
+                {error.split("\n").map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
             </div>
           )}
 
