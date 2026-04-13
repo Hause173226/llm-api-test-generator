@@ -7,7 +7,6 @@ import {
   User,
   ArrowRight,
   Github,
-  Chrome,
   Eye,
   EyeOff,
   CheckCircle2,
@@ -19,6 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
+import { useGoogleLogin, GoogleLogin } from "@react-oauth/google";
 
 export default function AuthPage() {
   const { t, i18n } = useTranslation();
@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [registerSuccessEmail, setRegisterSuccessEmail] = useState("");
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
@@ -38,7 +39,7 @@ export default function AuthPage() {
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { login, register, isAuthenticated } = useAuth();
+  const { login, register, loginWithGoogle, isAuthenticated } = useAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -46,6 +47,20 @@ export default function AuthPage() {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
+
+  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    const idToken = credentialResponse.credential;
+    if (!idToken) return;
+    try {
+      setIsLoading(true);
+      await loginWithGoogle(idToken);
+      navigate("/dashboard");
+    } catch (err: any) {
+      showErrorToast(err?.message || t("auth.googleLoginFailed"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Update isLogin based on route
   useEffect(() => {
@@ -71,50 +86,84 @@ export default function AuthPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Client-side validation for register
+    if (!isLogin) {
+      if (!formData.fullName.trim()) {
+        setError(t("auth.validation.fullNameRequired"));
+        return;
+      }
+      if (formData.fullName.trim().length < 2) {
+        setError(t("auth.validation.fullNameMin"));
+        return;
+      }
+      if (!formData.email.trim()) {
+        setError(t("auth.validation.emailRequired"));
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError(t("auth.validation.emailInvalid"));
+        return;
+      }
+      if (!formData.password) {
+        setError(t("auth.validation.passwordRequired"));
+        return;
+      }
+      if (formData.password.length < 8) {
+        setError(t("auth.validation.passwordMin"));
+        return;
+      }
+      if (!/[A-Z]/.test(formData.password)) {
+        setError(t("auth.validation.passwordUppercase"));
+        return;
+      }
+      if (!/[a-z]/.test(formData.password)) {
+        setError(t("auth.validation.passwordLowercase"));
+        return;
+      }
+      if (!/[0-9]/.test(formData.password)) {
+        setError(t("auth.validation.passwordNumber"));
+        return;
+      }
+      if (!/[^A-Za-z0-9]/.test(formData.password)) {
+        setError(t("auth.validation.passwordSpecial"));
+        return;
+      }
+      if (!formData.confirmPassword) {
+        setError(t("auth.validation.confirmPasswordRequired"));
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError(t("auth.passwordMismatch"));
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
       if (!isLogin) {
-        // Register flow
-        if (formData.password !== formData.confirmPassword) {
-          setError(t("auth.passwordMismatch"));
-          setIsLoading(false);
-          return;
-        }
-
-        await register(formData.fullName, formData.email, formData.password);
-        showSuccessToast(
-          "Registration successful! Please check your email to verify your account.",
-        );
-        // Switch to login after successful registration
-        setIsLogin(true);
-        navigate("/login");
-        setFormData({
-          fullName: "",
-          email: formData.email,
-          password: "",
-          confirmPassword: "",
-        });
+        const res = await register(formData.fullName, formData.email, formData.password, formData.confirmPassword);
+        setRegisterSuccessEmail(formData.email);
+        setFormData({ fullName: "", email: "", password: "", confirmPassword: "" });
       } else {
-        // Login flow
         await login(formData.email, formData.password);
-        showSuccessToast("Login successful!");
+        showSuccessToast(t("auth.validation.loginSuccess"));
         navigate("/dashboard");
       }
     } catch (err: any) {
-      // Extract error message from ApiError
-      let errorMessage = "An error occurred. Please try again.";
-
-      if (err?.message) {
-        errorMessage = err.message;
-      } else if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err?.response?.data?.title) {
-        errorMessage = err.response.data.title;
+      // BE có thể trả errors array (ApiError.errors) hoặc message string
+      const errorsArray = err?.errors?.errors || err?.errors;
+      if (Array.isArray(errorsArray) && errorsArray.length > 0) {
+        setError(errorsArray.join("\n"));
+      } else {
+        const errorMessage =
+          err?.message ||
+          err?.errors?.message ||
+          t("auth.validation.genericError");
+        showErrorToast(errorMessage);
       }
-
-      // Only show toast, don't set error state (to avoid duplicate)
-      showErrorToast(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +175,37 @@ export default function AuthPage() {
       [e.target.name]: e.target.value,
     });
   };
+
+  // Màn check email sau khi register thành công
+  if (registerSuccessEmail) {
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-700 p-10 flex flex-col items-center text-center space-y-6">
+          <div className="w-10 h-10 bg-indigo-600 dark:bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+            <Mail className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              {t("auth.verify.checkEmailTitle")}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+              {t("auth.verify.checkEmailDesc", { email: registerSuccessEmail })}
+            </p>
+          </div>
+          <Link
+            to="/login"
+            onClick={() => setRegisterSuccessEmail("")}
+            className="w-full py-3.5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-colors text-center block"
+          >
+            {t("auth.verify.goToLogin")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden transition-colors">
@@ -174,7 +254,7 @@ export default function AuthPage() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">
-                TestFlow Intelligence
+                TestFlow Al
               </span>
             </Link>
             <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
@@ -188,9 +268,13 @@ export default function AuthPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-bold">
-              <AlertCircle className="w-5 h-5" />
-              {error}
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex items-start gap-3 text-red-600 dark:text-red-400 text-sm font-medium">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <ul className="space-y-1">
+                {error.split("\n").map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -347,15 +431,33 @@ export default function AuthPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <button className="flex items-center justify-center gap-3 py-3.5 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-              <Chrome className="w-5 h-5" />
-              Google
+          <div className="flex flex-col gap-3">
+            {/* Hidden GoogleLogin để trigger popup, custom button bên ngoài */}
+            <div id="google-login-btn" className="hidden">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => showErrorToast(t("auth.googleLoginFailed"))}
+                useOneTap={false}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const btn = document.querySelector<HTMLElement>("#google-login-btn [role='button'], #google-login-btn div[tabindex='0']");
+                btn?.click();
+              }}
+              className="flex items-center justify-center gap-3 py-3.5 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer w-full"
+            >
+              {/* Google icon SVG */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+              </svg>
+              {t("auth.continueWithGoogle")}
             </button>
-            <button className="flex items-center justify-center gap-3 py-3.5 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-              <Github className="w-5 h-5" />
-              GitHub
-            </button>
+           
           </div>
 
           <p className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Sparkles,
@@ -16,29 +16,11 @@ import {
 } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 
-/** Default Spline scene; override with VITE_SPLINE_SCENE_URL in .env */
-const SPLINE_SCENE_URL =
-  import.meta.env.VITE_SPLINE_SCENE_URL ||
-  "https://prod.spline.design/tdcIufnnJhSvzWrg/scene.splinecode";
-
 export default function LandingPage() {
   const { t, i18n } = useTranslation();
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
-  const [splineVisible, setSplineVisible] = useState(false);
-  const splineRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = splineRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setSplineVisible(true); },
-      { threshold: 0.1 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     if (isDark) {
@@ -66,7 +48,7 @@ export default function LandingPage() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">
-                TestFlow Intelligence
+                TestFlow Al
               </span>
             </Link>
           </div>
@@ -137,67 +119,37 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero: copy left, Spline 3D right (stacked on small screens) */}
-      <section className="relative pt-20 pb-20 lg:pb-24 overflow-hidden bg-white dark:bg-slate-950">
+      {/* Hero: centered */}
+      <section className="relative pt-24 pb-16 overflow-hidden bg-white dark:bg-slate-950">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-indigo-500/8 dark:bg-indigo-500/10 rounded-full blur-[120px] -z-10 pointer-events-none" />
-        <div className="absolute top-[18%] -right-8 lg:right-0 w-[28rem] h-0 rotate-[-30deg] shadow-[0_0_700px_15px_rgba(99,102,241,0.08)] dark:shadow-[0_0_500px_12px_rgba(165,180,252,0.12)] -z-10 pointer-events-none hidden lg:block" />
 
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-8 xl:gap-12 items-center">
-            <div className="text-center lg:text-left space-y-8 lg:space-y-10">
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-slate-900 dark:text-white leading-[0.9] max-w-5xl mx-auto lg:mx-0">
-                <Trans i18nKey="landing.hero.title">
-                  Autonomous API Testing{" "}
-                  <span className="text-indigo-600 dark:text-indigo-400">Powered by Intelligence.</span>
-                </Trans>
-              </h1>
-
-              <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto lg:mx-0 font-medium leading-relaxed">
-                {t("landing.hero.subtitle")}
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-4 sm:gap-6 pt-2">
-                <Link
-                  to="/register"
-                  className="w-full sm:w-auto px-10 py-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group whitespace-nowrap"
-                >
-                  {t("landing.hero.cta")}
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <button
-                  type="button"
-                  className="w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-3 whitespace-nowrap cursor-pointer"
-                >
-                  <PlayCircle className="w-6 h-6" />
-                  {t("landing.hero.watchDemo")}
-                </button>
-              </div>
-            </div>
-
-            <div ref={splineRef} className="relative w-full flex justify-center lg:justify-end lg:-mr-[8%] xl:-mr-[10%] min-w-0">
-              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/8 dark:from-indigo-500/10 via-transparent to-purple-500/5 rounded-[40px] blur-3xl scale-110 opacity-80" />
-              {/* Clip viewport only (no card frame); position hides Spline badge corner */}
-              <div className="relative w-full max-w-[540px] lg:max-w-none lg:min-w-0 h-[min(48vh,380px)] sm:h-[min(54vh,440px)] lg:h-[min(72vh,560px)] xl:h-[min(78vh,620px)] overflow-hidden will-change-transform" style={{ contain: 'layout style paint' }}>
-                <img
-                  src="/images/landing/gradient.png"
-                  alt=""
-                  aria-hidden
-                  loading="lazy"
-                  className="pointer-events-none absolute inset-0 z-0 h-full w-full select-none object-cover object-right-top opacity-90 dark:opacity-50"
-                />
-                {splineVisible && (
-                  <div className="absolute inset-0 z-10 overflow-hidden">
-                    <spline-viewer
-                      url={SPLINE_SCENE_URL}
-                      className="pointer-events-auto absolute block max-w-none
-                        h-[90%] w-[90%] left-[4%] -top-[0%] 
-                        sm:h-[102%] sm:w-[102%] sm:left-[5%] sm:-top-[0%]
-                        lg:h-[106%] lg:w-[106%] lg:left-[7%] lg:-top-[0%]
-                        xl:h-[110%] xl:w-[110%] xl:left-[9%] xl:-top-[0%]"
-                    />
-                  </div>
-                )}
-              </div>
+        <div className="max-w-5xl mx-auto px-6 flex flex-col items-center text-center space-y-10">
+          {/* Text */}
+          <div className="space-y-6 max-w-3xl">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-slate-900 dark:text-white leading-[0.9]">
+              <Trans i18nKey="landing.hero.title">
+                Autonomous API Testing{" "}
+                <span className="text-indigo-600 dark:text-indigo-400">Powered by Intelligence.</span>
+              </Trans>
+            </h1>
+            <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+              {t("landing.hero.subtitle")}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              <Link
+                to="/register"
+                className="w-full sm:w-auto px-10 py-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group whitespace-nowrap"
+              >
+                {t("landing.hero.cta")}
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <button
+                type="button"
+                className="w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-3 whitespace-nowrap cursor-pointer"
+              >
+                <PlayCircle className="w-6 h-6" />
+                {t("landing.hero.watchDemo")}
+              </button>
             </div>
           </div>
         </div>
@@ -352,7 +304,7 @@ export default function LandingPage() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">
-              TestFlow Intelligence
+              TestFlow Al
             </span>
           </div>
           <p className="text-slate-500 dark:text-slate-500 text-sm font-medium">

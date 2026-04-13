@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
+import GlobalSpinner from "../components/ui/GlobalSpinner";
 import {
   handleError,
   showErrorToast,
@@ -35,8 +36,6 @@ import testSuiteLlmSuggestionService, {
 } from "../services/testSuiteLlmSuggestionService";
 import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
-import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
-
 type ProposalApiResponse = {
   proposalId?: string;
   ProposalId?: string;
@@ -70,13 +69,6 @@ type GenerationItem = {
   supersededSuggestions: number;
   testCaseIds: string[];
   suggestionIds: string[];
-};
-
-type TransitionOverlayState = {
-  isVisible: boolean;
-  title: string;
-  message: string;
-  stepLabel?: string;
 };
 
 export default function TestSuiteDetailPage() {
@@ -124,12 +116,6 @@ export default function TestSuiteDetailPage() {
   const [expandedGenerationItemId, setExpandedGenerationItemId] = useState<
     string | null
   >(null);
-  const [transitionOverlay, setTransitionOverlay] =
-    useState<TransitionOverlayState>({
-      isVisible: false,
-      title: "",
-      message: "",
-    });
   const hasAnyTestCases =
     Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
   const hasGeneratedSuggestions = allSuggestions.length > 0;
@@ -155,11 +141,11 @@ export default function TestSuiteDetailPage() {
       const parsed = raw ? JSON.parse(raw) : [];
       const items = Array.isArray(parsed)
         ? parsed.filter(
-            (item) =>
-              item &&
-              typeof item.id === "string" &&
-              typeof item.generatedAt === "string",
-          )
+          (item) =>
+            item &&
+            typeof item.id === "string" &&
+            typeof item.generatedAt === "string",
+        )
         : [];
 
       setGenerationRuns(
@@ -361,7 +347,7 @@ export default function TestSuiteDetailPage() {
           );
           const userModifiedOrder = normalizeOrder(
             latestProposal?.userModifiedOrder ||
-              latestProposal?.UserModifiedOrder,
+            latestProposal?.UserModifiedOrder,
           );
           const proposedOrder = normalizeOrder(
             latestProposal?.proposedOrder || latestProposal?.ProposedOrder,
@@ -523,8 +509,8 @@ export default function TestSuiteDetailPage() {
               suggestionErr?.status ?? suggestionErr?.response?.status;
             const message = String(
               suggestionErr?.message ||
-                suggestionErr?.response?.data?.message ||
-                "",
+              suggestionErr?.response?.data?.message ||
+              "",
             );
             const alreadyHasPendingSuggestions =
               statusCode === 400 &&
@@ -562,27 +548,10 @@ export default function TestSuiteDetailPage() {
   };
 
   const handleApproveOrderAndGoToReview = async () => {
-    setTransitionOverlay({
-      isVisible: true,
-      title: "Preparing AI Review",
-      message:
-        "Saving endpoint order, approving workflow, and regenerating AI preview.",
-      stepLabel: "Step 1 -> Step 2",
-    });
-
     const success = await handleSaveOrder();
-
-    await new Promise((resolve) => setTimeout(resolve, 850));
-
     if (success) {
       changeTab("suggestions");
     }
-
-    setTransitionOverlay({
-      isVisible: false,
-      title: "",
-      message: "",
-    });
   };
 
   const handleRunTests = () => {
@@ -732,22 +701,7 @@ export default function TestSuiteDetailPage() {
       nextTestCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
 
     if (!hasPending && hasCases) {
-      setTransitionOverlay({
-        isVisible: true,
-        title: "Moving to Test Cases",
-        message:
-          "All suggestions are reviewed. Preparing Step 3 with updated test cases.",
-        stepLabel: "Step 2 -> Step 3",
-      });
-
-      window.setTimeout(() => {
-        changeTab("testcases");
-        setTransitionOverlay({
-          isVisible: false,
-          title: "",
-          message: "",
-        });
-      }, 950);
+      changeTab("testcases");
     }
   };
 
@@ -932,37 +886,37 @@ export default function TestSuiteDetailPage() {
     helper: string;
     isDone: boolean;
   }> = [
-    {
-      id: "details",
-      title: "Step 1: Configure",
-      helper: hasChanges
-        ? "Endpoint changes pending approval"
-        : suggestions.length > 0
-          ? "Order approved and AI preview is available"
-          : "Approve order to generate AI preview",
-      isDone: isStep1Completed,
-    },
-    {
-      id: "suggestions",
-      title: "Step 2: AI Review",
-      helper:
-        reviewableSuggestions.length === 0
-          ? "Generate AI suggestions"
-          : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
-      isDone:
-        reviewableSuggestions.length > 0 &&
-        pendingSuggestionsCount === 0 &&
-        approvedSuggestionsCount > 0,
-    },
-    {
-      id: "testcases",
-      title: "Step 3: Test Cases",
-      helper: hasAnyTestCases
-        ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
-        : "No test cases yet",
-      isDone: hasAnyTestCases,
-    },
-  ];
+      {
+        id: "details",
+        title: "Step 1: Configure",
+        helper: hasChanges
+          ? "Endpoint changes pending approval"
+          : suggestions.length > 0
+            ? "Order approved and AI preview is available"
+            : "Approve order to generate AI preview",
+        isDone: isStep1Completed,
+      },
+      {
+        id: "suggestions",
+        title: "Step 2: AI Review",
+        helper:
+          reviewableSuggestions.length === 0
+            ? "Generate AI suggestions"
+            : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
+        isDone:
+          reviewableSuggestions.length > 0 &&
+          pendingSuggestionsCount === 0 &&
+          approvedSuggestionsCount > 0,
+      },
+      {
+        id: "testcases",
+        title: "Step 3: Test Cases",
+        helper: hasAnyTestCases
+          ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
+          : "No test cases yet",
+        isDone: hasAnyTestCases,
+      },
+    ];
 
   const activeStepIndex = steps.findIndex((step) => step.id === activeTab);
 
@@ -1292,575 +1246,572 @@ export default function TestSuiteDetailPage() {
   }
 
   return (
-    <MainLayout
-      title={suite?.name || "Test Suite Details"}
-      breadcrumbs={breadcrumbs}
-    >
-      <StepTransitionOverlay
-        isVisible={transitionOverlay.isVisible}
-        title={transitionOverlay.title}
-        message={transitionOverlay.message}
-        stepLabel={transitionOverlay.stepLabel}
-      />
-      <div className="space-y-8">
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <div className="space-y-2">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mb-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-semibold">Back</span>
-            </button>
-            <h1 className="text-4xl font-bold tracking-tight text-on-surface">
-              {suite.name}
-            </h1>
-            {suite.description && (
-              <p className="text-on-surface-variant">{suite.description}</p>
-            )}
-          </div>
-          <div className="flex gap-3">
-            {activeTab === "details" && (!isStep1Completed || hasChanges) && (
+    <>
+      {isSubmitting && <GlobalSpinner label="Đang xử lý..." />}
+      <MainLayout
+        title={suite?.name || "Test Suite Details"}
+        breadcrumbs={breadcrumbs}
+      >
+        <div className="space-y-8">
+          {/* Header */}
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <div className="space-y-2">
               <button
-                onClick={handleApproveOrderAndGoToReview}
-                disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-semibold flex items-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50"
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mb-2"
               >
-                <Save className="w-5 h-5" />
-                {hasChanges
-                  ? "Re Approve & Regenerate AI Preview"
-                  : "Approve Order"}
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm font-semibold">Back</span>
               </button>
-            )}
-
-            {activeTab === "suggestions" && shouldShowSuggestionBulkActions && (
-              <>
-                <button
-                  onClick={() => handleBulkReview("Approve")}
-                  disabled={
-                    isBulkReviewingSuggestions || suggestions.length === 0
-                  }
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-                >
-                  {isBulkReviewingSuggestions ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                  Approve All
-                </button>
-
-                <button
-                  onClick={() => handleBulkReview("Reject")}
-                  disabled={
-                    isBulkReviewingSuggestions || suggestions.length === 0
-                  }
-                  className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-                >
-                  {isBulkReviewingSuggestions ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <X className="w-4 h-4" />
-                  )}
-                  Reject All
-                </button>
-              </>
-            )}
-          </div>
-        </header>
-
-        <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/10 dark:border-slate-800 p-4 md:p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {steps.map((step, index) => {
-              const isActive = step.id === activeTab;
-              const isAccessible =
-                step.id === "details" ||
-                (step.id === "suggestions" && isStep1Completed) ||
-                (step.id === "testcases" && hasAnyTestCases);
-
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => {
-                    if (!isAccessible) {
-                      if (step.id === "suggestions") {
-                        showInfoToast(
-                          "Complete Step 1 by clicking Approve Order before moving to AI Review.",
-                        );
-                      } else {
-                        showInfoToast(
-                          "Complete previous steps before opening Test Cases.",
-                        );
-                      }
-                      return;
-                    }
-                    changeTab(step.id);
-                  }}
-                  className={cn(
-                    "text-left p-3 rounded-xl border transition-all",
-                    isActive
-                      ? "border-primary bg-primary/10"
-                      : "border-outline-variant/20 bg-surface-container-low hover:bg-surface-container-high",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-on-surface">
-                      {step.title}
-                    </p>
-                    {step.isDone && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    )}
-                  </div>
-                  <p className="text-xs text-on-surface-variant mt-1">
-                    {step.helper}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mt-2">
-                    {isActive
-                      ? "Current"
-                      : isAccessible
-                        ? "Available"
-                        : "Locked"}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 rounded-xl bg-surface-container-low dark:bg-slate-800/60 p-3 flex flex-wrap items-center gap-3 justify-between">
-            <p className="text-sm font-semibold text-on-surface">
-              Workflow Progress: Step {activeStepIndex + 1}/3
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
-              <span className="px-2 py-1 rounded-md bg-amber-100 text-amber-800">
-                Pending AI: {pendingSuggestionsCount}
-              </span>
-              <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-800">
-                Approved: {approvedSuggestionsCount}
-              </span>
-              <span className="px-2 py-1 rounded-md bg-rose-100 text-rose-800">
-                Rejected: {rejectedSuggestionsCount}
-              </span>
+              <h1 className="text-4xl font-bold tracking-tight text-on-surface">
+                {suite.name}
+              </h1>
+              {suite.description && (
+                <p className="text-on-surface-variant">{suite.description}</p>
+              )}
             </div>
-          </div>
-        </div>
-
-        {activeTab === "testcases" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-on-surface">
-                Test Cases ({filteredTestCases.length}/{testCases.length})
-              </h2>
-              <div className="flex items-center gap-2">
+            <div className="flex gap-3">
+              {activeTab === "details" && (!isStep1Completed || hasChanges) && (
                 <button
-                  onClick={refreshTestCases}
-                  disabled={isLoadingTestCases}
-                  className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-60"
+                  onClick={handleApproveOrderAndGoToReview}
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-semibold flex items-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50"
                 >
-                  <RefreshCw
+                  <Save className="w-5 h-5" />
+                  {hasChanges
+                    ? "Re Approve & Regenerate AI Preview"
+                    : "Approve Order"}
+                </button>
+              )}
+
+              {activeTab === "suggestions" && shouldShowSuggestionBulkActions && (
+                <>
+                  <button
+                    onClick={() => handleBulkReview("Approve")}
+                    disabled={
+                      isBulkReviewingSuggestions || suggestions.length === 0
+                    }
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+                  >
+                    {isBulkReviewingSuggestions ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                    Approve All
+                  </button>
+
+                  <button
+                    onClick={() => handleBulkReview("Reject")}
+                    disabled={
+                      isBulkReviewingSuggestions || suggestions.length === 0
+                    }
+                    className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+                  >
+                    {isBulkReviewingSuggestions ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <X className="w-4 h-4" />
+                    )}
+                    Reject All
+                  </button>
+                </>
+              )}
+            </div>
+          </header>
+
+          <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/10 dark:border-slate-800 p-4 md:p-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {steps.map((step, index) => {
+                const isActive = step.id === activeTab;
+                const isAccessible =
+                  step.id === "details" ||
+                  (step.id === "suggestions" && isStep1Completed) ||
+                  (step.id === "testcases" && hasAnyTestCases);
+
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => {
+                      if (!isAccessible) {
+                        if (step.id === "suggestions") {
+                          showInfoToast(
+                            "Complete Step 1 by clicking Approve Order before moving to AI Review.",
+                          );
+                        } else {
+                          showInfoToast(
+                            "Complete previous steps before opening Test Cases.",
+                          );
+                        }
+                        return;
+                      }
+                      changeTab(step.id);
+                    }}
                     className={cn(
-                      "w-4 h-4",
-                      isLoadingTestCases && "animate-spin",
+                      "text-left p-3 rounded-xl border transition-all",
+                      isActive
+                        ? "border-primary bg-primary/10"
+                        : "border-outline-variant/20 bg-surface-container-low hover:bg-surface-container-high",
                     )}
-                  />
-                  Refresh
-                </button>
-                <button
-                  onClick={handleRunTests}
-                  className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white font-semibold flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4" />
-                  Execute
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
-                  Generated Items
-                </h3>
-                <p className="text-xs text-on-surface-variant">
-                  Open one generation batch at a time
-                </p>
-              </div>
-
-              {generationItems.length === 0 ? (
-                <div className="text-sm text-on-surface-variant">
-                  No generation item detected yet. Generate and approve
-                  suggestions to create executable items.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {generationItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-on-surface">
-                            {item.label}
-                          </p>
-                          <p className="text-xs text-on-surface-variant">
-                            {item.generatedAt
-                              ? new Date(item.generatedAt).toLocaleString()
-                              : "Unknown generate time"}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                            <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
-                              Suggestions: {item.totalSuggestions}
-                            </span>
-                            <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
-                              Approved: {item.approvedSuggestions}
-                            </span>
-                            <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
-                              Pending: {item.pendingSuggestions}
-                            </span>
-                            <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
-                              Rejected: {item.rejectedSuggestions}
-                            </span>
-                            <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
-                              Superseded: {item.supersededSuggestions}
-                            </span>
-                            <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">
-                              Test cases: {item.testCaseIds.length}
-                            </span>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => handleRunGenerationItem(item)}
-                          disabled={item.testCaseIds.length === 0}
-                          className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          <Play className="w-4 h-4" />
-                          Open
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-sm text-on-surface-variant">
-              Detailed test-case listing is hidden on this screen.
-            </div>
-          </div>
-        )}
-
-        {activeTab === "suggestions" && (
-          <div className="space-y-4">
-            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
-                  Generate Timeline
-                </h3>
-                <p className="text-xs text-on-surface-variant">
-                  Suggestions grouped by each generation run
-                </p>
-              </div>
-
-              {generationItems.length === 0 ? (
-                <div className="text-sm text-on-surface-variant">
-                  No generation run detected yet.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {generationItems.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
-                    >
-                      {(() => {
-                        const isExpanded = expandedGenerationItemId === item.id;
-
-                        return (
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold text-on-surface">
-                                  {item.label}
-                                </p>
-                                {index === 0 && (
-                                  <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
-                                    Latest
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-on-surface-variant">
-                                {item.generatedAt
-                                  ? new Date(item.generatedAt).toLocaleString()
-                                  : "Unknown generate time"}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col items-start md:items-end gap-2">
-                              <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                                <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
-                                  Total: {item.totalSuggestions}
-                                </span>
-                                <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
-                                  Pending: {item.pendingSuggestions}
-                                </span>
-                                <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
-                                  Approved: {item.approvedSuggestions}
-                                </span>
-                                <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
-                                  Rejected: {item.rejectedSuggestions}
-                                </span>
-                                <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
-                                  Superseded: {item.supersededSuggestions}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExpandedGenerationItemId((prev) =>
-                                    prev === item.id ? null : item.id,
-                                  )
-                                }
-                                className="px-3 py-1.5 rounded-md bg-primary dark:bg-indigo-600 text-on-primary text-xs font-semibold flex items-center gap-1"
-                              >
-                                {isExpanded ? (
-                                  <ChevronUp className="w-3.5 h-3.5" />
-                                ) : (
-                                  <ChevronDown className="w-3.5 h-3.5" />
-                                )}
-                                {isExpanded ? "Hide" : "Open"}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {expandedGenerationItem && (
-              <div className="bg-surface-container-lowest dark:bg-slate-900 p-3 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex items-center justify-between gap-3">
-                <p className="text-sm text-on-surface">
-                  Showing suggestions for{" "}
-                  <span className="font-bold">
-                    {expandedGenerationItem.label}
-                  </span>
-                  {expandedGenerationItem.generatedAt
-                    ? ` (${new Date(expandedGenerationItem.generatedAt).toLocaleString()})`
-                    : ""}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setExpandedGenerationItemId(null)}
-                  className="px-3 py-1.5 rounded-md bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold"
-                >
-                  Show all
-                </button>
-              </div>
-            )}
-
-            <SuggestionReviewPanel
-              suggestions={displayedSuggestions}
-              endpoints={endpoints}
-              isLoadingSuggestions={isLoadingSuggestions}
-              isReviewingSuggestion={isReviewingSuggestion}
-              isLoadingSuggestionDetail={isLoadingSuggestionDetail}
-              reviewStatusFilter={suggestionReviewStatusFilter}
-              testTypeFilter={suggestionTestTypeFilter}
-              endpointFilter={suggestionEndpointFilter}
-              onReviewStatusFilterChange={setSuggestionReviewStatusFilter}
-              onTestTypeFilterChange={setSuggestionTestTypeFilter}
-              onEndpointFilterChange={setSuggestionEndpointFilter}
-              onApplyFilters={async () => {
-                await refreshSuggestions();
-              }}
-              onClearFilters={clearSuggestionFilters}
-              onLoadDetail={handleOpenSuggestionDetail}
-              onApprove={handleApproveSuggestion}
-              onReject={handleRejectSuggestion}
-            />
-          </div>
-        )}
-
-        {activeTab === "details" && (
-          <>
-            {/* Search & Filter Bar */}
-            <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
-              <div className="relative flex-1 min-w-[300px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                <input
-                  className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
-                  placeholder="Search endpoints..."
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
-                  Method
-                </span>
-                {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map(
-                  (method) => (
-                    <button
-                      key={method}
-                      onClick={() =>
-                        setFilterMethod(method === "ALL" ? "" : method)
-                      }
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
-                        (method === "ALL" && !filterMethod) ||
-                          method === filterMethod
-                          ? "bg-primary dark:bg-indigo-600 text-on-primary"
-                          : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-on-surface">
+                        {step.title}
+                      </p>
+                      {step.isDone && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                       )}
-                    >
-                      {method}
-                    </button>
-                  ),
-                )}
-              </div>
+                    </div>
+                    <p className="text-xs text-on-surface-variant mt-1">
+                      {step.helper}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mt-2">
+                      {isActive
+                        ? "Current"
+                        : isAccessible
+                          ? "Available"
+                          : "Locked"}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Info Banner */}
-            {!hasAnyTestCases && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
-                <p className="text-sm text-amber-800 dark:text-amber-400">
-                  💡 No test cases yet. Continue to "AI Review" after saving
-                  this step, then approve suggestions to materialize test cases.
-                  You can reorder endpoints below to control the sequence first.
-                </p>
+            <div className="mt-4 rounded-xl bg-surface-container-low dark:bg-slate-800/60 p-3 flex flex-wrap items-center gap-3 justify-between">
+              <p className="text-sm font-semibold text-on-surface">
+                Workflow Progress: Step {activeStepIndex + 1}/3
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
+                <span className="px-2 py-1 rounded-md bg-amber-100 text-amber-800">
+                  Pending AI: {pendingSuggestionsCount}
+                </span>
+                <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-800">
+                  Approved: {approvedSuggestionsCount}
+                </span>
+                <span className="px-2 py-1 rounded-md bg-rose-100 text-rose-800">
+                  Rejected: {rejectedSuggestionsCount}
+                </span>
               </div>
-            )}
+            </div>
+          </div>
 
-            {/* Endpoints List - Drag & Drop */}
-            <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-xl border border-outline-variant/10 dark:border-slate-800 overflow-hidden">
-              <div className="px-6 py-4 border-b border-outline-variant/10 dark:border-slate-800">
+          {activeTab === "testcases" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-on-surface">
-                  Endpoints ({filteredEndpoints.length}/{endpoints.length})
+                  Test Cases ({filteredTestCases.length}/{testCases.length})
                 </h2>
-                <p className="text-sm text-on-surface-variant mt-1">
-                  {isFiltering
-                    ? "Filtering is active. Clear search/filter to reorder endpoints."
-                    : "Drag and drop to reorder execution sequence"}
-                </p>
-                <div className="mt-4">
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                    Global Business Rules
-                  </label>
-                  <textarea
-                    value={suite.globalBusinessRules || ""}
-                    onChange={(e) =>
-                      handleGlobalBusinessRulesChange(e.target.value)
-                    }
-                    placeholder="Optional rules for all endpoints, e.g. User must verify email before checkout"
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={refreshTestCases}
+                    disabled={isLoadingTestCases}
+                    className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-60"
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "w-4 h-4",
+                        isLoadingTestCases && "animate-spin",
+                      )}
+                    />
+                    Refresh
+                  </button>
+                  <button
+                    onClick={handleRunTests}
+                    className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white font-semibold flex items-center gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    Execute
+                  </button>
                 </div>
               </div>
-              <div className="divide-y divide-outline-variant/10 dark:divide-slate-800">
-                {filteredEndpoints.length === 0 ? (
-                  <div className="px-6 py-12 text-center text-on-surface-variant">
-                    No endpoints match current search/filter
+
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+                    Generated Items
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    Open one generation batch at a time
+                  </p>
+                </div>
+
+                {generationItems.length === 0 ? (
+                  <div className="text-sm text-on-surface-variant">
+                    No generation item detected yet. Generate and approve
+                    suggestions to create executable items.
                   </div>
                 ) : (
-                  filteredEndpoints.map((endpoint, index) => (
-                    <div
-                      key={endpoint.id}
-                      draggable={!isFiltering}
-                      onDragStart={() => !isFiltering && handleDragStart(index)}
-                      onDragOver={(e) =>
-                        !isFiltering && handleDragOver(e, index)
-                      }
-                      onDragEnd={() => !isFiltering && handleDragEnd()}
-                      className={cn(
-                        "px-6 py-4 hover:bg-surface-container-low dark:hover:bg-slate-800 transition-colors",
-                        draggedIndex === index && "opacity-50",
-                      )}
-                    >
+                  <div className="space-y-2">
+                    {generationItems.map((item) => (
                       <div
-                        className={cn(
-                          "flex items-center gap-4",
-                          !isFiltering && "cursor-move",
-                        )}
+                        key={item.id}
+                        className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
                       >
-                        <GripVertical className="w-5 h-5 text-on-surface-variant flex-shrink-0" />
-                        <div className="flex items-center gap-1 text-on-surface-variant font-mono text-sm flex-shrink-0">
-                          <span className="w-6 text-right">{index + 1}</span>
-                          <span>.</span>
-                        </div>
-                        <span
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs font-black tracking-tighter min-w-[70px] text-center flex-shrink-0",
-                            getMethodColor(endpoint.method),
-                          )}
-                        >
-                          {endpoint.method}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-on-surface truncate">
-                            {endpoint.path}
-                          </p>
-                          {endpoint.description && (
-                            <p className="text-xs text-on-surface-variant truncate">
-                              {endpoint.description}
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-on-surface">
+                              {item.label}
                             </p>
-                          )}
-                        </div>
-                        {endpoint.tags &&
-                          Array.isArray(endpoint.tags) &&
-                          endpoint.tags.length > 0 && (
-                            <div className="flex gap-1 flex-shrink-0">
-                              {endpoint.tags
-                                .slice(0, 2)
-                                .map((tag: string, i: number) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-0.5 bg-surface-container dark:bg-slate-800 text-on-surface-variant text-[10px] font-bold rounded-full"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              {endpoint.tags.length > 2 && (
-                                <span className="px-2 py-0.5 bg-surface-container dark:bg-slate-800 text-on-surface-variant text-[10px] font-bold rounded-full">
-                                  +{endpoint.tags.length - 2}
-                                </span>
-                              )}
+                            <p className="text-xs text-on-surface-variant">
+                              {item.generatedAt
+                                ? new Date(item.generatedAt).toLocaleString()
+                                : "Unknown generate time"}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                              <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                                Suggestions: {item.totalSuggestions}
+                              </span>
+                              <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
+                                Approved: {item.approvedSuggestions}
+                              </span>
+                              <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                                Pending: {item.pendingSuggestions}
+                              </span>
+                              <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                                Rejected: {item.rejectedSuggestions}
+                              </span>
+                              <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                                Superseded: {item.supersededSuggestions}
+                              </span>
+                              <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">
+                                Test cases: {item.testCaseIds.length}
+                              </span>
                             </div>
-                          )}
-                      </div>
+                          </div>
 
-                      <div className="mt-3 ml-12">
-                        <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                          Endpoint Business Context
-                        </label>
-                        <textarea
-                          value={
-                            getBusinessContextMap(suite)[endpoint.id] || ""
-                          }
-                          onChange={(e) =>
-                            handleEndpointContextChange(
-                              endpoint.id,
-                              e.target.value,
-                            )
-                          }
-                          placeholder="Optional rule for this endpoint, e.g. Only allow registration for users >= 17"
-                          rows={2}
-                          className="w-full px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 text-xs text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/40"
-                        />
+                          <button
+                            onClick={() => handleRunGenerationItem(item)}
+                            disabled={item.testCaseIds.length === 0}
+                            className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            <Play className="w-4 h-4" />
+                            Open
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
+
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-sm text-on-surface-variant">
+                Detailed test-case listing is hidden on this screen.
+              </div>
             </div>
-          </>
-        )}
-      </div>
-    </MainLayout>
+          )}
+
+          {activeTab === "suggestions" && (
+            <div className="space-y-4">
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+                    Generate Timeline
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    Suggestions grouped by each generation run
+                  </p>
+                </div>
+
+                {generationItems.length === 0 ? (
+                  <div className="text-sm text-on-surface-variant">
+                    No generation run detected yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {generationItems.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
+                      >
+                        {(() => {
+                          const isExpanded = expandedGenerationItemId === item.id;
+
+                          return (
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-semibold text-on-surface">
+                                    {item.label}
+                                  </p>
+                                  {index === 0 && (
+                                    <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
+                                      Latest
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-on-surface-variant">
+                                  {item.generatedAt
+                                    ? new Date(item.generatedAt).toLocaleString()
+                                    : "Unknown generate time"}
+                                </p>
+                              </div>
+
+                              <div className="flex flex-col items-start md:items-end gap-2">
+                                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                                  <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                                    Total: {item.totalSuggestions}
+                                  </span>
+                                  <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                                    Pending: {item.pendingSuggestions}
+                                  </span>
+                                  <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
+                                    Approved: {item.approvedSuggestions}
+                                  </span>
+                                  <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                                    Rejected: {item.rejectedSuggestions}
+                                  </span>
+                                  <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                                    Superseded: {item.supersededSuggestions}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExpandedGenerationItemId((prev) =>
+                                      prev === item.id ? null : item.id,
+                                    )
+                                  }
+                                  className="px-3 py-1.5 rounded-md bg-primary dark:bg-indigo-600 text-on-primary text-xs font-semibold flex items-center gap-1"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  )}
+                                  {isExpanded ? "Hide" : "Open"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {expandedGenerationItem && (
+                <div className="bg-surface-container-lowest dark:bg-slate-900 p-3 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex items-center justify-between gap-3">
+                  <p className="text-sm text-on-surface">
+                    Showing suggestions for{" "}
+                    <span className="font-bold">
+                      {expandedGenerationItem.label}
+                    </span>
+                    {expandedGenerationItem.generatedAt
+                      ? ` (${new Date(expandedGenerationItem.generatedAt).toLocaleString()})`
+                      : ""}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedGenerationItemId(null)}
+                    className="px-3 py-1.5 rounded-md bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold"
+                  >
+                    Show all
+                  </button>
+                </div>
+              )}
+
+              <SuggestionReviewPanel
+                suggestions={displayedSuggestions}
+                endpoints={endpoints}
+                isLoadingSuggestions={isLoadingSuggestions}
+                isReviewingSuggestion={isReviewingSuggestion}
+                isLoadingSuggestionDetail={isLoadingSuggestionDetail}
+                reviewStatusFilter={suggestionReviewStatusFilter}
+                testTypeFilter={suggestionTestTypeFilter}
+                endpointFilter={suggestionEndpointFilter}
+                onReviewStatusFilterChange={setSuggestionReviewStatusFilter}
+                onTestTypeFilterChange={setSuggestionTestTypeFilter}
+                onEndpointFilterChange={setSuggestionEndpointFilter}
+                onApplyFilters={async () => {
+                  await refreshSuggestions();
+                }}
+                onClearFilters={clearSuggestionFilters}
+                onLoadDetail={handleOpenSuggestionDetail}
+                onApprove={handleApproveSuggestion}
+                onReject={handleRejectSuggestion}
+              />
+            </div>
+          )}
+
+          {activeTab === "details" && (
+            <>
+              {/* Search & Filter Bar */}
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
+                <div className="relative flex-1 min-w-[300px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                  <input
+                    className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
+                    placeholder="Search endpoints..."
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
+                    Method
+                  </span>
+                  {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map(
+                    (method) => (
+                      <button
+                        key={method}
+                        onClick={() =>
+                          setFilterMethod(method === "ALL" ? "" : method)
+                        }
+                        className={cn(
+                          "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
+                          (method === "ALL" && !filterMethod) ||
+                            method === filterMethod
+                            ? "bg-primary dark:bg-indigo-600 text-on-primary"
+                            : "bg-surface-container-high dark:bg-slate-800 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-highest dark:hover:bg-slate-700",
+                        )}
+                      >
+                        {method}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              {/* Info Banner */}
+              {!hasAnyTestCases && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
+                  <p className="text-sm text-amber-800 dark:text-amber-400">
+                    💡 No test cases yet. Continue to "AI Review" after saving
+                    this step, then approve suggestions to materialize test cases.
+                    You can reorder endpoints below to control the sequence first.
+                  </p>
+                </div>
+              )}
+
+              {/* Endpoints List - Drag & Drop */}
+              <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-xl border border-outline-variant/10 dark:border-slate-800 overflow-hidden">
+                <div className="px-6 py-4 border-b border-outline-variant/10 dark:border-slate-800">
+                  <h2 className="text-xl font-bold text-on-surface">
+                    Endpoints ({filteredEndpoints.length}/{endpoints.length})
+                  </h2>
+                  <p className="text-sm text-on-surface-variant mt-1">
+                    {isFiltering
+                      ? "Filtering is active. Clear search/filter to reorder endpoints."
+                      : "Drag and drop to reorder execution sequence"}
+                  </p>
+                  <div className="mt-4">
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                      Global Business Rules
+                    </label>
+                    <textarea
+                      value={suite.globalBusinessRules || ""}
+                      onChange={(e) =>
+                        handleGlobalBusinessRulesChange(e.target.value)
+                      }
+                      placeholder="Optional rules for all endpoints, e.g. User must verify email before checkout"
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
+                <div className="divide-y divide-outline-variant/10 dark:divide-slate-800">
+                  {filteredEndpoints.length === 0 ? (
+                    <div className="px-6 py-12 text-center text-on-surface-variant">
+                      No endpoints match current search/filter
+                    </div>
+                  ) : (
+                    filteredEndpoints.map((endpoint, index) => (
+                      <div
+                        key={endpoint.id}
+                        draggable={!isFiltering}
+                        onDragStart={() => !isFiltering && handleDragStart(index)}
+                        onDragOver={(e) =>
+                          !isFiltering && handleDragOver(e, index)
+                        }
+                        onDragEnd={() => !isFiltering && handleDragEnd()}
+                        className={cn(
+                          "px-6 py-4 hover:bg-surface-container-low dark:hover:bg-slate-800 transition-colors",
+                          draggedIndex === index && "opacity-50",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex items-center gap-4",
+                            !isFiltering && "cursor-move",
+                          )}
+                        >
+                          <GripVertical className="w-5 h-5 text-on-surface-variant flex-shrink-0" />
+                          <div className="flex items-center gap-1 text-on-surface-variant font-mono text-sm flex-shrink-0">
+                            <span className="w-6 text-right">{index + 1}</span>
+                            <span>.</span>
+                          </div>
+                          <span
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs font-black tracking-tighter min-w-[70px] text-center flex-shrink-0",
+                              getMethodColor(endpoint.method),
+                            )}
+                          >
+                            {endpoint.method}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-on-surface truncate">
+                              {endpoint.path}
+                            </p>
+                            {endpoint.description && (
+                              <p className="text-xs text-on-surface-variant truncate">
+                                {endpoint.description}
+                              </p>
+                            )}
+                          </div>
+                          {endpoint.tags &&
+                            Array.isArray(endpoint.tags) &&
+                            endpoint.tags.length > 0 && (
+                              <div className="flex gap-1 flex-shrink-0">
+                                {endpoint.tags
+                                  .slice(0, 2)
+                                  .map((tag: string, i: number) => (
+                                    <span
+                                      key={i}
+                                      className="px-2 py-0.5 bg-surface-container dark:bg-slate-800 text-on-surface-variant text-[10px] font-bold rounded-full"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                {endpoint.tags.length > 2 && (
+                                  <span className="px-2 py-0.5 bg-surface-container dark:bg-slate-800 text-on-surface-variant text-[10px] font-bold rounded-full">
+                                    +{endpoint.tags.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                        </div>
+
+                        <div className="mt-3 ml-12">
+                          <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                            Endpoint Business Context
+                          </label>
+                          <textarea
+                            value={
+                              getBusinessContextMap(suite)[endpoint.id] || ""
+                            }
+                            onChange={(e) =>
+                              handleEndpointContextChange(
+                                endpoint.id,
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Optional rule for this endpoint, e.g. Only allow registration for users >= 17"
+                            rows={2}
+                            className="w-full px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 text-xs text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </MainLayout>
+    </>
   );
 }

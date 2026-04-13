@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import { signalRService } from "../services/signalrService";
-import { useAuth } from "./AuthContext";
+import { AuthContext, useAuth } from "./AuthContext";
 import toast from "react-hot-toast";
 
 interface SignalRContextType {
@@ -20,7 +20,8 @@ const SignalRContext = createContext<SignalRContextType | undefined>(undefined);
 export const SignalRProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const auth = useContext(AuthContext);
+  const isAuthenticated = auth?.isAuthenticated ?? false;
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {

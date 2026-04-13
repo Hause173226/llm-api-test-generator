@@ -28,6 +28,7 @@ import BillingPage from "./pages/BillingPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import HelpPage from "./pages/HelpPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 export default function AppRouter() {
   return (
@@ -42,6 +43,7 @@ export default function AppRouter() {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         {/* Protected Routes */}
         <Route

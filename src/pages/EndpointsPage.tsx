@@ -32,6 +32,7 @@ import {
 } from "../utils/errorHandler";
 import { testSuiteService } from "../services/testSuiteService";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
+import GlobalSpinner from "../components/ui/GlobalSpinner";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -733,9 +734,16 @@ export default function EndpointsPage() {
       </Modal>
 
       {/* Create Test Suite Modal */}
+      {/* Global spinner khi đang tạo test suite */}
+      {isSubmitting && (
+        <GlobalSpinner label={t("endpoints.modal.creating")} />
+      )}
+
+      {/* Create Test Suite Modal */}
       <Modal
         isOpen={isCreateSuiteModalOpen}
         onClose={() => {
+          if (isSubmitting) return;
           setIsCreateSuiteModalOpen(false);
           setSuiteName("");
           setSuiteDescription("");
@@ -757,9 +765,8 @@ export default function EndpointsPage() {
             <button
               onClick={handleCreateTestSuite}
               disabled={isSubmitting || !suiteName}
-              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
             >
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("endpoints.modal.createSuiteButton")}
             </button>
           </>

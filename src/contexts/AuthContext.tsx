@@ -15,15 +15,17 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (
     fullName: string,
     email: string,
     password: string,
+    confirmPassword: string,
   ) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -70,11 +72,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     fullName: string,
     email: string,
     password: string,
+    confirmPassword: string,
   ): Promise<void> => {
     try {
-      await authService.register({ fullName, email, password });
+      await authService.register({ fullName, email, password, confirmPassword });
     } catch (error) {
-      // Don't call handleApiError here, let the calling component handle it
+      throw error;
+    }
+  };
+
+  const loginWithGoogle = async (idToken: string): Promise<void> => {
+    try {
+      const response = await authService.loginWithGoogle(idToken);
+      setUser(response.user);
+    } catch (error) {
       throw error;
     }
   };
@@ -84,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isAuthenticated: !!user,
     isLoading,
     login,
+    loginWithGoogle,
     logout,
     register,
   };
