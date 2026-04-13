@@ -266,7 +266,11 @@
       "paramNameLabel": "Name",
       "paramLocationLabel": "Location",
       "paramTypeLabel": "Data Type",
+      "paramFormatLabel": "Format",
       "paramRequiredLabel": "Required",
+      "paramDefaultLabel": "Default Value",
+      "paramExamplesLabel": "Examples",
+      "paramSchemaLabel": "Schema (JSON)",
       "responsesTitle": "Responses",
       "addResponse": "Add Response",
       "removeResponse": "Remove",
@@ -274,6 +278,8 @@
       "responseDescLabel": "Description",
       "schemaLabel": "Schema (JSON)",
       "schemaPlaceholder": "{\n  \"type\": \"object\"\n}",
+      "responseExamplesLabel": "Examples",
+      "responseHeadersLabel": "Headers (JSON)",
       "unsavedChanges": "You have unsaved changes. Are you sure you want to close?",
       "discardTitle": "Discard Changes",
       "discardWarning": "This action cannot be undone. All unsaved changes will be lost.",
@@ -281,14 +287,17 @@
       "keepEditing": "Keep Editing",
       "validation": {
         "nameRequired": "Specification name is required",
+        "nameMaxLength": "Specification name must not exceed 200 characters",
         "endpointsRequired": "At least one endpoint is required",
         "methodRequired": "HTTP method is required",
         "pathRequired": "Path is required",
         "pathInvalid": "Path must start with / (e.g. /api/users)",
+        "pathMaxLength": "Path must not exceed 500 characters",
         "paramNameRequired": "Parameter name is required",
         "statusCodeRequired": "Status code is required",
         "statusCodeRange": "Status code must be an integer between 100 and 599",
-        "schemaInvalid": "Schema must be valid JSON"
+        "schemaInvalid": "Schema must be valid JSON",
+        "headersInvalid": "Headers must be valid JSON"
       }
     }
   },
@@ -1300,6 +1309,8 @@
     "signInToDashboard": "Sign In to Dashboard",
     "registerAction": "Register Account",
     "orContinueWith": "Or continue with",
+    "googleLoginFailed": "Google sign-in failed. Please try again.",
+    "continueWithGoogle": "Continue with Google",
     "dontHaveAccount": "Don't have an account?",
     "alreadyHaveAccount": "Already have an account?",
     "registerFree": "Register Free",

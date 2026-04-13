@@ -69,7 +69,7 @@ export default function VerifyEmailPage() {
                         <Sparkles className="w-6 h-6 text-white" />
                     </div>
                     <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">
-                        TestFlow Intelligence
+                        TestFlow Intelligenc
                     </span>
                 </Link>
 

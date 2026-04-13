@@ -89,7 +89,7 @@ export default function PublicMarketingLayout({
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-bold text-on-surface leading-tight">
-                TestFlow Intelligence
+                TestFlow AI
               </span>
               <span className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">
                 AI-Powered Testing

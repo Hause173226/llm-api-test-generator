@@ -185,7 +185,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
         </div>
         {!isCollapsed && (
           <span className="ml-3 text-xl font-bold tracking-tighter text-indigo-700 dark:text-indigo-400 whitespace-nowrap overflow-hidden animate-in fade-in duration-500">
-            TestFlow Intelligence
+            TestFlow AI
           </span>
         )}
       </div>

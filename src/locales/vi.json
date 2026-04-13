@@ -266,7 +266,11 @@
       "paramNameLabel": "Tên",
       "paramLocationLabel": "Vị trí",
       "paramTypeLabel": "Kiểu Dữ liệu",
+      "paramFormatLabel": "Định dạng",
       "paramRequiredLabel": "Bắt buộc",
+      "paramDefaultLabel": "Giá trị mặc định",
+      "paramExamplesLabel": "Ví dụ",
+      "paramSchemaLabel": "Lược đồ (JSON)",
       "responsesTitle": "Phản hồi",
       "addResponse": "Thêm Phản hồi",
       "removeResponse": "Xóa",
@@ -274,6 +278,8 @@
       "responseDescLabel": "Mô tả",
       "schemaLabel": "Lược đồ (JSON)",
       "schemaPlaceholder": "{\n  \"type\": \"object\"\n}",
+      "responseExamplesLabel": "Ví dụ",
+      "responseHeadersLabel": "Headers (JSON)",
       "unsavedChanges": "Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?",
       "discardTitle": "Hủy bỏ Thay đổi",
       "discardWarning": "Hành động này không thể hoàn tác. Tất cả thay đổi chưa lưu sẽ bị mất.",
@@ -281,14 +287,17 @@
       "keepEditing": "Tiếp tục Chỉnh sửa",
       "validation": {
         "nameRequired": "Tên đặc tả là bắt buộc",
+        "nameMaxLength": "Tên đặc tả không được vượt quá 200 ký tự",
         "endpointsRequired": "Cần ít nhất một điểm cuối",
         "methodRequired": "Phương thức HTTP là bắt buộc",
         "pathRequired": "Đường dẫn là bắt buộc",
         "pathInvalid": "Đường dẫn phải bắt đầu bằng / (ví dụ: /api/users)",
+        "pathMaxLength": "Đường dẫn không được vượt quá 500 ký tự",
         "paramNameRequired": "Tên tham số là bắt buộc",
         "statusCodeRequired": "Mã trạng thái là bắt buộc",
         "statusCodeRange": "Mã trạng thái phải là số nguyên từ 100 đến 599",
-        "schemaInvalid": "Schema phải là JSON hợp lệ"
+        "schemaInvalid": "Schema phải là JSON hợp lệ",
+        "headersInvalid": "Headers phải là JSON hợp lệ"
       }
     }
   },
@@ -1300,6 +1309,8 @@
     "signInToDashboard": "Đăng nhập vào Dashboard",
     "registerAction": "Đăng ký tài khoản",
     "orContinueWith": "Hoặc tiếp tục với",
+    "googleLoginFailed": "Đăng nhập Google thất bại. Vui lòng thử lại.",
+    "continueWithGoogle": "Đăng nhập bằng Google",
     "dontHaveAccount": "Chưa có tài khoản?",
     "alreadyHaveAccount": "Đã có tài khoản?",
     "registerFree": "Đăng ký miễn phí",

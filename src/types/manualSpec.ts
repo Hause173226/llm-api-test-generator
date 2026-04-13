@@ -1,18 +1,24 @@
 export interface ManualSpecParameter {
     name: string;
-    location: 'Path' | 'Query' | 'Header' | 'Body';
+    location: 'Path' | 'Query' | 'Header' | 'Body' | 'Cookie';
     dataType: string;
+    format?: string;
     isRequired: boolean;
+    defaultValue?: string;
+    schema?: string;
+    examples?: string;
 }
 
 export interface ManualSpecResponse {
     statusCode: number | '';
     description: string;
-    schema: string;
+    schema?: string;
+    examples?: string;
+    headers?: string;
 }
 
 export interface ManualSpecEndpoint {
-    httpMethod: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    httpMethod: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
     path: string;
     operationId?: string;
     summary?: string;
@@ -44,8 +50,8 @@ export interface ManualSpecValidationErrors {
         [index: number]: {
             httpMethod?: string;
             path?: string;
-            parameters?: { [paramIndex: number]: { name?: string } };
-            responses?: { [respIndex: number]: { statusCode?: string; schema?: string } };
+            parameters?: { [paramIndex: number]: { name?: string; schema?: string } };
+            responses?: { [respIndex: number]: { statusCode?: string; schema?: string; headers?: string } };
         };
     };
 }

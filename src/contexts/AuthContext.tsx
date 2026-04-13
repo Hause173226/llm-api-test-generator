@@ -15,6 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (
     fullName: string,
@@ -80,11 +81,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const loginWithGoogle = async (idToken: string): Promise<void> => {
+    try {
+      const response = await authService.loginWithGoogle(idToken);
+      setUser(response.user);
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
+    loginWithGoogle,
     logout,
     register,
   };

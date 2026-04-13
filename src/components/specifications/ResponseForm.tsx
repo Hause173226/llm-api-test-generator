@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ManualSpecResponse } from "../../types/manualSpec";
@@ -7,7 +7,7 @@ import { cn } from "../../lib/utils";
 interface ResponseFormProps {
     response: ManualSpecResponse;
     index: number;
-    error?: { statusCode?: string; schema?: string };
+    error?: { statusCode?: string; schema?: string; headers?: string };
     onChange: (index: number, updated: ManualSpecResponse) => void;
     onRemove: (index: number) => void;
 }
@@ -34,7 +34,6 @@ function isValidJson(str: string): boolean {
 export default function ResponseForm({ response, index, error, onChange, onRemove }: ResponseFormProps) {
     const { t } = useTranslation();
     const [userEditedDesc, setUserEditedDesc] = useState(false);
-    const [schemaError, setSchemaError] = useState<string>("");
 
     const update = (field: keyof ManualSpecResponse, value: any) => {
         onChange(index, { ...response, [field]: value });
@@ -43,8 +42,6 @@ export default function ResponseForm({ response, index, error, onChange, onRemov
     const handleStatusCodeChange = (val: string) => {
         const num = val === "" ? "" : parseInt(val, 10);
         const updated: ManualSpecResponse = { ...response, statusCode: num as any };
-
-        // Auto-fill description if not user-edited
         if (!userEditedDesc && typeof num === "number" && STATUS_DESCRIPTIONS[num]) {
             updated.description = STATUS_DESCRIPTIONS[num];
         }
@@ -56,19 +53,15 @@ export default function ResponseForm({ response, index, error, onChange, onRemov
         update("description", val);
     };
 
-    const handleSchemaChange = (val: string) => {
-        update("schema", val);
-        if (val && !isValidJson(val)) {
-            setSchemaError(t("specifications.manualModal.validation.schemaInvalid"));
-        } else {
-            setSchemaError("");
-        }
-    };
+    const schemaError = response.schema && !isValidJson(response.schema)
+        ? t("specifications.manualModal.validation.schemaInvalid") : undefined;
+    const headersError = response.headers && !isValidJson(response.headers)
+        ? t("specifications.manualModal.validation.headersInvalid") : undefined;
 
     return (
         <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+            {/* Status Code + Description + Remove */}
             <div className="grid grid-cols-12 gap-2 items-start">
-                {/* Status Code */}
                 <div className="col-span-3 space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                         {t("specifications.manualModal.statusCodeLabel")}
@@ -88,7 +81,6 @@ export default function ResponseForm({ response, index, error, onChange, onRemov
                     {error?.statusCode && <p className="text-[10px] text-red-500">{error.statusCode}</p>}
                 </div>
 
-                {/* Description */}
                 <div className="col-span-8 space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                         {t("specifications.manualModal.responseDescLabel")}
@@ -102,7 +94,6 @@ export default function ResponseForm({ response, index, error, onChange, onRemov
                     />
                 </div>
 
-                {/* Remove */}
                 <div className="col-span-1 flex items-end justify-end pb-0.5">
                     <button
                         type="button"
@@ -122,8 +113,8 @@ export default function ResponseForm({ response, index, error, onChange, onRemov
                 </label>
                 <textarea
                     rows={3}
-                    value={response.schema}
-                    onChange={(e) => handleSchemaChange(e.target.value)}
+                    value={response.schema || ""}
+                    onChange={(e) => update("schema", e.target.value || undefined)}
                     className={cn(
                         "w-full px-2 py-1.5 text-xs font-mono bg-white dark:bg-slate-800 border rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none",
                         (schemaError || error?.schema) ? "border-red-400" : "border-slate-200 dark:border-slate-700"
@@ -133,6 +124,40 @@ export default function ResponseForm({ response, index, error, onChange, onRemov
                 {(schemaError || error?.schema) && (
                     <p className="text-[10px] text-red-500">{schemaError || error?.schema}</p>
                 )}
+            </div>
+
+            {/* Examples + Headers */}
+            <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        {t("specifications.manualModal.responseExamplesLabel")}
+                    </label>
+                    <textarea
+                        rows={2}
+                        value={response.examples || ""}
+                        onChange={(e) => update("examples", e.target.value || undefined)}
+                        className="w-full px-2 py-1.5 text-xs font-mono bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                        placeholder='{"id": 1}'
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        {t("specifications.manualModal.responseHeadersLabel")}
+                    </label>
+                    <textarea
+                        rows={2}
+                        value={response.headers || ""}
+                        onChange={(e) => update("headers", e.target.value || undefined)}
+                        className={cn(
+                            "w-full px-2 py-1.5 text-xs font-mono bg-white dark:bg-slate-800 border rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none",
+                            (headersError || error?.headers) ? "border-red-400" : "border-slate-200 dark:border-slate-700"
+                        )}
+                        placeholder='{"X-Request-Id": "string"}'
+                    />
+                    {(headersError || error?.headers) && (
+                        <p className="text-[10px] text-red-500">{headersError || error?.headers}</p>
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -102,6 +102,14 @@ class AuthService {
   async verifyEmail(token: string): Promise<void> {
     await apiService.post('/auth/verify-email', { token });
   }
+
+  async loginWithGoogle(idToken: string): Promise<LoginResponse> {
+    const response = await apiService.post<LoginResponse>('/auth/login/google', { idToken });
+    setAuthToken(response.accessToken);
+    if (response.refreshToken) setRefreshToken(response.refreshToken);
+    setUser(response.user);
+    return response;
+  }
 }
 
 export const authService = new AuthService();

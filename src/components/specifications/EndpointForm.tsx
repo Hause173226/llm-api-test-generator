@@ -20,7 +20,7 @@ interface EndpointFormProps {
     onRemove: (index: number) => void;
 }
 
-const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 
 const METHOD_COLORS: Record<string, string> = {
     GET: "text-emerald-600 dark:text-emerald-400",
@@ -28,6 +28,8 @@ const METHOD_COLORS: Record<string, string> = {
     PUT: "text-amber-600 dark:text-amber-400",
     PATCH: "text-purple-600 dark:text-purple-400",
     DELETE: "text-red-600 dark:text-red-400",
+    HEAD: "text-cyan-600 dark:text-cyan-400",
+    OPTIONS: "text-slate-600 dark:text-slate-400",
 };
 
 const defaultParam = (): ManualSpecParameter => ({

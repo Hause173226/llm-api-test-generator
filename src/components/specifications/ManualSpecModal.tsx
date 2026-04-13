@@ -49,6 +49,8 @@ function validate(form: ManualSpecFormData, t: (k: string) => string): ManualSpe
 
     if (!form.name.trim()) {
         errors.name = t("specifications.manualModal.validation.nameRequired");
+    } else if (form.name.length > 200) {
+        errors.name = t("specifications.manualModal.validation.nameMaxLength");
     }
 
     if (form.endpoints.length === 0) {
@@ -65,17 +67,22 @@ function validate(form: ManualSpecFormData, t: (k: string) => string): ManualSpe
             epErr.path = t("specifications.manualModal.validation.pathRequired");
         } else if (!ep.path.startsWith("/")) {
             epErr.path = t("specifications.manualModal.validation.pathInvalid");
+        } else if (ep.path.length > 500) {
+            epErr.path = t("specifications.manualModal.validation.pathMaxLength");
         }
 
-        const paramErrors: { [k: number]: { name?: string } } = {};
+        const paramErrors: { [k: number]: { name?: string; schema?: string } } = {};
         ep.parameters.forEach((p, pi) => {
-            if (!p.name.trim()) paramErrors[pi] = { name: t("specifications.manualModal.validation.paramNameRequired") };
+            const pe: { name?: string; schema?: string } = {};
+            if (!p.name.trim()) pe.name = t("specifications.manualModal.validation.paramNameRequired");
+            if (p.schema && !isValidJson(p.schema)) pe.schema = t("specifications.manualModal.validation.schemaInvalid");
+            if (Object.keys(pe).length) paramErrors[pi] = pe;
         });
         if (Object.keys(paramErrors).length) epErr.parameters = paramErrors;
 
-        const respErrors: { [k: number]: { statusCode?: string; schema?: string } } = {};
+        const respErrors: { [k: number]: { statusCode?: string; schema?: string; headers?: string } } = {};
         ep.responses.forEach((r, ri) => {
-            const re: { statusCode?: string; schema?: string } = {};
+            const re: { statusCode?: string; schema?: string; headers?: string } = {};
             if (r.statusCode === "" || r.statusCode === undefined) {
                 re.statusCode = t("specifications.manualModal.validation.statusCodeRequired");
             } else {
@@ -86,6 +93,9 @@ function validate(form: ManualSpecFormData, t: (k: string) => string): ManualSpe
             }
             if (r.schema && !isValidJson(r.schema)) {
                 re.schema = t("specifications.manualModal.validation.schemaInvalid");
+            }
+            if (r.headers && !isValidJson(r.headers)) {
+                re.headers = t("specifications.manualModal.validation.headersInvalid");
             }
             if (Object.keys(re).length) respErrors[ri] = re;
         });
