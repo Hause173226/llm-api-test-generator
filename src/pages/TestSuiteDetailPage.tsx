@@ -35,6 +35,7 @@ import testSuiteLlmSuggestionService, {
   SuiteSuggestionQuery,
 } from "../services/testSuiteLlmSuggestionService";
 import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel";
+import Modal from "../components/ui/Modal";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 type ProposalApiResponse = {
   proposalId?: string;
@@ -101,6 +102,8 @@ export default function TestSuiteDetailPage() {
     useState(false);
   const [isLoadingSuggestionDetail, setIsLoadingSuggestionDetail] =
     useState(false);
+  const [bulkRejectModalOpen, setBulkRejectModalOpen] = useState(false);
+  const [bulkRejectNotes, setBulkRejectNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -119,7 +122,8 @@ export default function TestSuiteDetailPage() {
   const hasAnyTestCases =
     Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
   const hasGeneratedSuggestions = allSuggestions.length > 0;
-  const isStep1Completed = !hasChanges && hasGeneratedSuggestions;
+  // Chỉ tính isStep1Completed sau khi load xong để tránh redirect nhầm
+  const isStep1Completed = !isLoading && !hasChanges && hasGeneratedSuggestions;
 
   const breadcrumbs = useProjectBreadcrumbs(
     t("testSuites.title"),
@@ -182,10 +186,10 @@ export default function TestSuiteDetailPage() {
     persistGenerationRuns(nextRuns);
   };
 
-  const getSuggestionFilters = (): SuiteSuggestionQuery => ({
-    reviewStatus: suggestionReviewStatusFilter || undefined,
-    testType: suggestionTestTypeFilter || undefined,
-    endpointId: suggestionEndpointFilter || undefined,
+  const getSuggestionFilters = (overrides?: Partial<SuiteSuggestionQuery>): SuiteSuggestionQuery => ({
+    reviewStatus: overrides?.reviewStatus !== undefined ? overrides.reviewStatus : (suggestionReviewStatusFilter || undefined),
+    testType: overrides?.testType !== undefined ? overrides.testType : (suggestionTestTypeFilter || undefined),
+    endpointId: overrides?.endpointId !== undefined ? overrides.endpointId : (suggestionEndpointFilter || undefined),
   });
 
   const applySuggestionToLocalState = (updated: SuiteSuggestionModel) => {
@@ -579,14 +583,14 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  const refreshSuggestions = async (): Promise<SuiteSuggestionModel[]> => {
+  const refreshSuggestions = async (filterOverrides?: Partial<SuiteSuggestionQuery>): Promise<SuiteSuggestionModel[]> => {
     if (!suiteId) return [];
 
     try {
       setIsLoadingSuggestions(true);
       const suggestionResponse = await testSuiteLlmSuggestionService.list(
         suiteId,
-        getSuggestionFilters(),
+        getSuggestionFilters(filterOverrides),
       );
       const items = Array.isArray(suggestionResponse) ? suggestionResponse : [];
       setSuggestions(items);
@@ -806,7 +810,7 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  const handleBulkReview = async (action: "Approve" | "Reject") => {
+  const handleBulkReview = async (action: "Approve" | "Reject", rejectNotes?: string) => {
     if (!suiteId) return;
 
     const hasFilteredSuggestions = suggestions.length > 0;
@@ -815,13 +819,9 @@ export default function TestSuiteDetailPage() {
       return;
     }
 
-    const reviewNotesInput =
-      action === "Reject"
-        ? window.prompt("Review notes are required for bulk reject:", "") || ""
-        : "";
-
-    if (action === "Reject" && !reviewNotesInput.trim()) {
-      showErrorToast("Review notes are required for bulk reject.");
+    if (action === "Reject" && !rejectNotes?.trim()) {
+      setBulkRejectNotes("");
+      setBulkRejectModalOpen(true);
       return;
     }
 
@@ -829,7 +829,7 @@ export default function TestSuiteDetailPage() {
       setIsBulkReviewingSuggestions(true);
       const result = await testSuiteLlmSuggestionService.bulkReview(suiteId, {
         action,
-        reviewNotes: reviewNotesInput.trim() || undefined,
+        reviewNotes: rejectNotes?.trim() || undefined,
         filterByTestType: suggestionTestTypeFilter || undefined,
         filterByEndpointId: suggestionEndpointFilter || undefined,
       });
@@ -851,11 +851,22 @@ export default function TestSuiteDetailPage() {
     }
   };
 
+  const handleBulkRejectConfirm = async () => {
+    if (!bulkRejectNotes.trim()) {
+      showErrorToast("Review notes are required for bulk reject.");
+      return;
+    }
+    setBulkRejectModalOpen(false);
+    await handleBulkReview("Reject", bulkRejectNotes.trim());
+    setBulkRejectNotes("");
+  };
+
   const clearSuggestionFilters = async () => {
     setSuggestionReviewStatusFilter("Pending");
     setSuggestionTestTypeFilter("");
     setSuggestionEndpointFilter("");
-    await refreshSuggestions();
+    // Truyền filter mới trực tiếp, không đọc từ state cũ
+    await refreshSuggestions({ reviewStatus: "Pending", testType: undefined, endpointId: undefined });
   };
 
   const reviewableSuggestions = allSuggestions.filter(
@@ -1248,6 +1259,56 @@ export default function TestSuiteDetailPage() {
   return (
     <>
       {isSubmitting && <GlobalSpinner label="Đang xử lý..." />}
+
+      {/* Bulk Reject Modal */}
+      <Modal
+        isOpen={bulkRejectModalOpen}
+        onClose={() => { if (!isBulkReviewingSuggestions) setBulkRejectModalOpen(false); }}
+        title="Bulk Reject Suggestions"
+        footer={
+          <>
+            <button
+              onClick={() => setBulkRejectModalOpen(false)}
+              disabled={isBulkReviewingSuggestions}
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBulkRejectConfirm}
+              disabled={isBulkReviewingSuggestions || !bulkRejectNotes.trim()}
+              className="px-8 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isBulkReviewingSuggestions ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <X className="w-4 h-4" />
+              )}
+              Confirm Reject All
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-on-surface-variant">
+            This will reject all <span className="font-bold text-on-surface">{suggestions.length}</span> pending suggestions matching current filters.
+          </p>
+          <div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+              Review Notes (required)
+            </label>
+            <textarea
+              value={bulkRejectNotes}
+              onChange={(e) => setBulkRejectNotes(e.target.value)}
+              rows={3}
+              autoFocus
+              className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+              placeholder="Explain why these suggestions should be rejected"
+            />
+          </div>
+        </div>
+      </Modal>
+
       <MainLayout
         title={suite?.name || "Test Suite Details"}
         breadcrumbs={breadcrumbs}
@@ -1398,33 +1459,6 @@ export default function TestSuiteDetailPage() {
 
           {activeTab === "testcases" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-on-surface">
-                  Test Cases ({filteredTestCases.length}/{testCases.length})
-                </h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={refreshTestCases}
-                    disabled={isLoadingTestCases}
-                    className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-60"
-                  >
-                    <RefreshCw
-                      className={cn(
-                        "w-4 h-4",
-                        isLoadingTestCases && "animate-spin",
-                      )}
-                    />
-                    Refresh
-                  </button>
-                  <button
-                    onClick={handleRunTests}
-                    className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white font-semibold flex items-center gap-2"
-                  >
-                    <Play className="w-4 h-4" />
-                    Execute
-                  </button>
-                </div>
-              </div>
 
               <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm space-y-3">
                 <div className="flex items-center justify-between gap-3">
@@ -1625,7 +1659,12 @@ export default function TestSuiteDetailPage() {
                 onTestTypeFilterChange={setSuggestionTestTypeFilter}
                 onEndpointFilterChange={setSuggestionEndpointFilter}
                 onApplyFilters={async () => {
-                  await refreshSuggestions();
+                  // Đọc trực tiếp từ state hiện tại — đã được set bởi onChange handlers
+                  await refreshSuggestions({
+                    reviewStatus: suggestionReviewStatusFilter || undefined,
+                    testType: suggestionTestTypeFilter || undefined,
+                    endpointId: suggestionEndpointFilter || undefined,
+                  });
                 }}
                 onClearFilters={clearSuggestionFilters}
                 onLoadDetail={handleOpenSuggestionDetail}

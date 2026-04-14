@@ -947,30 +947,30 @@
     }
   },
   "overlay": {
-    "preparing": "Tro ly AI dang chuan bi buoc tiep theo cho ban...",
+    "preparing": "Đang chuẩn bị...",
     "suggestions": {
-      "generatingTitle": "Dang tao giai thich loi",
-      "generatingMessage": "Robot AI dang phan tich cac test case that bai va viet giai thich ngan gon.",
-      "generatingStep": "Phan tich that bai"
+      "generatingTitle": "Đang tạo giải thích lỗi",
+      "generatingMessage": "Đang phân tích test case thất bại...",
+      "generatingStep": "Phân tích lỗi"
     },
     "execute": {
-      "startRunTitle": "Dang khoi dong test run",
-      "startRunMessage": "Robot AI dang cau hinh moi truong va dua luot chay vao hang doi.",
-      "startRunStep": "Thuc thi",
-      "preparingTitle": "Dang chuan bi test case da generate",
-      "preparingMessage": "Dang thu thap test case, endpoint va moi truong cho batch nay.",
-      "preparingStep": "Nap ngu canh"
+      "startRunTitle": "Đang khởi động test run",
+      "startRunMessage": "Đang cấu hình và đưa vào hàng đợi...",
+      "startRunStep": "Thực thi",
+      "preparingTitle": "Đang chuẩn bị test case",
+      "preparingMessage": "Đang tải test case và môi trường...",
+      "preparingStep": "Nạp ngữ cảnh"
     },
     "testSuites": {
-      "createTitle": "Dang tao test suite",
-      "createMessage": "Robot AI dang tao suite, de xuat thu tu endpoint va tu dong phe duyet.",
-      "createStep": "Khoi tao",
-      "deleteTitle": "Dang xoa test suite",
-      "deleteMessage": "Dang don dep tai nguyen suite va lam moi danh sach workflow.",
-      "deleteStep": "Bao tri",
-      "cloneTitle": "Dang nhan ban test suite",
-      "cloneMessage": "Dang sao chep metadata cua suite va chuan bi cau hinh ban sao.",
-      "cloneStep": "Nhan ban"
+      "createTitle": "Đang tạo test suite",
+      "createMessage": "Đang thiết lập suite và áp dụng cấu hình...",
+      "createStep": "Khởi tạo",
+      "deleteTitle": "Đang xóa test suite",
+      "deleteMessage": "Đang dọn dẹp tài nguyên suite...",
+      "deleteStep": "Bảo trì",
+      "cloneTitle": "Đang nhân bản test suite",
+      "cloneMessage": "Đang sao chép cấu hình suite...",
+      "cloneStep": "Nhân bản"
     }
   },
   "billing": {

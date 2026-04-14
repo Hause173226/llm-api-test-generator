@@ -37,6 +37,7 @@ export default function SuggestionsPage() {
   const { selectedProject } = useProject();
 
   const suiteIdFromQuery = searchParams.get("suiteId") || "";
+  const runIdFromQuery = searchParams.get("runId") || "";
   const selectedProjectId = selectedProject?.id || "";
 
   const [selectedSuiteId, setSelectedSuiteId] = useState("");
@@ -97,7 +98,7 @@ export default function SuggestionsPage() {
     setSearchParams(next, { replace: true });
   };
 
-  const fetchRuns = async (suiteId: string) => {
+  const fetchRuns = async (suiteId: string, preferRunId?: string) => {
     if (!suiteId) {
       setRuns([]);
       setSelectedRunId("");
@@ -115,10 +116,14 @@ export default function SuggestionsPage() {
       setRuns(items);
 
       if (items.length > 0) {
-        const preferredRun = items.some((run) => run.id === selectedRunId)
-          ? selectedRunId
+        // Ưu tiên: 1) preferRunId (từ URL), 2) state hiện tại, 3) localStorage, 4) run mới nhất
+        const storedRunId = localStorage.getItem(`suggestions_runId:${suiteId}`) || "";
+        const currentRunId = preferRunId || storedRunId;
+        const preferredRun = items.some((run) => run.id === currentRunId)
+          ? currentRunId
           : items[0].id;
         setSelectedRunId(preferredRun);
+        localStorage.setItem(`suggestions_runId:${suiteId}`, preferredRun);
       } else {
         setSelectedRunId("");
       }
@@ -159,7 +164,7 @@ export default function SuggestionsPage() {
       setRunDetail(detail);
       setRunDetailsUnavailable(
         (detail?.resultsSource || "").toLowerCase() === "unavailable" &&
-          (detail?.cases?.length || 0) === 0,
+        (detail?.cases?.length || 0) === 0,
       );
       setExplanationsByCaseId({});
     } catch (err) {
@@ -177,7 +182,7 @@ export default function SuggestionsPage() {
     }
 
     syncQuery(selectedProjectId, selectedSuiteId);
-    fetchRuns(selectedSuiteId);
+    fetchRuns(selectedSuiteId, runIdFromQuery || undefined);
   }, [selectedProjectId, selectedSuiteId]);
 
   useEffect(() => {
@@ -402,7 +407,12 @@ export default function SuggestionsPage() {
             </label>
             <select
               value={selectedRunId}
-              onChange={(e) => setSelectedRunId(e.target.value)}
+              onChange={(e) => {
+                setSelectedRunId(e.target.value);
+                if (selectedSuiteId && e.target.value) {
+                  localStorage.setItem(`suggestions_runId:${selectedSuiteId}`, e.target.value);
+                }
+              }}
               disabled={!selectedSuiteId || isLoadingRuns}
               className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface disabled:opacity-60"
             >
@@ -767,7 +777,7 @@ export default function SuggestionsPage() {
                           </p>
                           <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
                             {Object.keys(testCase.requestHeaders || {}).length >
-                            0
+                              0
                               ? JSON.stringify(testCase.requestHeaders, null, 2)
                               : t("suggestions.none")}
                           </pre>
@@ -780,10 +790,10 @@ export default function SuggestionsPage() {
                             {Object.keys(testCase.responseHeaders || {})
                               .length > 0
                               ? JSON.stringify(
-                                  testCase.responseHeaders,
-                                  null,
-                                  2,
-                                )
+                                testCase.responseHeaders,
+                                null,
+                                2,
+                              )
                               : t("suggestions.none")}
                           </pre>
                         </div>
@@ -816,10 +826,10 @@ export default function SuggestionsPage() {
                           {Object.keys(testCase.extractedVariables || {})
                             .length > 0
                             ? JSON.stringify(
-                                testCase.extractedVariables,
-                                null,
-                                2,
-                              )
+                              testCase.extractedVariables,
+                              null,
+                              2,
+                            )
                             : t("suggestions.none")}
                         </pre>
                       </div>
