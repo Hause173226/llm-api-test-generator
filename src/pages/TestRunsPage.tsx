@@ -59,13 +59,21 @@ export default function TestRunsPage() {
   const preselectedTestCaseId = searchParams.get("testCaseId") || "";
   const preselectedTestCaseIdsRaw = searchParams.get("testCaseIds") || "";
 
+  // Key lưu activeSuiteId theo projectId để không bị lẫn giữa các project
+  const activeSuiteStorageKey = projectId ? `testRuns_activeSuiteId:${projectId}` : null;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [selectedTestSuiteId, setSelectedTestSuiteId] = useState("");
-  const [activeSuiteId, setActiveSuiteId] = useState("");
+  const [activeSuiteId, setActiveSuiteId] = useState(() => {
+    // Khôi phục suite đang xem từ localStorage khi mount
+    if (!projectId) return "";
+    const key = `testRuns_activeSuiteId:${projectId}`;
+    return localStorage.getItem(key) || "";
+  });
   const [selectedTestCaseIds, setSelectedTestCaseIds] = useState<string[]>([]);
   const [suiteTestCases, setSuiteTestCases] = useState<TestCase[]>([]);
   const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
@@ -111,6 +119,9 @@ export default function TestRunsPage() {
   const handleActiveSuiteChange = (suiteId: string) => {
     setActiveSuiteId(suiteId);
     setCurrentPage(1);
+    if (activeSuiteStorageKey) {
+      localStorage.setItem(activeSuiteStorageKey, suiteId);
+    }
   };
 
   const getDefaultEnvironmentId = (items: Environment[]) => {
@@ -148,7 +159,11 @@ export default function TestRunsPage() {
 
   useEffect(() => {
     if (!activeSuiteId && testSuites.length > 0) {
-      setActiveSuiteId(testSuites[0].id);
+      const firstId = testSuites[0].id;
+      setActiveSuiteId(firstId);
+      if (activeSuiteStorageKey) {
+        localStorage.setItem(activeSuiteStorageKey, firstId);
+      }
     }
   }, [testSuites, activeSuiteId]);
 
@@ -156,6 +171,9 @@ export default function TestRunsPage() {
     if (!activeSuiteIdFromQuery) return;
 
     setActiveSuiteId(activeSuiteIdFromQuery);
+    if (activeSuiteStorageKey) {
+      localStorage.setItem(activeSuiteStorageKey, activeSuiteIdFromQuery);
+    }
 
     const params = new URLSearchParams(searchParams);
     params.delete("activeSuiteId");
@@ -167,6 +185,9 @@ export default function TestRunsPage() {
 
     setSelectedTestSuiteId(preselectedSuiteId);
     setActiveSuiteId(preselectedSuiteId);
+    if (activeSuiteStorageKey) {
+      localStorage.setItem(activeSuiteStorageKey, preselectedSuiteId);
+    }
 
     const idsFromCsv = preselectedTestCaseIdsRaw
       .split(",")
@@ -227,7 +248,30 @@ export default function TestRunsPage() {
   useEffect(() => {
     signalRService.connect().catch(console.error);
 
-    const handleTestRunUpdate = () => {
+    const handleTestRunUpdate = (data?: any) => {
+      // Invalidate cache cho run đang running để force re-fetch khi expand
+      const runId = data?.testRunId || data?.TestRunId;
+      if (runId) {
+        setRunDetailsById((prev) => {
+          const next = { ...prev };
+          delete next[runId];
+          return next;
+        });
+      } else {
+        // Không biết run nào → clear toàn bộ cache running runs
+        setRunDetailsById((prev) => {
+          const next = { ...prev };
+          // Chỉ xóa những run đang running trong cache
+          Object.keys(next).forEach((id) => {
+            const cached = next[id];
+            const status = String((cached as any)?.status || "").toLowerCase();
+            if (status === "running" || status === "pending") {
+              delete next[id];
+            }
+          });
+          return next;
+        });
+      }
       refetch();
     };
 
@@ -239,6 +283,13 @@ export default function TestRunsPage() {
       signalRService.off("TestCaseCompleted", handleTestRunUpdate);
     };
   }, [refetch]);
+
+  const closeStartModal = () => {
+    setIsStartModalOpen(false);
+    setSelectedTestSuiteId("");
+    setSelectedTestCaseIds([]);
+    setSuiteTestCases([]);
+  };
 
   const handleStartTestRun = async () => {
     if (!selectedTestSuiteId) {
@@ -340,10 +391,11 @@ export default function TestRunsPage() {
       }
 
       setActiveSuiteId(selectedTestSuiteId);
+      if (activeSuiteStorageKey) {
+        localStorage.setItem(activeSuiteStorageKey, selectedTestSuiteId);
+      }
       showSuccessToast(t("testRuns.toast.started"));
-      setIsStartModalOpen(false);
-      setSelectedTestSuiteId("");
-      setSelectedTestCaseIds([]);
+      closeStartModal();
       setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
     } catch (err) {
       handleError(err);
@@ -472,7 +524,10 @@ export default function TestRunsPage() {
   };
 
   const loadRunDetails = async (runId: string, suiteId: string) => {
-    if (runDetailsById[runId]) {
+    const cached = runDetailsById[runId];
+    // Không cache nếu run đang running/pending — luôn fetch mới
+    const cachedStatus = String((cached as any)?.status || "").toLowerCase();
+    if (cached && cachedStatus !== "running" && cachedStatus !== "pending") {
       return;
     }
 
@@ -504,13 +559,17 @@ export default function TestRunsPage() {
     }));
   };
 
-  const handleOpenLlmSuggestions = (suiteId: string) => {
+  const handleOpenLlmSuggestions = (suiteId: string, runId?: string) => {
     const params = new URLSearchParams({
       suiteId,
     });
 
     if (projectId) {
       params.set("projectId", projectId);
+    }
+
+    if (runId) {
+      params.set("runId", runId);
     }
 
     navigate(`/suggestions?${params.toString()}`);
@@ -521,20 +580,25 @@ export default function TestRunsPage() {
     autoAnalysisState.suggestionsStatus !== "idle" ||
     autoAnalysisState.explanationsStatus !== "idle";
 
-  // Calculate stats
+  // Stats tính trên page hiện tại (không phải toàn bộ)
+  const pagePassedCount = testRuns.filter(
+    (r) => r.status === "completed" && r.failedTests === 0,
+  ).length;
+  const pageFailedCount = testRuns.filter((r) => r.failedTests > 0).length;
+  const runsWithDuration = testRuns.filter((r) => (r.duration || 0) > 0);
+  const pageAvgDuration =
+    runsWithDuration.length > 0
+      ? formatDuration(
+        runsWithDuration.reduce((sum, r) => sum + (r.duration || 0), 0) /
+        runsWithDuration.length,
+      )
+      : "N/A";
+
   const stats = {
     total: totalCount,
-    passed: testRuns.filter(
-      (r) => r.status === "completed" && r.failedTests === 0,
-    ).length,
-    failed: testRuns.filter((r) => r.failedTests > 0).length,
-    avgDuration:
-      testRuns.length > 0
-        ? formatDuration(
-          testRuns.reduce((sum, r) => sum + (r.duration || 0), 0) /
-          testRuns.length,
-        )
-        : "N/A",
+    passed: pagePassedCount,
+    failed: pageFailedCount,
+    avgDuration: pageAvgDuration,
   };
 
   const filteredRuns = testRuns.filter((run) => {
@@ -841,7 +905,7 @@ export default function TestRunsPage() {
                                   status === "cancelled";
 
                                 if (isFinished) {
-                                  handleOpenLlmSuggestions(run.testSuiteId);
+                                  handleOpenLlmSuggestions(run.testSuiteId, run.id);
                                   return;
                                 }
 
@@ -1103,10 +1167,7 @@ export default function TestRunsPage() {
       <Modal
         isOpen={isStartModalOpen}
         onClose={() => {
-          setIsStartModalOpen(false);
-          setSelectedTestSuiteId("");
-          setSelectedTestCaseIds([]);
-          setSuiteTestCases([]);
+          closeStartModal();
           setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
         }}
         title={t("testRuns.modal.title")}
@@ -1114,10 +1175,7 @@ export default function TestRunsPage() {
           <>
             <button
               onClick={() => {
-                setIsStartModalOpen(false);
-                setSelectedTestSuiteId("");
-                setSelectedTestCaseIds([]);
-                setSuiteTestCases([]);
+                closeStartModal();
                 setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
               }}
               disabled={isSubmitting}
@@ -1269,7 +1327,7 @@ export default function TestRunsPage() {
                     ? `/environments?${params.toString()}`
                     : "/environments";
 
-                  setIsStartModalOpen(false);
+                  closeStartModal();
                   navigate(target);
                 }}
                 className="text-sm font-semibold text-primary dark:text-indigo-400 hover:underline"

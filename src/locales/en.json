@@ -947,29 +947,29 @@
     }
   },
   "overlay": {
-    "preparing": "AI assistant is preparing your next step...",
+    "preparing": "Preparing...",
     "suggestions": {
-      "generatingTitle": "Generating Failure Explanations",
-      "generatingMessage": "AI robot is analyzing failed test cases and writing concise explanations.",
+      "generatingTitle": "Generating Explanations",
+      "generatingMessage": "Analyzing failed test cases...",
       "generatingStep": "Failure Analysis"
     },
     "execute": {
       "startRunTitle": "Starting Test Run",
-      "startRunMessage": "AI robot is configuring execution environment and queueing your run.",
+      "startRunMessage": "Configuring and queueing your run...",
       "startRunStep": "Execution",
-      "preparingTitle": "Preparing Generated Test Cases",
-      "preparingMessage": "Collecting generated test cases, endpoints, and environments for this batch.",
+      "preparingTitle": "Preparing Test Cases",
+      "preparingMessage": "Loading test cases and environments...",
       "preparingStep": "Load Context"
     },
     "testSuites": {
       "createTitle": "Creating Test Suite",
-      "createMessage": "AI robot is creating the suite, proposing endpoint order, and applying auto-approval.",
+      "createMessage": "Setting up suite and applying configuration...",
       "createStep": "Provisioning",
       "deleteTitle": "Deleting Test Suite",
-      "deleteMessage": "Cleaning up suite resources and refreshing the workflow list.",
+      "deleteMessage": "Cleaning up suite resources...",
       "deleteStep": "Maintenance",
       "cloneTitle": "Cloning Test Suite",
-      "cloneMessage": "Duplicating suite metadata and preparing copied configuration.",
+      "cloneMessage": "Duplicating suite configuration...",
       "cloneStep": "Clone"
     }
   },
