@@ -7,7 +7,7 @@ class SignalRService {
 
   async connect(): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
-      console.log('SignalR already connected');
+      if (import.meta.env.DEV) console.log('SignalR already connected');
       return;
     }
 
@@ -23,10 +23,10 @@ class SignalRService {
 
     try {
       await this.connection.start();
-      console.log('SignalR Connected');
+      if (import.meta.env.DEV) console.log('SignalR Connected');
       this.setupListeners();
     } catch (error) {
-      console.error('SignalR Connection Error:', error);
+      if (import.meta.env.DEV) console.error('SignalR Connection Error:', error);
       throw error;
     }
   }
@@ -35,15 +35,15 @@ class SignalRService {
     if (!this.connection) return;
 
     this.connection.onreconnecting((error) => {
-      console.log('SignalR Reconnecting...', error);
+      if (import.meta.env.DEV) console.log('SignalR Reconnecting...', error);
     });
 
     this.connection.onreconnected((connectionId) => {
-      console.log('SignalR Reconnected:', connectionId);
+      if (import.meta.env.DEV) console.log('SignalR Reconnected:', connectionId);
     });
 
     this.connection.onclose((error) => {
-      console.log('SignalR Connection Closed', error);
+      if (import.meta.env.DEV) console.log('SignalR Connection Closed', error);
     });
   }
 
@@ -52,25 +52,25 @@ class SignalRService {
 
     // Test run status updates
     this.connection.on('TestRunStatusChanged', (data) => {
-      console.log('Test Run Status Changed:', data);
+      if (import.meta.env.DEV) console.log('Test Run Status Changed:', data);
       this.emit('TestRunStatusChanged', data);
     });
 
     // Test case completed
     this.connection.on('TestCaseCompleted', (data) => {
-      console.log('Test Case Completed:', data);
+      if (import.meta.env.DEV) console.log('Test Case Completed:', data);
       this.emit('TestCaseCompleted', data);
     });
 
     // New notification
     this.connection.on('NewNotification', (data) => {
-      console.log('New Notification:', data);
+      if (import.meta.env.DEV) console.log('New Notification:', data);
       this.emit('NewNotification', data);
     });
 
     // Test generation completed
     this.connection.on('TestGenerationCompleted', (data) => {
-      console.log('Test Generation Completed:', data);
+      if (import.meta.env.DEV) console.log('Test Generation Completed:', data);
       this.emit('TestGenerationCompleted', data);
     });
   }
@@ -78,7 +78,7 @@ class SignalRService {
   async disconnect(): Promise<void> {
     if (this.connection) {
       await this.connection.stop();
-      console.log('SignalR Disconnected');
+      if (import.meta.env.DEV) console.log('SignalR Disconnected');
       this.connection = null;
     }
   }

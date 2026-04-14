@@ -8,7 +8,9 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      // SECURITY: Do NOT inject API keys into the client bundle.
+      // Gemini calls should be proxied through the backend.
+      'process.env.GEMINI_API_KEY': JSON.stringify(""),
     },
     resolve: {
       alias: {

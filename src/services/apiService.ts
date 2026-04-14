@@ -86,7 +86,8 @@ class ApiService {
               const isLoginRequest = endpoint.includes('/auth/login');
               if (!isLoginRequest && token) {
                 // Token expired - clear auth and redirect to login
-                localStorage.removeItem('token');
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('refreshToken');
                 localStorage.removeItem('user');
                 window.location.href = '/login';
                 throw new ApiError(401, 'Session expired. Please login again.');
@@ -108,7 +109,8 @@ class ApiService {
             if (response.status === 401) {
               const isLoginRequest = endpoint.includes('/auth/login');
               if (!isLoginRequest && token) {
-                localStorage.removeItem('token');
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('refreshToken');
                 localStorage.removeItem('user');
                 window.location.href = '/login';
                 throw new ApiError(401, 'Session expired. Please login again.');
@@ -146,11 +148,11 @@ class ApiService {
         
         // Handle network errors
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          console.error('Network Error:', error);
+          if (import.meta.env.DEV) console.error('Network Error:', error);
           throw new ApiError(0, 'Cannot connect to server. Please check if the backend is running.');
         }
         
-        console.error('API Error:', error);
+        if (import.meta.env.DEV) console.error('API Error:', error);
         throw new ApiError(500, 'Network error or server unavailable');
       }
     };
@@ -214,7 +216,8 @@ class ApiService {
       if (!response.ok) {
         // Handle 401 Unauthorized
         if (response.status === 401 && token) {
-          localStorage.removeItem('token');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
           window.location.href = '/login';
           throw new ApiError(401, 'Session expired. Please login again.');
@@ -251,7 +254,8 @@ class ApiService {
       if (!response.ok) {
         // Handle 401 Unauthorized
         if (response.status === 401 && token) {
-          localStorage.removeItem('token');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
           window.location.href = '/login';
           throw new ApiError(401, 'Session expired. Please login again.');

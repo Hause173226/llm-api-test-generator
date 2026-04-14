@@ -34,14 +34,14 @@ class DashboardService {
       // Always get total active projects (not filtered by project)
       const projectsPromise = projectService.getProjects(1, 50)
         .then(res => {
-          console.log('Projects response:', res);
+          if (import.meta.env.DEV) console.log('Projects response:', res);
           const items = Array.isArray(res) ? res : (res.items || []);
           const activeCount = items.filter((p: any) => p.isActive === true || p.status === 'Active').length;
-          console.log('Active projects count:', activeCount, 'from', items.length, 'total');
+          if (import.meta.env.DEV) console.log('Active projects count:', activeCount, 'from', items.length, 'total');
           return activeCount;
         })
         .catch(err => {
-          console.error('Error fetching projects:', err);
+          if (import.meta.env.DEV) console.error('Error fetching projects:', err);
           return 0;
         });
       
@@ -54,7 +54,7 @@ class DashboardService {
         try {
           // Get all specifications for the project
           const specs = await apiService.get<any[]>(`/projects/${projectId}/specifications`);
-          console.log('Specifications response:', specs);
+          if (import.meta.env.DEV) console.log('Specifications response:', specs);
           const specsArray = Array.isArray(specs) ? specs : [];
           
           // Count endpoints across all specifications
@@ -64,7 +64,7 @@ class DashboardService {
                 try {
                   const endpoints = await apiService.get<any>(`/projects/${projectId}/specifications/${spec.id}/endpoints`);
                   const items = Array.isArray(endpoints) ? endpoints : (endpoints.items || []);
-                  console.log(`Spec ${spec.name}: ${items.length} endpoints`);
+                  if (import.meta.env.DEV) console.log(`Spec ${spec.name}: ${items.length} endpoints`);
                   return items.length;
                 } catch {
                   return 0;
@@ -72,13 +72,13 @@ class DashboardService {
               })
             );
             endpointsCount = endpointCounts.reduce((sum, count) => sum + count, 0);
-            console.log('Total endpoints:', endpointsCount);
+            if (import.meta.env.DEV) console.log('Total endpoints:', endpointsCount);
           }
 
           // Get test runs for the project
           try {
             const testRuns = await apiService.get<any>(`/projects/${projectId}/test-runs`);
-            console.log('Test runs response:', testRuns);
+            if (import.meta.env.DEV) console.log('Test runs response:', testRuns);
             const runsArray = Array.isArray(testRuns) ? testRuns : (testRuns.items || []);
             
             // Calculate monthly runs (last 30 days)
@@ -95,12 +95,12 @@ class DashboardService {
               ).length;
               passRate = (passedRuns / runsArray.length) * 100;
             }
-            console.log('Monthly runs:', monthlyRuns, 'Pass rate:', passRate.toFixed(1) + '%');
+            if (import.meta.env.DEV) console.log('Monthly runs:', monthlyRuns, 'Pass rate:', passRate.toFixed(1) + '%');
           } catch (err) {
-            console.error('Error fetching test runs:', err);
+            if (import.meta.env.DEV) console.error('Error fetching test runs:', err);
           }
         } catch (err) {
-          console.error('Error fetching project data:', err);
+          if (import.meta.env.DEV) console.error('Error fetching project data:', err);
         }
       }
 
@@ -113,7 +113,7 @@ class DashboardService {
         passRate: passRate,
       };
     } catch (error) {
-      console.error('Error fetching dashboard metrics:', error);
+      if (import.meta.env.DEV) console.error('Error fetching dashboard metrics:', error);
       // Return default values on error
       return {
         activeProjects: 0,
@@ -145,7 +145,7 @@ class DashboardService {
           timestamp: run.createdDateTime || run.createdAt,
         }));
     } catch (error) {
-      console.error('Error fetching recent activity:', error);
+      if (import.meta.env.DEV) console.error('Error fetching recent activity:', error);
       return [];
     }
   }
@@ -178,7 +178,7 @@ class DashboardService {
 
           allEndpoints.push(...endpoints);
         } catch (err) {
-          console.error(`Error fetching endpoints for spec ${spec.id}:`, err);
+          if (import.meta.env.DEV) console.error(`Error fetching endpoints for spec ${spec.id}:`, err);
         }
       }
 
@@ -187,7 +187,7 @@ class DashboardService {
         .sort((a, b) => b.coverage - a.coverage)
         .slice(0, 10);
     } catch (error) {
-      console.error('Error fetching top endpoints:', error);
+      if (import.meta.env.DEV) console.error('Error fetching top endpoints:', error);
       return [];
     }
   }

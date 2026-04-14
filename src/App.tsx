@@ -11,7 +11,7 @@ import { ErrorBoundary } from "./components/error/ErrorBoundary";
 import { Toaster } from "react-hot-toast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
-const GOOGLE_CLIENT_ID = "573872884539-lov9g4rc77itiaucc7lovecrjel9bbnd.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 export default function App() {
   return (

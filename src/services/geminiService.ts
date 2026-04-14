@@ -1,12 +1,18 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+// SECURITY: The API key must be provided via a backend proxy in production.
+// This client-side instance is only used in development with AI Studio runtime injection.
+const apiKey = process.env.GEMINI_API_KEY || "";
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export const geminiService = {
   /**
    * Generates test cases based on API specification content.
    */
   generateTestCases: async (specContent: string): Promise<string | undefined> => {
+    if (!ai) {
+      throw new Error("Gemini API key is not configured. Please configure it via the backend proxy.");
+    }
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -30,6 +36,9 @@ export const geminiService = {
    * Explains a test failure and suggests a fix.
    */
   explainFailure: async (errorLog: string, codeSnippet: string): Promise<string | undefined> => {
+    if (!ai) {
+      throw new Error("Gemini API key is not configured. Please configure it via the backend proxy.");
+    }
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -57,6 +66,9 @@ export const geminiService = {
    * Suggests test execution order based on endpoint dependencies.
    */
   suggestExecutionOrder: async (endpoints: any[]): Promise<string | undefined> => {
+    if (!ai) {
+      throw new Error("Gemini API key is not configured. Please configure it via the backend proxy.");
+    }
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
