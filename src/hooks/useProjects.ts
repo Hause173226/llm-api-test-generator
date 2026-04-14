@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { projectService } from '../services';
+import { projectService, subscriptionService } from '../services';
 import { handleError } from '../utils/errorHandler';
 import type { Project as ServiceProject } from '../services/projectService';
 
@@ -104,6 +104,23 @@ export function useProjects(pageNumber: number = 1, pageSize: number = 10, searc
     try {
       await projectService.deleteProject(id);
       await fetchProjects(); // Refresh list
+
+      // Best-effort: refresh subscription/usage so UI quota shows updated value
+      try {
+        const usage = await subscriptionService.getMyUsage();
+        // Notify any listeners (billing page / hooks) to refetch
+        try {
+          window.dispatchEvent(new CustomEvent('usage:updated', { detail: { usage } }));
+        } catch {
+          // Fallback if CustomEvent constructor is not available
+          window.dispatchEvent(new Event('usage:updated'));
+        }
+      } catch (err) {
+        // Non-fatal: backend may still be processing ReleaseUsageAsync
+        // Log for diagnostics only
+        // eslint-disable-next-line no-console
+        console.warn('useProjects - failed to refresh usage after delete:', err);
+      }
     } catch (err) {
       throw err;
     }

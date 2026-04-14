@@ -466,7 +466,7 @@ export default function ProjectManagementPage() {
               placeholder={t("projects.modal.descriptionPlaceholder")}
             />
           </div>
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
               {t("projects.modal.sourceLabel")}
             </label>
@@ -482,7 +482,7 @@ export default function ProjectManagementPage() {
               <option value="postman">Postman Collection</option>
               <option value="graphql">GraphQL Schema</option>
             </select>
-          </div>
+          </div> */}
         </div>
       </Modal>
 
