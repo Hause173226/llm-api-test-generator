@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { specificationService, Specification } from '../services';
-import { handleError } from '../utils/errorHandler';
+import { ManualSpecificationRequest } from '../types/manualSpec';
 
 export function useSpecifications(projectId: string) {
   const [specifications, setSpecifications] = useState<Specification[]>([]);
@@ -9,15 +9,19 @@ export function useSpecifications(projectId: string) {
 
   const fetchSpecifications = useCallback(async () => {
     if (!projectId) return;
-    
+
     try {
       setIsLoading(true);
       setError(null);
       const data = await specificationService.getSpecifications(projectId);
       setSpecifications(Array.isArray(data) ? data : []);
-    } catch (err) {
-      const errorMessage = handleError(err);
-      setError(errorMessage);
+    } catch (err: any) {
+      // Chỉ lấy message, không toast — page sẽ hiển thị error state
+      const message =
+        err?.message ||
+        err?.response?.data?.message ||
+        "Không thể tải danh sách đặc tả.";
+      setError(message);
       setSpecifications([]);
     } finally {
       setIsLoading(false);
@@ -62,7 +66,17 @@ export function useSpecifications(projectId: string) {
   const deleteSpecification = async (specId: string) => {
     try {
       await specificationService.deleteSpecification(projectId, specId);
-      await fetchSpecifications(); // Refresh list
+      await fetchSpecifications();
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const createManualSpecification = async (pid: string, data: ManualSpecificationRequest) => {
+    try {
+      const result = await specificationService.createManualSpecification(pid, data);
+      await fetchSpecifications();
+      return result;
     } catch (err) {
       throw err;
     }
@@ -76,5 +90,6 @@ export function useSpecifications(projectId: string) {
     uploadSpecification,
     updateSpecification,
     deleteSpecification,
+    createManualSpecification,
   };
 }

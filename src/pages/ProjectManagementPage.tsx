@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
+import BounceLoader from "../components/ui/BounceLoader";
+import GlobalSpinner from "../components/ui/GlobalSpinner";
 import { cn } from "../lib/utils";
 import { useProjects } from "../hooks/useProjects";
 import { useProject } from "../contexts/ProjectContext";
@@ -396,17 +398,18 @@ export default function ProjectManagementPage() {
         </section>
       </div>
 
+      {/* Global spinner overlay khi đang tạo project */}
+      {isSubmitting && (
+        <GlobalSpinner label={t("projects.modal.creating")} />
+      )}
+
       {/* Create Project Modal */}
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => {
+          if (isSubmitting) return;
           setIsCreateModalOpen(false);
-          setFormData({
-            name: "",
-            description: "",
-            specType: "",
-            specFile: null,
-          });
+          setFormData({ name: "", description: "", specType: "", specFile: null });
         }}
         title={t("projects.modal.title")}
         footer={
@@ -414,12 +417,7 @@ export default function ProjectManagementPage() {
             <button
               onClick={() => {
                 setIsCreateModalOpen(false);
-                setFormData({
-                  name: "",
-                  description: "",
-                  specType: "",
-                  specFile: null,
-                });
+                setFormData({ name: "", description: "", specType: "", specFile: null });
               }}
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
@@ -429,9 +427,8 @@ export default function ProjectManagementPage() {
             <button
               onClick={handleCreateProject}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+              className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("projects.modal.confirm")}
             </button>
           </>

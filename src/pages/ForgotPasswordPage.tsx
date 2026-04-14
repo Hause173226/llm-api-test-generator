@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-black tracking-tighter text-on-surface">
-                TestFlow Intelligence
+                TestFlow Al
               </span>
             </Link>
 
