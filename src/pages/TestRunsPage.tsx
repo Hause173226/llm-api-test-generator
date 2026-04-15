@@ -34,7 +34,7 @@ import {
 import { signalRService } from "../services/signalrService";
 import { useProject } from "../contexts/ProjectContext";
 import environmentService, {
-  Environment,
+  ExecutionEnvironment,
 } from "../services/environmentService";
 import testCaseService, { TestCase } from "../services/testCaseService";
 import testRunService, {
@@ -86,7 +86,7 @@ export default function TestRunsPage() {
   const [expandedCaseByRunId, setExpandedCaseByRunId] = useState<
     Record<string, string | null>
   >({});
-  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pageSize = 20;
@@ -124,7 +124,7 @@ export default function TestRunsPage() {
     }
   };
 
-  const getDefaultEnvironmentId = (items: Environment[]) => {
+  const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
     if (items.length === 0) return "";
     const defaultEnv = items.find((env) => env.isDefault);
     return defaultEnv?.id || items[0].id;
