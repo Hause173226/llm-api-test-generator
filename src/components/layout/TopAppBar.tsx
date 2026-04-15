@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Menu,
   Sparkles,
@@ -34,6 +34,7 @@ export default function TopAppBar({
   breadcrumbs,
 }: TopAppBarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(
@@ -41,6 +42,7 @@ export default function TopAppBar({
   );
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const LAST_AUTOMATED_ROUTE_KEY = "last-automated-route";
 
   useEffect(() => {
     if (isDark) {
@@ -62,6 +64,13 @@ export default function TopAppBar({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!location.pathname.startsWith("/manual-testing")) {
+      const fullPath = `${location.pathname}${location.search}${location.hash}`;
+      sessionStorage.setItem(LAST_AUTOMATED_ROUTE_KEY, fullPath);
+    }
+  }, [location.pathname, location.search, location.hash]);
 
   const toggleLanguage = () => {
     const newLang = i18n.language === "en" ? "vi" : "en";
@@ -169,6 +178,27 @@ export default function TopAppBar({
             <span className="uppercase">
               {i18n.language === "en" ? "EN" : "VI"}
             </span>
+          </button>
+        </div>
+
+        {/* Quick switch between Manual <-> Automated testing */}
+        <div className="hidden sm:flex items-center">
+          <button
+            onClick={() => {
+              const isManual = location.pathname.startsWith("/manual-testing");
+              if (isManual) {
+                const fallback = sessionStorage.getItem(LAST_AUTOMATED_ROUTE_KEY);
+                navigate(fallback || "/runs");
+                return;
+              }
+              navigate("/manual-testing");
+            }}
+            title="Switch testing mode"
+            className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm font-bold text-slate-700 dark:text-slate-300"
+          >
+            {location.pathname.startsWith("/manual-testing")
+              ? "Go to Automated"
+              : "Go to Manual"}
           </button>
         </div>
 

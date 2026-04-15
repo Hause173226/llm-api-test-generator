@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { projectService, subscriptionService } from '../services';
 import { handleError } from '../utils/errorHandler';
 import type { Project as ServiceProject } from '../services/projectService';
+import type { ProjectWorkspaceMode } from '../services/projectService';
 
 export interface Project extends ServiceProject {
   specType?: string;
@@ -13,6 +14,7 @@ export interface Project extends ServiceProject {
   totalEndpoints?: number;
   totalTestSuites?: number;
   activeSpecName?: string;
+  workspaceMode?: ProjectWorkspaceMode;
 }
 
 export interface ProjectsResponse {
@@ -76,12 +78,13 @@ export function useProjects(pageNumber: number = 1, pageSize: number = 10, searc
     fetchProjects();
   }, [fetchProjects]);
 
-  const createProject = async (data: { name: string; description: string; specType: string; specFile?: File }) => {
+  const createProject = async (data: { name: string; description: string; specType: string; specFile?: File; workspaceMode?: ProjectWorkspaceMode }) => {
     try {
       const newProject = await projectService.createProject({
         name: data.name,
         description: data.description,
         type: data.specType as 'REST' | 'GraphQL' | 'gRPC',
+        workspaceMode: data.workspaceMode,
       });
       await fetchProjects(); // Refresh list
       return newProject;

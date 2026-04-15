@@ -24,9 +24,9 @@ export interface TestSuite {
 export interface CreateTestSuiteRequest {
   name: string;
   description?: string;
-  apiSpecId: string;
+  apiSpecId?: string;
   generationType?: 'Auto' | 'Manual';
-  selectedEndpointIds: string[];
+  selectedEndpointIds?: string[];
   endpointBusinessContexts?: Record<string, string>;
   globalBusinessRules?: string;
   rowVersion?: string;
@@ -95,7 +95,7 @@ class TestSuiteService {
       Description: data.description || '',
       ApiSpecId: data.apiSpecId,
       GenerationType: data.generationType || 'Auto',
-      SelectedEndpointIds: data.selectedEndpointIds,
+      SelectedEndpointIds: data.selectedEndpointIds || [],
       EndpointBusinessContexts: data.endpointBusinessContexts || {},
       GlobalBusinessRules: data.globalBusinessRules || '',
     };
