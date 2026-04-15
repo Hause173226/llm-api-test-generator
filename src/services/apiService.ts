@@ -42,10 +42,10 @@ class ApiService {
     const { params, ...requestOptions } = options;
     const queryString = params
       ? new URLSearchParams(
-          Object.entries(params)
-            .filter(([, value]) => value !== undefined && value !== null)
-            .map(([key, value]) => [key, String(value)]),
-        ).toString()
+        Object.entries(params)
+          .filter(([, value]) => value !== undefined && value !== null)
+          .map(([key, value]) => [key, String(value)]),
+      ).toString()
       : '';
     const url = `${this.baseUrl}${endpoint}${queryString ? `${endpoint.includes('?') ? '&' : '?'}${queryString}` : ''}`;
     const token = getAuthToken();
@@ -73,13 +73,13 @@ class ApiService {
           try {
             errorData = await response.json();
             // Try multiple possible error message fields from backend
-            errorMessage = errorData.message 
-              || errorData.title 
-              || errorData.error 
+            errorMessage = errorData.message
+              || errorData.title
+              || errorData.error
               || errorData.errors?.[0]?.message
               || errorData.detail
               || errorMessage;
-            
+
             // Handle 401 Unauthorized
             if (response.status === 401) {
               // If this is NOT a login request and we have a token, it means token expired
@@ -104,7 +104,7 @@ class ApiService {
           } catch {
             // If response is not JSON, use status text
             errorMessage = response.statusText || errorMessage;
-            
+
             // Handle 401 without JSON response
             if (response.status === 401) {
               const isLoginRequest = endpoint.includes('/auth/login');
@@ -145,13 +145,13 @@ class ApiService {
         if (error instanceof ApiError) {
           throw error;
         }
-        
+
         // Handle network errors
         if (error instanceof TypeError && error.message.includes('fetch')) {
           if (import.meta.env.DEV) console.error('Network Error:', error);
           throw new ApiError(0, 'Cannot connect to server. Please check if the backend is running.');
         }
-        
+
         if (import.meta.env.DEV) console.error('API Error:', error);
         throw new ApiError(500, 'Network error or server unavailable');
       }
@@ -195,8 +195,8 @@ class ApiService {
     });
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 
   async uploadFile<T>(endpoint: string, formData: FormData): Promise<T> {
