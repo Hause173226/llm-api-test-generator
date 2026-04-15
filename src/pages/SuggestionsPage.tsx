@@ -880,19 +880,6 @@ export default function SuggestionsPage() {
                           )}
                           {t("suggestions.generateExplanation")}
                         </button>
-                        <button
-                          onClick={() => getExplanation(testCase.testCaseId)}
-                          disabled={loadingExplanation}
-                          className="px-3 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold flex items-center gap-2 disabled:opacity-60 cursor-pointer"
-                        >
-                          <RefreshCw
-                            className={cn(
-                              "w-3 h-3",
-                              loadingExplanation && "animate-spin",
-                            )}
-                          />
-                          {t("suggestions.getExisting")}
-                        </button>
                       </div>
 
                       {explanation && (
@@ -945,7 +932,8 @@ export default function SuggestionsPage() {
               );
             })}
           </div>
-        )}
+        )
+        }
       </div>
     </MainLayout>
   );

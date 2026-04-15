@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
-import environmentService, { Environment, CreateEnvironmentRequest } from '../services/environmentService';
+import environmentService, {
+  ExecutionEnvironment,
+  CreateEnvironmentRequest,
+  UpdateEnvironmentRequest,
+  getConflictReasonCode,
+} from '../services/environmentService';
 import { handleError } from '../utils/errorHandler';
 
 export const useEnvironments = (projectId: string) => {
-  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +37,7 @@ export const useEnvironments = (projectId: string) => {
 
   const createEnvironment = async (data: CreateEnvironmentRequest): Promise<boolean> => {
     try {
-      const newEnv = await environmentService.createEnvironment(data);
+      const newEnv = await environmentService.createEnvironment(projectId, data);
       setEnvironments(prev => [...prev, newEnv]);
       return true;
     } catch (err) {
@@ -43,22 +48,33 @@ export const useEnvironments = (projectId: string) => {
 
   const updateEnvironment = async (
     environmentId: string,
-    data: Partial<Environment>
+    data: Partial<UpdateEnvironmentRequest>
   ): Promise<boolean> => {
     try {
       const current = environments.find(env => env.id === environmentId);
-      if (!current) {
-        throw new Error('Environment not found');
-      }
+      if (!current) throw new Error('Environment not found');
 
-      const updated = await environmentService.updateEnvironment(projectId, environmentId, {
-        ...current,
-        ...data,
-      });
+      const payload: UpdateEnvironmentRequest = {
+        rowVersion: data.rowVersion ?? current.rowVersion,
+        name: data.name ?? current.name,
+        baseUrl: data.baseUrl ?? current.baseUrl,
+        variables: data.variables ?? current.variables,
+        headers: data.headers ?? current.headers,
+        authConfig: data.authConfig !== undefined ? data.authConfig : current.authConfig,
+        isDefault: data.isDefault ?? current.isDefault,
+      };
+
+      const updated = await environmentService.updateEnvironment(projectId, environmentId, payload);
       setEnvironments(prev => prev.map(env => (env.id === environmentId ? updated : env)));
       return true;
     } catch (err) {
-      handleError(err);
+      const reasonCode = getConflictReasonCode(err);
+      if (reasonCode === 'CONCURRENCY_CONFLICT') {
+        // Caller nên reload data và thử lại
+        handleError(new Error('Dữ liệu đã thay đổi bởi thao tác khác. Vui long tải lại và thử lại.'));
+      } else {
+        handleError(err);
+      }
       return false;
     }
   };
@@ -74,7 +90,12 @@ export const useEnvironments = (projectId: string) => {
       setEnvironments(prev => prev.filter(env => env.id !== environmentId));
       return true;
     } catch (err) {
-      handleError(err);
+      const reasonCode = getConflictReasonCode(err);
+      if (reasonCode === 'CONCURRENCY_CONFLICT') {
+        handleError(new Error('Dữ liệu đã thay đổi bởi thao tác khác. Vui lòng tải lại và thử lại.'));
+      } else {
+        handleError(err);
+      }
       return false;
     }
   };
@@ -82,29 +103,29 @@ export const useEnvironments = (projectId: string) => {
   const setDefaultEnvironment = async (environmentId: string): Promise<boolean> => {
     try {
       const target = environments.find(env => env.id === environmentId);
-      if (!target) {
-        throw new Error('Environment not found');
-      }
+      if (!target) throw new Error('Environment not found');
 
       const updated = await environmentService.updateEnvironment(projectId, environmentId, {
-        ...target,
+        rowVersion: target.rowVersion,
+        name: target.name,
+        baseUrl: target.baseUrl,
+        variables: target.variables,
+        headers: target.headers,
+        authConfig: target.authConfig,
         isDefault: true,
       });
 
-      // Update local state to reflect single default environment.
-      setEnvironments(prev => prev.map(env => {
-        if (env.id === environmentId) {
-          return updated;
-        }
-
-        return {
-          ...env,
-          isDefault: false,
-        };
-      }));
+      setEnvironments(prev => prev.map(env =>
+        env.id === environmentId ? updated : { ...env, isDefault: false }
+      ));
       return true;
     } catch (err) {
-      handleError(err);
+      const reasonCode = getConflictReasonCode(err);
+      if (reasonCode === 'CONCURRENCY_CONFLICT') {
+        handleError(new Error('Dữ liệu đã thay đổi bởi thao tác khác. Vui lòng tải lại và thử lại.'));
+      } else {
+        handleError(err);
+      }
       return false;
     }
   };
@@ -112,17 +133,14 @@ export const useEnvironments = (projectId: string) => {
   const cloneEnvironment = async (environmentId: string, newName: string): Promise<boolean> => {
     try {
       const target = environments.find(env => env.id === environmentId);
-      if (!target) {
-        throw new Error('Environment not found');
-      }
+      if (!target) throw new Error('Environment not found');
 
-      const cloned = await environmentService.createEnvironment({
-        projectId,
+      const cloned = await environmentService.createEnvironment(projectId, {
         name: newName,
-        description: target.description,
         baseUrl: target.baseUrl,
-        variables: target.variables || {},
-        headers: target.headers || {},
+        variables: target.variables ?? {},
+        headers: target.headers ?? {},
+        // authConfig không clone vì chứa secret đã bị mask
         isDefault: false,
       });
       setEnvironments(prev => [...prev, cloned]);

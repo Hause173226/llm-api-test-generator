@@ -53,7 +53,6 @@ export default function EnvironmentsPage() {
 
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
     baseUrl: "",
     variables: {} as Record<string, string>,
     headers: {} as Record<string, string>,
@@ -68,7 +67,6 @@ export default function EnvironmentsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
-      description: "",
       baseUrl: "",
       variables: {},
       headers: {},
@@ -87,8 +85,11 @@ export default function EnvironmentsPage() {
     }
 
     const success = await createEnvironment({
-      projectId: projectId,
-      ...formData,
+      name: formData.name,
+      baseUrl: formData.baseUrl,
+      variables: formData.variables,
+      headers: formData.headers,
+      isDefault: formData.isDefault,
     });
 
     if (success) {
@@ -157,7 +158,6 @@ export default function EnvironmentsPage() {
     setSelectedEnvId(env.id);
     setFormData({
       name: env.name,
-      description: env.description || "",
       baseUrl: env.baseUrl,
       variables: env.variables || {},
       headers: env.headers || {},
@@ -170,7 +170,6 @@ export default function EnvironmentsPage() {
     setSelectedEnvId(env.id);
     setFormData({
       name: env.name,
-      description: env.description || "",
       baseUrl: env.baseUrl,
       variables: env.variables || {},
       headers: env.headers || {},
@@ -306,18 +305,9 @@ export default function EnvironmentsPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <span
-                          className={cn(
-                            "w-2 h-2 rounded-full",
-                            env.isActive
-                              ? "bg-emerald-500"
-                              : "bg-amber-500 animate-pulse",
-                          )}
-                        ></span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                         <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                          {env.isActive
-                            ? t("environments.status.operational")
-                            : t("environments.status.inactive")}
+                          {t("environments.status.operational")}
                         </span>
                       </div>
                     </div>
@@ -358,12 +348,6 @@ export default function EnvironmentsPage() {
                     </div>
                   </div>
                 </div>
-
-                {env.description && (
-                  <p className="text-sm text-on-surface-variant">
-                    {env.description}
-                  </p>
-                )}
 
                 <div className="space-y-4">
                   <div
@@ -465,20 +449,6 @@ export default function EnvironmentsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                  {t("environments.form.description")}
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  rows={2}
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 />
               </div>

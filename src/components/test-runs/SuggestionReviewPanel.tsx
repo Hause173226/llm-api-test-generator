@@ -6,6 +6,7 @@ import { SuiteSuggestionModel } from "../../services/testSuiteLlmSuggestionServi
 
 export interface SuggestionReviewPanelProps {
   suggestions: SuiteSuggestionModel[];
+  allSuggestions: SuiteSuggestionModel[];
   endpoints: any[];
   isLoadingSuggestions: boolean;
   isReviewingSuggestion: boolean;
@@ -16,7 +17,7 @@ export interface SuggestionReviewPanelProps {
   onReviewStatusFilterChange: (value: string) => void;
   onTestTypeFilterChange: (value: string) => void;
   onEndpointFilterChange: (value: string) => void;
-  onApplyFilters: () => Promise<void> | void;
+  onApplyFilters: (filters: { reviewStatus: string; testType: string; endpointId: string }) => Promise<void> | void;
   onClearFilters: () => Promise<void> | void;
   onLoadDetail: (suggestionId: string) => Promise<void>;
   onApprove: (
@@ -40,6 +41,7 @@ export interface SuggestionReviewPanelProps {
 
 export default function SuggestionReviewPanel({
   suggestions,
+  allSuggestions,
   endpoints,
   isLoadingSuggestions,
   isReviewingSuggestion,
@@ -57,6 +59,9 @@ export default function SuggestionReviewPanel({
   onReject,
 }: SuggestionReviewPanelProps) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [draftStatus, setDraftStatus] = useState(reviewStatusFilter);
+  const [draftTestType, setDraftTestType] = useState(testTypeFilter);
+  const [draftEndpoint, setDraftEndpoint] = useState(endpointFilter);
   const [reviewMode, setReviewMode] = useState<"Reject" | "Modify" | null>(
     null,
   );
@@ -86,8 +91,8 @@ export default function SuggestionReviewPanel({
 
   const uniqueSuggestionTypes = useMemo(
     () =>
-      Array.from(new Set(suggestions.map((s) => s.testType).filter(Boolean))),
-    [suggestions],
+      Array.from(new Set(allSuggestions.map((s) => s.testType).filter(Boolean))),
+    [allSuggestions],
   );
 
   const suggestionStats = useMemo(() => {
@@ -132,8 +137,8 @@ export default function SuggestionReviewPanel({
     );
     setModifyDescription(
       draft?.modifiedContent?.description ??
-        suggestion.suggestedDescription ??
-        "",
+      suggestion.suggestedDescription ??
+      "",
     );
     setModifyTestType(
       draft?.modifiedContent?.testType ?? suggestion.testType ?? "",
@@ -225,10 +230,15 @@ export default function SuggestionReviewPanel({
             AI Review Filters
           </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <select
-            value={reviewStatusFilter}
-            onChange={(e) => onReviewStatusFilterChange(e.target.value)}
+            value={draftStatus}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDraftStatus(v);
+              onReviewStatusFilterChange(v);
+              onApplyFilters({ reviewStatus: v, testType: draftTestType, endpointId: draftEndpoint });
+            }}
             className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
           >
             <option value="">All statuses</option>
@@ -240,21 +250,29 @@ export default function SuggestionReviewPanel({
           </select>
 
           <select
-            value={testTypeFilter}
-            onChange={(e) => onTestTypeFilterChange(e.target.value)}
+            value={draftTestType}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDraftTestType(v);
+              onTestTypeFilterChange(v);
+              onApplyFilters({ reviewStatus: draftStatus, testType: v, endpointId: draftEndpoint });
+            }}
             className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
           >
             <option value="">All test types</option>
             {uniqueSuggestionTypes.map((testType) => (
-              <option key={testType} value={testType}>
-                {testType}
-              </option>
+              <option key={testType} value={testType}>{testType}</option>
             ))}
           </select>
 
           <select
-            value={endpointFilter}
-            onChange={(e) => onEndpointFilterChange(e.target.value)}
+            value={draftEndpoint}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDraftEndpoint(v);
+              onEndpointFilterChange(v);
+              onApplyFilters({ reviewStatus: draftStatus, testType: draftTestType, endpointId: v });
+            }}
             className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
           >
             <option value="">All endpoints</option>
@@ -264,55 +282,13 @@ export default function SuggestionReviewPanel({
               </option>
             ))}
           </select>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onApplyFilters()}
-              disabled={isLoadingSuggestions}
-              className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white text-sm font-bold disabled:opacity-60"
-            >
-              Apply
-            </button>
-            <button
-              onClick={() => onClearFilters()}
-              disabled={isLoadingSuggestions}
-              className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface text-sm font-bold disabled:opacity-60"
-            >
-              Clear
-            </button>
-          </div>
         </div>
-        <p className="mt-2 text-[11px] text-cyan-700/85 dark:text-cyan-200/80">
-          Tip: keep status at Pending to review the latest generation batch. Use
-          Superseded only for historical inspection.
-        </p>
       </div>
 
       {isLoadingSuggestions ? (
         <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" />
           Loading LLM suggestions...
-        </div>
-      ) : suggestions.length > 0 ? (
-        <div className="rounded-2xl bg-linear-to-r from-cyan-50 via-sky-50 to-indigo-100 border border-cyan-300 dark:from-cyan-900/35 dark:via-sky-900/30 dark:to-indigo-900/35 dark:border-cyan-400/15 p-4 shadow-sm">
-          <p className="text-sm font-extrabold text-slate-900 dark:text-cyan-100">
-            AI Review Queue: {suggestions.length} items
-          </p>
-          <p className="text-xs font-medium text-slate-700 dark:text-cyan-200/80 mt-1">
-            Process pending suggestions to unlock automatic transition to Test
-            Cases.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="px-2.5 py-1 rounded-full font-semibold bg-amber-200 text-amber-900 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/25">
-              Pending: {suggestionStats.pending}
-            </span>
-            <span className="px-2.5 py-1 rounded-full font-semibold bg-emerald-200 text-emerald-900 border border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/25">
-              Approved: {suggestionStats.approved}
-            </span>
-            <span className="px-2.5 py-1 rounded-full font-semibold bg-rose-200 text-rose-900 border border-rose-300 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/25">
-              Rejected: {suggestionStats.rejected}
-            </span>
-          </div>
         </div>
       ) : null}
 
@@ -380,51 +356,41 @@ export default function SuggestionReviewPanel({
                     )}
                   </div>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={async () => {
-                        await onApprove(suggestion, draftEdits[suggestion.id]);
-                        setDraftEdits((prev) => {
-                          const next = { ...prev };
-                          delete next[suggestion.id];
-                          return next;
-                        });
-                      }}
-                      disabled={
-                        isReviewingSuggestion ||
-                        String(suggestion.reviewStatus || "").toLowerCase() !==
-                          "pending"
-                      }
-                      className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-60"
-                    >
-                      <Check className="w-3 h-3" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => openRejectModal(suggestion)}
-                      disabled={
-                        isReviewingSuggestion ||
-                        String(suggestion.reviewStatus || "").toLowerCase() !==
-                          "pending"
-                      }
-                      className="px-3 py-1.5 rounded-md bg-rose-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-60"
-                    >
-                      <X className="w-3 h-3" />
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => openModifyModal(suggestion)}
-                      disabled={
-                        isReviewingSuggestion ||
-                        String(suggestion.reviewStatus || "").toLowerCase() !==
-                          "pending"
-                      }
-                      className="px-3 py-1.5 rounded-md bg-amber-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-60"
-                    >
-                      <Pencil className="w-3 h-3" />
-                      Edit
-                    </button>
-                  </div>
+                  {String(suggestion.reviewStatus || "").toLowerCase() === "pending" && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          await onApprove(suggestion, draftEdits[suggestion.id]);
+                          setDraftEdits((prev) => {
+                            const next = { ...prev };
+                            delete next[suggestion.id];
+                            return next;
+                          });
+                        }}
+                        disabled={isReviewingSuggestion}
+                        className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-60"
+                      >
+                        <Check className="w-3 h-3" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => openRejectModal(suggestion)}
+                        disabled={isReviewingSuggestion}
+                        className="px-3 py-1.5 rounded-md bg-rose-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-60"
+                      >
+                        <X className="w-3 h-3" />
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => openModifyModal(suggestion)}
+                        disabled={isReviewingSuggestion}
+                        className="px-3 py-1.5 rounded-md bg-amber-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-60"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Edit
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })(),

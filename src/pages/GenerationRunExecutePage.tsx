@@ -6,7 +6,7 @@ import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { useProject } from "../contexts/ProjectContext";
 import environmentService, {
-  Environment,
+  ExecutionEnvironment,
 } from "../services/environmentService";
 import endpointService, { Endpoint } from "../services/endpointService";
 import testCaseService, { TestCase } from "../services/testCaseService";
@@ -57,7 +57,7 @@ export default function GenerationRunExecutePage() {
   const [endpointById, setEndpointById] = useState<Record<string, Endpoint>>(
     {},
   );
-  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,7 +75,7 @@ export default function GenerationRunExecutePage() {
     }));
   }, [testCases, endpointById]);
 
-  const getDefaultEnvironmentId = (items: Environment[]) => {
+  const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
     if (items.length === 0) return "";
     const defaultEnv = items.find((env) => env.isDefault);
     return defaultEnv?.id || items[0].id;
@@ -203,12 +203,24 @@ export default function GenerationRunExecutePage() {
         setEndpointById(endpointMap);
 
         const idSet = new Set(batchTestCaseIds);
-        const filtered = (suiteCasesResponse.items || []).filter((item) =>
-          idSet.has(item.id),
-        );
+        const filtered =
+          idSet.size > 0
+            ? (suiteCasesResponse.items || []).filter((item) => idSet.has(item.id))
+            : suiteCasesResponse.items || [];
 
-        setTestCases(filtered);
-        setSelectedTestCaseIds(filtered.map((item) => item.id));
+        // Fallback: nếu filter ra rỗng nhưng có IDs trong URL,
+        // có thể do ID mismatch — load tất cả test cases của suite
+        const finalTestCases =
+          filtered.length === 0 && idSet.size > 0
+            ? suiteCasesResponse.items || []
+            : filtered;
+
+        setTestCases(finalTestCases);
+        setSelectedTestCaseIds(
+          idSet.size > 0
+            ? finalTestCases.filter((item) => idSet.has(item.id)).map((item) => item.id)
+            : finalTestCases.map((item) => item.id)
+        );
       } catch (err) {
         handleError(err);
       } finally {
@@ -424,6 +436,19 @@ export default function GenerationRunExecutePage() {
           )}
 
           <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
+            {environments.length === 0 && !isLoading && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
+                No execution environment found. Please create one in{" "}
+                <button
+                  type="button"
+                  className="underline font-semibold"
+                  onClick={() => navigate(`/environments?projectId=${projectId}`)}
+                >
+                  Environments
+                </button>{" "}
+                before running tests.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => handleExecute("selected")}
@@ -437,7 +462,7 @@ export default function GenerationRunExecutePage() {
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <Play className="w-4 h-4" />
-              Execute Selected
+              Execute Selected ({selectedTestCaseIds.length})
             </button>
             <button
               type="button"
@@ -451,7 +476,7 @@ export default function GenerationRunExecutePage() {
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <Play className="w-4 h-4" />
-              Execute All
+              Execute All ({testCases.length})
             </button>
           </div>
         </section>

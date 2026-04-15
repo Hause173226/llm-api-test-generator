@@ -50,12 +50,3 @@ export interface TestExecutionOrderPlan {
   edges: TestExecutionEdge[];
   reasoningNotes: string;
 }
-
-export interface Environment {
-  id: string;
-  name: string;
-  baseUrl: string;
-  isDefault: boolean;
-  authType: 'bearer' | 'api-key' | 'oauth2' | 'basic';
-  status: 'operational' | 'degraded' | 'down';
-}

@@ -113,7 +113,7 @@ export default function TestSuiteDetailPage() {
   const [testCaseFilterMethod, setTestCaseFilterMethod] = useState("");
   const [activeTab, setActiveTab] = useState<SuiteTab>("details");
   const [suggestionReviewStatusFilter, setSuggestionReviewStatusFilter] =
-    useState("Pending");
+    useState("");
   const [suggestionTestTypeFilter, setSuggestionTestTypeFilter] = useState("");
   const [suggestionEndpointFilter, setSuggestionEndpointFilter] = useState("");
   const [expandedGenerationItemId, setExpandedGenerationItemId] = useState<
@@ -314,7 +314,6 @@ export default function TestSuiteDetailPage() {
         await Promise.all([refreshSuggestions(), refreshAllSuggestions()]);
       } catch (suggestionErr) {
         console.warn("Failed to load LLM suggestions:", suggestionErr);
-        setSuggestions([]);
         setAllSuggestions([]);
       }
 
@@ -583,18 +582,15 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  const refreshSuggestions = async (filterOverrides?: Partial<SuiteSuggestionQuery>): Promise<SuiteSuggestionModel[]> => {
+  const refreshSuggestions = async (): Promise<SuiteSuggestionModel[]> => {
     if (!suiteId) return [];
 
     try {
       setIsLoadingSuggestions(true);
-      const suggestionResponse = await testSuiteLlmSuggestionService.list(
-        suiteId,
-        getSuggestionFilters(filterOverrides),
-      );
-      const items = Array.isArray(suggestionResponse) ? suggestionResponse : [];
-      setSuggestions(items);
-      return items;
+      const items = await testSuiteLlmSuggestionService.list(suiteId);
+      const result = Array.isArray(items) ? items : [];
+      setAllSuggestions(result);
+      return result;
     } catch (err) {
       handleError(err);
       return [];
@@ -603,20 +599,8 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  const refreshAllSuggestions = async () => {
-    if (!suiteId) return;
-
-    try {
-      const suggestionResponse =
-        await testSuiteLlmSuggestionService.list(suiteId);
-      setAllSuggestions(
-        Array.isArray(suggestionResponse) ? suggestionResponse : [],
-      );
-    } catch (err) {
-      handleError(err);
-      setAllSuggestions([]);
-    }
-  };
+  // Alias để không phải đổi tất cả chỗ gọi refreshAllSuggestions
+  const refreshAllSuggestions = refreshSuggestions;
 
   const handleGenerateSuggestions = async (forceRefresh = false) => {
     if (!suite || !suiteId || !suite.apiSpecId) {
@@ -705,7 +689,11 @@ export default function TestSuiteDetailPage() {
       nextTestCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
 
     if (!hasPending && hasCases) {
-      changeTab("testcases");
+      // Dùng setActiveTab trực tiếp để bypass check hasAnyTestCases cũ trong changeTab
+      setActiveTab("testcases");
+      const params = new URLSearchParams(searchParams);
+      params.set("tab", "testcases");
+      setSearchParams(params, { replace: true });
     }
   };
 
@@ -813,7 +801,7 @@ export default function TestSuiteDetailPage() {
   const handleBulkReview = async (action: "Approve" | "Reject", rejectNotes?: string) => {
     if (!suiteId) return;
 
-    const hasFilteredSuggestions = suggestions.length > 0;
+    const hasFilteredSuggestions = displayedSuggestions.length > 0;
     if (!hasFilteredSuggestions) {
       showInfoToast("No suggestions available for current filters.");
       return;
@@ -861,12 +849,10 @@ export default function TestSuiteDetailPage() {
     setBulkRejectNotes("");
   };
 
-  const clearSuggestionFilters = async () => {
-    setSuggestionReviewStatusFilter("Pending");
+  const clearSuggestionFilters = () => {
+    setSuggestionReviewStatusFilter("");
     setSuggestionTestTypeFilter("");
     setSuggestionEndpointFilter("");
-    // Truyền filter mới trực tiếp, không đọc từ state cũ
-    await refreshSuggestions({ reviewStatus: "Pending", testType: undefined, endpointId: undefined });
   };
 
   const reviewableSuggestions = allSuggestions.filter(
@@ -883,13 +869,13 @@ export default function TestSuiteDetailPage() {
   const rejectedSuggestionsCount = reviewableSuggestions.filter(
     (item) => String(item.reviewStatus || "").toLowerCase() === "rejected",
   ).length;
-  const filteredApprovedSuggestionsCount = suggestions.filter((item) => {
+  const filteredApprovedSuggestionsCount = allSuggestions.filter((item) => {
     const status = String(item.reviewStatus || "").toLowerCase();
     return status === "approved" || status === "modifiedandapproved";
   }).length;
-  const shouldShowSuggestionBulkActions =
-    suggestions.length === 0 ||
-    filteredApprovedSuggestionsCount < suggestions.length;
+  const shouldShowSuggestionBulkActions = allSuggestions.some(
+    (item) => String(item.reviewStatus || "").toLowerCase() === "pending"
+  );
 
   const steps: Array<{
     id: SuiteTab;
@@ -902,7 +888,7 @@ export default function TestSuiteDetailPage() {
         title: "Step 1: Configure",
         helper: hasChanges
           ? "Endpoint changes pending approval"
-          : suggestions.length > 0
+          : allSuggestions.length > 0
             ? "Order approved and AI preview is available"
             : "Approve order to generate AI preview",
         isDone: isStep1Completed,
@@ -1060,7 +1046,7 @@ export default function TestSuiteDetailPage() {
       .sort((a, b) => {
         const aTime = a.generatedAt ? new Date(a.generatedAt).getTime() : 0;
         const bTime = b.generatedAt ? new Date(b.generatedAt).getTime() : 0;
-        return bTime - aTime;
+        return aTime - bTime;
       });
   };
 
@@ -1159,8 +1145,8 @@ export default function TestSuiteDetailPage() {
       .filter((item) => item.totalSuggestions > 0)
       .sort(
         (a, b) =>
-          new Date(b.generatedAt || 0).getTime() -
-          new Date(a.generatedAt || 0).getTime(),
+          new Date(a.generatedAt || 0).getTime() -
+          new Date(b.generatedAt || 0).getTime(),
       );
   })();
 
@@ -1178,12 +1164,22 @@ export default function TestSuiteDetailPage() {
     : undefined;
 
   const displayedSuggestions = (() => {
-    if (!expandedGenerationItem) {
-      return suggestions;
-    }
+    const base = expandedGenerationItem
+      ? allSuggestions.filter((item) => new Set(expandedGenerationItem.suggestionIds).has(item.id))
+      : allSuggestions;
 
-    const suggestionIdSet = new Set(expandedGenerationItem.suggestionIds);
-    return allSuggestions.filter((item) => suggestionIdSet.has(item.id));
+    return base.filter((item) => {
+      if (suggestionReviewStatusFilter) {
+        if (String(item.reviewStatus || "").toLowerCase() !== suggestionReviewStatusFilter.toLowerCase()) return false;
+      }
+      if (suggestionTestTypeFilter) {
+        if (String(item.testType || "").toLowerCase() !== suggestionTestTypeFilter.toLowerCase()) return false;
+      }
+      if (suggestionEndpointFilter) {
+        if (item.endpointId !== suggestionEndpointFilter) return false;
+      }
+      return true;
+    });
   })();
 
   const handleRunGenerationItem = (item: GenerationItem) => {
@@ -1291,7 +1287,7 @@ export default function TestSuiteDetailPage() {
       >
         <div className="space-y-3">
           <p className="text-sm text-on-surface-variant">
-            This will reject all <span className="font-bold text-on-surface">{suggestions.length}</span> pending suggestions matching current filters.
+            This will reject all <span className="font-bold text-on-surface">{displayedSuggestions.filter(s => String(s.reviewStatus || "").toLowerCase() === "pending").length}</span> pending suggestions matching current filters.
           </p>
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
@@ -1350,7 +1346,7 @@ export default function TestSuiteDetailPage() {
                   <button
                     onClick={() => handleBulkReview("Approve")}
                     disabled={
-                      isBulkReviewingSuggestions || suggestions.length === 0
+                      isBulkReviewingSuggestions || displayedSuggestions.length === 0
                     }
                     className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
                   >
@@ -1365,7 +1361,7 @@ export default function TestSuiteDetailPage() {
                   <button
                     onClick={() => handleBulkReview("Reject")}
                     disabled={
-                      isBulkReviewingSuggestions || suggestions.length === 0
+                      isBulkReviewingSuggestions || displayedSuggestions.length === 0
                     }
                     className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
                   >
@@ -1568,7 +1564,7 @@ export default function TestSuiteDetailPage() {
                                   <p className="text-sm font-semibold text-on-surface">
                                     {item.label}
                                   </p>
-                                  {index === 0 && (
+                                  {index === generationItems.length - 1 && (
                                     <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
                                       Latest
                                     </span>
@@ -1601,11 +1597,16 @@ export default function TestSuiteDetailPage() {
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setExpandedGenerationItemId((prev) =>
-                                      prev === item.id ? null : item.id,
-                                    )
-                                  }
+                                  onClick={() => {
+                                    const newId = expandedGenerationItemId === item.id ? null : item.id;
+                                    setExpandedGenerationItemId(newId);
+                                    // Reset filter về All khi mở generation item để hiện tất cả suggestions
+                                    if (newId) {
+                                      setSuggestionReviewStatusFilter("");
+                                      setSuggestionTestTypeFilter("");
+                                      setSuggestionEndpointFilter("");
+                                    }
+                                  }}
                                   className="px-3 py-1.5 rounded-md bg-primary dark:bg-indigo-600 text-on-primary text-xs font-semibold flex items-center gap-1"
                                 >
                                   {isExpanded ? (
@@ -1646,31 +1647,35 @@ export default function TestSuiteDetailPage() {
                 </div>
               )}
 
-              <SuggestionReviewPanel
-                suggestions={displayedSuggestions}
-                endpoints={endpoints}
-                isLoadingSuggestions={isLoadingSuggestions}
-                isReviewingSuggestion={isReviewingSuggestion}
-                isLoadingSuggestionDetail={isLoadingSuggestionDetail}
-                reviewStatusFilter={suggestionReviewStatusFilter}
-                testTypeFilter={suggestionTestTypeFilter}
-                endpointFilter={suggestionEndpointFilter}
-                onReviewStatusFilterChange={setSuggestionReviewStatusFilter}
-                onTestTypeFilterChange={setSuggestionTestTypeFilter}
-                onEndpointFilterChange={setSuggestionEndpointFilter}
-                onApplyFilters={async () => {
-                  // Đọc trực tiếp từ state hiện tại — đã được set bởi onChange handlers
-                  await refreshSuggestions({
-                    reviewStatus: suggestionReviewStatusFilter || undefined,
-                    testType: suggestionTestTypeFilter || undefined,
-                    endpointId: suggestionEndpointFilter || undefined,
-                  });
-                }}
-                onClearFilters={clearSuggestionFilters}
-                onLoadDetail={handleOpenSuggestionDetail}
-                onApprove={handleApproveSuggestion}
-                onReject={handleRejectSuggestion}
-              />
+              {expandedGenerationItem ? (
+                <SuggestionReviewPanel
+                  suggestions={displayedSuggestions}
+                  allSuggestions={allSuggestions}
+                  endpoints={endpoints}
+                  isLoadingSuggestions={isLoadingSuggestions}
+                  isReviewingSuggestion={isReviewingSuggestion}
+                  isLoadingSuggestionDetail={isLoadingSuggestionDetail}
+                  reviewStatusFilter={suggestionReviewStatusFilter}
+                  testTypeFilter={suggestionTestTypeFilter}
+                  endpointFilter={suggestionEndpointFilter}
+                  onReviewStatusFilterChange={setSuggestionReviewStatusFilter}
+                  onTestTypeFilterChange={setSuggestionTestTypeFilter}
+                  onEndpointFilterChange={setSuggestionEndpointFilter}
+                  onApplyFilters={async (filters) => {
+                    setSuggestionReviewStatusFilter(filters.reviewStatus);
+                    setSuggestionTestTypeFilter(filters.testType);
+                    setSuggestionEndpointFilter(filters.endpointId);
+                  }}
+                  onClearFilters={clearSuggestionFilters}
+                  onLoadDetail={handleOpenSuggestionDetail}
+                  onApprove={handleApproveSuggestion}
+                  onReject={handleRejectSuggestion}
+                />
+              ) : (
+                <div className="text-sm text-on-surface-variant text-center py-8">
+                  Open a generation batch above to review its suggestions.
+                </div>
+              )}
             </div>
           )}
 
