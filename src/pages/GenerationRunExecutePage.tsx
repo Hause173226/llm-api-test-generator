@@ -180,12 +180,12 @@ export default function GenerationRunExecutePage() {
             apiSpecId
               ? endpointService.getEndpoints(projectId, apiSpecId, 1, 1000)
               : Promise.resolve({
-                  items: [] as Endpoint[],
-                  totalCount: 0,
-                  pageNumber: 1,
-                  pageSize: 0,
-                  totalPages: 1,
-                }),
+                items: [] as Endpoint[],
+                totalCount: 0,
+                pageNumber: 1,
+                pageSize: 0,
+                totalPages: 1,
+              }),
           ],
         );
 
@@ -346,24 +346,25 @@ export default function GenerationRunExecutePage() {
           ) : (
             <>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedTestCaseIds(testCases.map((item) => item.id))
-                  }
-                  className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1"
-                >
-                  <CheckSquare className="w-3.5 h-3.5" />
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTestCaseIds([])}
-                  className="text-xs font-semibold text-on-surface-variant hover:underline flex items-center gap-1"
-                >
-                  <Square className="w-3.5 h-3.5" />
-                  Clear
-                </button>
+                {selectedTestCaseIds.length === testCases.length ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTestCaseIds([])}
+                    className="text-xs font-semibold text-on-surface-variant hover:underline flex items-center gap-1"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    Clear
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTestCaseIds(testCases.map((item) => item.id))}
+                    className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    Select all
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">
