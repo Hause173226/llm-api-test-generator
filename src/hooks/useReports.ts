@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react';
-import reportService, { Report, GenerateReportRequest, CoverageReport, TrendReport } from '../services/reportService';
-import { handleError } from '../utils/errorHandler';
+import { useState, useEffect, useCallback } from "react";
+import reportService, {
+  Report,
+  GenerateReportRequest,
+} from "../services/reportService";
+import { handleError } from "../utils/errorHandler";
 
-export const useReports = (projectId: string, type?: string) => {
+/**
+ * Hook aligned with FE-10: reports are scoped to a specific test run
+ * inside a test suite – NOT project-level.
+ */
+export const useReports = (suiteId: string, runId: string) => {
   const [reports, setReports] = useState<Report[]>([]);
-  const [coverageReport, setCoverageReport] = useState<CoverageReport | null>(null);
-  const [trendReport, setTrendReport] = useState<TrendReport | null>(null);
-  const [performanceReport, setPerformanceReport] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
@@ -17,75 +21,52 @@ export const useReports = (projectId: string, type?: string) => {
     totalPages: 0,
   });
 
-  const fetchReports = async (page: number = 1) => {
-    if (!projectId) {
-      setLoading(false);
-      return;
-    }
+  const fetchReports = useCallback(
+    async (page: number = 1) => {
+      if (!suiteId || !runId) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await reportService.getReports(projectId, page, pagination.pageSize, type);
-      setReports(response.items);
-      setPagination({
-        pageNumber: response.pageNumber,
-        pageSize: response.pageSize,
-        totalCount: response.totalCount,
-        totalPages: response.totalPages,
-      });
-    } catch (err) {
-      const errorMessage = handleError(err);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCoverageReport = async () => {
-    if (!projectId) return;
-    try {
-      const data = await reportService.getCoverageReport(projectId);
-      setCoverageReport(data);
-    } catch (err) {
-      handleError(err);
-    }
-  };
-
-  const fetchTrendReport = async (days: number = 30) => {
-    if (!projectId) return;
-    try {
-      const data = await reportService.getTrendReport(projectId, days);
-      setTrendReport(data);
-    } catch (err) {
-      handleError(err);
-    }
-  };
-
-  const fetchPerformanceReport = async (testRunId?: string) => {
-    if (!projectId) return;
-    try {
-      const data = await reportService.getPerformanceReport(projectId, testRunId);
-      setPerformanceReport(data);
-    } catch (err) {
-      handleError(err);
-    }
-  };
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await reportService.getReports(
+          suiteId,
+          runId,
+          page,
+          pagination.pageSize,
+        );
+        setReports(response.items);
+        setPagination({
+          pageNumber: response.pageNumber,
+          pageSize: response.pageSize,
+          totalCount: response.totalCount,
+          totalPages: response.totalPages,
+        });
+      } catch (err) {
+        const errorMessage = handleError(err);
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [suiteId, runId, pagination.pageSize],
+  );
 
   useEffect(() => {
-    if (projectId) {
+    if (suiteId && runId) {
       fetchReports();
-      fetchCoverageReport();
-      fetchTrendReport();
-      fetchPerformanceReport();
     }
-  }, [projectId, type]);
+  }, [suiteId, runId]);
 
-  const generateReport = async (data: GenerateReportRequest): Promise<boolean> => {
+  const generateReport = async (
+    data: GenerateReportRequest,
+  ): Promise<boolean> => {
     try {
       setGenerating(true);
       const newReport = await reportService.generateReport(data);
-      setReports(prev => [newReport, ...prev]);
+      setReports((prev) => [newReport, ...prev]);
       return true;
     } catch (err) {
       handleError(err);
@@ -95,31 +76,20 @@ export const useReports = (projectId: string, type?: string) => {
     }
   };
 
-  const deleteReport = async (reportId: string): Promise<boolean> => {
+  const downloadReport = async (reportId: string): Promise<boolean> => {
+    if (!suiteId || !runId) return false;
     try {
-      await reportService.deleteReport(projectId, reportId);
-      setReports(prev => prev.filter(r => r.id !== reportId));
-      return true;
-    } catch (err) {
-      handleError(err);
-      return false;
-    }
-  };
+      const blob = await reportService.downloadReport(suiteId, runId, reportId);
 
-  const exportReport = async (reportId: string, format: 'pdf' | 'excel' | 'json'): Promise<boolean> => {
-    try {
-      const blob = await reportService.exportReport(projectId, reportId, format);
-      
-      // Create download link
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `report-${reportId}.${format}`;
+      a.download = `report-${reportId}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       return true;
     } catch (err) {
       handleError(err);
@@ -133,20 +103,13 @@ export const useReports = (projectId: string, type?: string) => {
 
   return {
     reports,
-    coverageReport,
-    trendReport,
-    performanceReport,
     loading,
     generating,
     error,
     pagination,
     generateReport,
-    deleteReport,
-    exportReport,
+    downloadReport,
     changePage,
     refetch: fetchReports,
-    refetchCoverage: fetchCoverageReport,
-    refetchTrend: fetchTrendReport,
-    refetchPerformance: fetchPerformanceReport,
   };
 };
