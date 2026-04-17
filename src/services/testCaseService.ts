@@ -1,4 +1,4 @@
-import apiService from './apiService';
+import apiService from "./apiService";
 
 export interface TestCase {
   id: string;
@@ -56,14 +56,11 @@ const normalizeTestCase = (item: any): TestCase => {
       request?.httpMethod ||
       request?.HttpMethod ||
       "GET",
-    path:
-      item?.path ||
-      item?.Path ||
-      request?.url ||
-      request?.Url ||
-      "",
-    requestBody: item?.requestBody ?? item?.RequestBody ?? request?.body ?? request?.Body,
-    headers: item?.headers ?? item?.Headers ?? request?.headers ?? request?.Headers,
+    path: item?.path || item?.Path || request?.url || request?.Url || "",
+    requestBody:
+      item?.requestBody ?? item?.RequestBody ?? request?.body ?? request?.Body,
+    headers:
+      item?.headers ?? item?.Headers ?? request?.headers ?? request?.Headers,
     queryParams:
       item?.queryParams ??
       item?.QueryParams ??
@@ -78,7 +75,8 @@ const normalizeTestCase = (item: any): TestCase => {
     expectedResponse: item?.expectedResponse ?? item?.ExpectedResponse,
     assertions: item?.assertions ?? item?.Assertions ?? [],
     isActive: item?.isActive ?? item?.IsActive ?? true,
-    order: item?.order ?? item?.Order ?? item?.orderIndex ?? item?.OrderIndex ?? 0,
+    order:
+      item?.order ?? item?.Order ?? item?.orderIndex ?? item?.OrderIndex ?? 0,
     createdAt:
       item?.createdAt ||
       item?.CreatedAt ||
@@ -99,11 +97,14 @@ const testCaseService = {
   getTestCases: async (
     testSuiteId: string,
     pageNumber: number = 1,
-    pageSize: number = 50
+    pageSize: number = 50,
   ): Promise<TestCasesResponse> => {
-    const response = await apiService.get<any>(`/test-suites/${testSuiteId}/test-cases`, {
-      params: { pageNumber, pageSize },
-    });
+    const response = await apiService.get<any>(
+      `/test-suites/${testSuiteId}/test-cases`,
+      {
+        params: { pageNumber, pageSize },
+      },
+    );
 
     if (Array.isArray(response)) {
       const items = response.map((item) => normalizeTestCase(item));
@@ -148,14 +149,22 @@ const testCaseService = {
   },
 
   // Get test case by ID
-  getTestCaseById: async (testSuiteId: string, testCaseId: string): Promise<TestCase> => {
-    const response = await apiService.get<any>(`/test-suites/${testSuiteId}/test-cases/${testCaseId}`);
+  getTestCaseById: async (
+    testSuiteId: string,
+    testCaseId: string,
+  ): Promise<TestCase> => {
+    const response = await apiService.get<any>(
+      `/test-suites/${testSuiteId}/test-cases/${testCaseId}`,
+    );
     return normalizeTestCase(response);
   },
 
   // Create test case
   createTestCase: async (data: CreateTestCaseRequest): Promise<TestCase> => {
-    const response = await apiService.post<any>(`/test-suites/${data.testSuiteId}/test-cases`, data);
+    const response = await apiService.post<any>(
+      `/test-suites/${data.testSuiteId}/test-cases`,
+      data,
+    );
     return normalizeTestCase(response);
   },
 
@@ -163,40 +172,53 @@ const testCaseService = {
   updateTestCase: async (
     testSuiteId: string,
     testCaseId: string,
-    data: Partial<TestCase>
+    data: Partial<TestCase>,
   ): Promise<TestCase> => {
     const response = await apiService.put<any>(
       `/test-suites/${testSuiteId}/test-cases/${testCaseId}`,
-      data
+      data,
     );
     return normalizeTestCase(response);
   },
 
   // Delete test case
-  deleteTestCase: async (testSuiteId: string, testCaseId: string): Promise<void> => {
-    await apiService.delete(`/test-suites/${testSuiteId}/test-cases/${testCaseId}`);
+  deleteTestCase: async (
+    testSuiteId: string,
+    testCaseId: string,
+  ): Promise<void> => {
+    await apiService.delete(
+      `/test-suites/${testSuiteId}/test-cases/${testCaseId}`,
+    );
   },
 
   // Reorder test cases
   reorderTestCases: async (
     testSuiteId: string,
-    testCaseIds: string[]
+    testCaseIds: string[],
   ): Promise<void> => {
-    await apiService.post(`/test-suites/${testSuiteId}/test-cases/reorder`, { testCaseIds });
+    await apiService.patch(`/test-suites/${testSuiteId}/test-cases/reorder`, {
+      testCaseIds,
+    });
   },
 
   // Clone test case
-  cloneTestCase: async (testSuiteId: string, testCaseId: string): Promise<TestCase> => {
+  cloneTestCase: async (
+    testSuiteId: string,
+    testCaseId: string,
+  ): Promise<TestCase> => {
     const response = await apiService.post<any>(
-      `/test-suites/${testSuiteId}/test-cases/${testCaseId}/clone`
+      `/test-suites/${testSuiteId}/test-cases/${testCaseId}/clone`,
     );
     return normalizeTestCase(response);
   },
 
   // Run single test case
-  runTestCase: async (testSuiteId: string, testCaseId: string): Promise<any> => {
+  runTestCase: async (
+    testSuiteId: string,
+    testCaseId: string,
+  ): Promise<any> => {
     return await apiService.post(
-      `/test-suites/${testSuiteId}/test-cases/${testCaseId}/run`
+      `/test-suites/${testSuiteId}/test-cases/${testCaseId}/run`,
     );
   },
 };

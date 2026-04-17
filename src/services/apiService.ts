@@ -1,5 +1,5 @@
-import { API_CONFIG, getAuthToken } from '../config/api';
-import { ApiError } from '../utils/errorHandler';
+import { API_CONFIG, getAuthToken } from "../config/api";
+import { ApiError } from "../utils/errorHandler";
 
 interface ApiRequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | null | undefined>;
@@ -26,10 +26,12 @@ class ApiService {
       });
 
       const canonicalParams = new URLSearchParams();
-      sortedEntries.forEach(([key, value]) => canonicalParams.append(key, value));
+      sortedEntries.forEach(([key, value]) =>
+        canonicalParams.append(key, value),
+      );
       const canonicalQuery = canonicalParams.toString();
 
-      return `${parsedUrl.origin}${parsedUrl.pathname}${canonicalQuery ? `?${canonicalQuery}` : ''}`;
+      return `${parsedUrl.origin}${parsedUrl.pathname}${canonicalQuery ? `?${canonicalQuery}` : ""}`;
     } catch {
       return fullUrl;
     }
@@ -37,17 +39,17 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: ApiRequestOptions = {}
+    options: ApiRequestOptions = {},
   ): Promise<T> {
     const { params, ...requestOptions } = options;
     const queryString = params
       ? new URLSearchParams(
-        Object.entries(params)
-          .filter(([, value]) => value !== undefined && value !== null)
-          .map(([key, value]) => [key, String(value)]),
-      ).toString()
-      : '';
-    const url = `${this.baseUrl}${endpoint}${queryString ? `${endpoint.includes('?') ? '&' : '?'}${queryString}` : ''}`;
+          Object.entries(params)
+            .filter(([, value]) => value !== undefined && value !== null)
+            .map(([key, value]) => [key, String(value)]),
+        ).toString()
+      : "";
+    const url = `${this.baseUrl}${endpoint}${queryString ? `${endpoint.includes("?") ? "&" : "?"}${queryString}` : ""}`;
     const token = getAuthToken();
 
     const config: RequestInit = {
@@ -59,7 +61,7 @@ class ApiService {
       },
     };
 
-    const method = (config.method || 'GET').toUpperCase();
+    const method = (config.method || "GET").toUpperCase();
 
     const performRequest = async (): Promise<T> => {
       try {
@@ -67,38 +69,42 @@ class ApiService {
 
         // Handle different status codes
         if (!response.ok) {
-          let errorMessage = 'API request failed';
+          let errorMessage = "API request failed";
           let errorData = null;
 
           try {
             errorData = await response.json();
             // Try multiple possible error message fields from backend
-            errorMessage = errorData.message
-              || errorData.title
-              || errorData.error
-              || errorData.errors?.[0]?.message
-              || errorData.detail
-              || errorMessage;
+            errorMessage =
+              errorData.message ||
+              errorData.title ||
+              errorData.error ||
+              errorData.errors?.[0]?.message ||
+              errorData.detail ||
+              errorMessage;
 
             // Handle 401 Unauthorized
             if (response.status === 401) {
               // If this is NOT a login request and we have a token, it means token expired
-              const isLoginRequest = endpoint.includes('/auth/login');
+              const isLoginRequest = endpoint.includes("/auth/login");
               if (!isLoginRequest && token) {
                 // Token expired - clear auth and redirect to login
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-                throw new ApiError(401, 'Session expired. Please login again.');
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                window.location.href = "/login";
+                throw new ApiError(401, "Session expired. Please login again.");
               }
               // For login requests, use the error message from backend
-              errorMessage = errorData.message || 'Invalid email or password';
+              errorMessage = errorData.message || "Invalid email or password";
             } else if (response.status === 400) {
-              errorMessage = errorData.message || 'Invalid request. Please check your input.';
+              errorMessage =
+                errorData.message ||
+                "Invalid request. Please check your input.";
             } else if (response.status === 404) {
-              errorMessage = errorData.message || 'Resource not found';
+              errorMessage = errorData.message || "Resource not found";
             } else if (response.status === 500) {
-              errorMessage = errorData.message || 'Server error. Please try again later.';
+              errorMessage =
+                errorData.message || "Server error. Please try again later.";
             }
           } catch {
             // If response is not JSON, use status text
@@ -106,20 +112,20 @@ class ApiService {
 
             // Handle 401 without JSON response
             if (response.status === 401) {
-              const isLoginRequest = endpoint.includes('/auth/login');
+              const isLoginRequest = endpoint.includes("/auth/login");
               if (!isLoginRequest && token) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-                throw new ApiError(401, 'Session expired. Please login again.');
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                window.location.href = "/login";
+                throw new ApiError(401, "Session expired. Please login again.");
               }
-              errorMessage = 'Invalid email or password';
+              errorMessage = "Invalid email or password";
             } else if (response.status === 400) {
-              errorMessage = 'Invalid request. Please check your input.';
+              errorMessage = "Invalid request. Please check your input.";
             } else if (response.status === 404) {
-              errorMessage = 'Resource not found';
+              errorMessage = "Resource not found";
             } else if (response.status === 500) {
-              errorMessage = 'Server error. Please try again later.';
+              errorMessage = "Server error. Please try again later.";
             }
           }
 
@@ -127,13 +133,16 @@ class ApiService {
         }
 
         // Handle 204 No Content or empty response
-        if (response.status === 204 || response.headers.get('content-length') === '0') {
+        if (
+          response.status === 204 ||
+          response.headers.get("content-length") === "0"
+        ) {
           return {} as T;
         }
 
         // Check if response has content before parsing JSON
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
           return await response.json();
         }
 
@@ -145,17 +154,20 @@ class ApiService {
         }
 
         // Handle network errors
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          console.error('Network Error:', error);
-          throw new ApiError(0, 'Cannot connect to server. Please check if the backend is running.');
+        if (error instanceof TypeError && error.message.includes("fetch")) {
+          console.error("Network Error:", error);
+          throw new ApiError(
+            0,
+            "Cannot connect to server. Please check if the backend is running.",
+          );
         }
 
-        console.error('API Error:', error);
-        throw new ApiError(500, 'Network error or server unavailable');
+        console.error("API Error:", error);
+        throw new ApiError(500, "Network error or server unavailable");
       }
     };
 
-    if (method === 'GET') {
+    if (method === "GET") {
       const requestKey = this.getCanonicalGetKey(url);
       const inFlightRequest = this.inFlightGetRequests.get(requestKey);
       if (inFlightRequest) {
@@ -163,7 +175,10 @@ class ApiService {
       }
 
       const requestPromise = performRequest();
-      this.inFlightGetRequests.set(requestKey, requestPromise as Promise<unknown>);
+      this.inFlightGetRequests.set(
+        requestKey,
+        requestPromise as Promise<unknown>,
+      );
 
       try {
         return await requestPromise;
@@ -176,25 +191,35 @@ class ApiService {
   }
 
   async get<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
+    return this.request<T>(endpoint, { ...options, method: "GET" });
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'POST',
+      method: "POST",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
   async put<T>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'PUT',
+      method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+  async patch<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "PATCH",
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T>(
+    endpoint: string,
+    options: ApiRequestOptions = {},
+  ): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
 
   async uploadFile<T>(endpoint: string, formData: FormData): Promise<T> {
@@ -203,7 +228,7 @@ class ApiService {
 
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
           // Don't set Content-Type, browser will set it with boundary
@@ -214,17 +239,17 @@ class ApiService {
       if (!response.ok) {
         // Handle 401 Unauthorized
         if (response.status === 401 && token) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          throw new ApiError(401, 'Session expired. Please login again.');
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+          throw new ApiError(401, "Session expired. Please login again.");
         }
 
         const error = await response.json();
         throw new ApiError(
           response.status,
-          error.message || 'File upload failed',
-          error
+          error.message || "File upload failed",
+          error,
         );
       }
 
@@ -233,7 +258,7 @@ class ApiService {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError(500, 'File upload failed');
+      throw new ApiError(500, "File upload failed");
     }
   }
 
@@ -251,13 +276,13 @@ class ApiService {
       if (!response.ok) {
         // Handle 401 Unauthorized
         if (response.status === 401 && token) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          throw new ApiError(401, 'Session expired. Please login again.');
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+          throw new ApiError(401, "Session expired. Please login again.");
         }
 
-        throw new ApiError(response.status, 'File download failed');
+        throw new ApiError(response.status, "File download failed");
       }
 
       return await response.blob();
@@ -265,7 +290,7 @@ class ApiService {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError(500, 'File download failed');
+      throw new ApiError(500, "File download failed");
     }
   }
 }

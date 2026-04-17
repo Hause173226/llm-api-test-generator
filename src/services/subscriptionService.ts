@@ -1,4 +1,4 @@
-import apiService from './apiService';
+import apiService from "./apiService";
 
 // Types based on Backend models
 export interface PlanLimit {
@@ -11,7 +11,8 @@ export interface Plan {
   name: string;
   description: string;
   price: number;
-  billingCycle: string; // "Monthly" | "Yearly"
+  // FE-14 contract: 0 = Monthly, 1 = Yearly (numeric enum)
+  billingCycle: number;
   isActive: boolean;
   limits: PlanLimit[];
   createdDateTime: string;
@@ -23,7 +24,8 @@ export interface Subscription {
   userId: string;
   planId: string;
   planName: string;
-  status: string; // "Active" | "Cancelled" | "Expired"
+  // FE-14 contract: 0=Trial, 1=Active, 2=PastDue, 3=Cancelled, 4=Expired (numeric enum)
+  status: number;
   startDate: string;
   endDate?: string;
   autoRenew: boolean;
@@ -47,7 +49,8 @@ export interface PaymentTransaction {
   subscriptionId: string;
   amount: number;
   currency: string;
-  status: string; // "Pending" | "Completed" | "Failed"
+  // FE-14 contract: 0=Pending, 1=Processing, 2=Succeeded, 3=Canceled (numeric enum)
+  status: number;
   paymentMethod: string;
   transactionDate: string;
   description?: string;
@@ -56,39 +59,60 @@ export interface PaymentTransaction {
 const subscriptionService = {
   // Get all available plans
   getPlans: async (): Promise<Plan[]> => {
-    return await apiService.get<Plan[]>('/subscriptions/plans');
+    return await apiService.get<Plan[]>("/subscriptions/plans");
   },
 
   // Get current user's subscription
   getCurrentSubscription: async (): Promise<Subscription> => {
-    return await apiService.get<Subscription>('/subscriptions/me/current');
+    return await apiService.get<Subscription>("/subscriptions/me/current");
   },
 
   // Get current user's usage tracking
   getMyUsage: async (): Promise<UsageTracking[]> => {
     // Try to get current subscription first to get userId
     try {
-      const subscription = await apiService.get<Subscription>('/subscriptions/me/current');
-      return await apiService.get<UsageTracking[]>(`/subscriptions/users/${subscription.userId}/usage`);
+      const subscription = await apiService.get<Subscription>(
+        "/subscriptions/me/current",
+      );
+      return await apiService.get<UsageTracking[]>(
+        `/subscriptions/users/${subscription.userId}/usage`,
+      );
     } catch (error) {
-      console.log('Could not fetch usage data:', error);
+      console.log("Could not fetch usage data:", error);
       return [];
     }
   },
 
   // Get payment transactions for a subscription
-  getPaymentTransactions: async (subscriptionId: string): Promise<PaymentTransaction[]> => {
-    return await apiService.get<PaymentTransaction[]>(`/subscriptions/${subscriptionId}/payments`);
+  getPaymentTransactions: async (
+    subscriptionId: string,
+  ): Promise<PaymentTransaction[]> => {
+    return await apiService.get<PaymentTransaction[]>(
+      `/subscriptions/${subscriptionId}/payments`,
+    );
   },
 
   // Subscribe to a plan - returns payment link
-  subscribeToPlan: async (planId: string): Promise<{ paymentUrl: string; orderId: string }> => {
-    return await apiService.post(`/payments/subscribe/${planId}`, {});
+  // FE-14 contract: body must include billingCycle (0=Monthly, 1=Yearly)
+  subscribeToPlan: async (
+    planId: string,
+    billingCycle: number,
+  ): Promise<{ paymentUrl: string; orderId: string }> => {
+    return await apiService.post(`/payments/subscribe/${planId}`, {
+      billingCycle,
+    });
   },
 
   // Cancel subscription
-  cancelSubscription: async (subscriptionId: string, reason?: string): Promise<void> => {
-    await apiService.post(`/subscriptions/${subscriptionId}/cancel`, { reason });
+  // FE-14 contract: CancelSubscriptionModel has effectiveDate + changeReason
+  cancelSubscription: async (
+    subscriptionId: string,
+    reason?: string,
+  ): Promise<void> => {
+    await apiService.post(`/subscriptions/${subscriptionId}/cancel`, {
+      changeReason: reason,
+      effectiveDate: new Date().toISOString(),
+    });
   },
 };
 

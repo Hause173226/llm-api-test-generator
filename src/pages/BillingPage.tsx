@@ -44,9 +44,13 @@ export default function BillingPage() {
     refetch,
   } = hookResult;
 
+  // Billing cycle state: 0 = Monthly, 1 = Yearly
+  const [selectedBillingCycle, setSelectedBillingCycle] =
+    React.useState<number>(0);
+
   const handleSubscribe = async (planId: string) => {
     try {
-      const paymentData = await subscribeToPlan(planId);
+      const paymentData = await subscribeToPlan(planId, selectedBillingCycle);
       console.log("Payment data received:", paymentData);
 
       if (!paymentData) {
@@ -54,40 +58,34 @@ export default function BillingPage() {
         return;
       }
 
-      // Check if payment is required
-      if (
-        (paymentData as any).requiresPayment &&
-        (paymentData as any).paymentIntentId
-      ) {
-        // Payment required - need to get payment URL
-        // toast.info is not available, use toast.loading instead
-        const loadingToast = toast.loading("Creating payment link...");
-
-        // TODO: Need to implement API call to get payment URL from paymentIntentId
-        // For now, show message
-        toast.dismiss(loadingToast);
-        toast.error(
-          `Payment integration incomplete. Payment Intent: ${(paymentData as any).paymentIntentId}`,
-        );
-      } else if ((paymentData as any).subscription) {
-        // Subscription created without payment (free plan)
+      // Check if subscription was created directly (free plan)
+      if ((paymentData as any).subscription) {
         toast.success("Successfully subscribed to plan!");
         await refetch();
-      } else {
-        // Try to find payment URL
-        const paymentDataAny = paymentData as any;
-        const paymentUrl =
-          paymentData.paymentUrl ||
-          paymentDataAny.checkoutUrl ||
-          paymentDataAny.url ||
-          paymentDataAny.paymentLink;
+        return;
+      }
 
-        if (paymentUrl) {
-          window.location.href = paymentUrl;
-        } else {
-          console.error("No payment URL found in response:", paymentData);
-          toast.error("Payment URL not found. Please contact support.");
-        }
+      // Try to find payment URL in response
+      const paymentDataAny = paymentData as any;
+      const paymentUrl =
+        paymentData.paymentUrl ||
+        paymentDataAny.checkoutUrl ||
+        paymentDataAny.url ||
+        paymentDataAny.paymentLink;
+
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+      } else if (
+        paymentDataAny.requiresPayment &&
+        paymentDataAny.paymentIntentId
+      ) {
+        // Payment intent created – redirect via payos/create if available
+        toast.error(
+          `Payment intent created. Redirecting is not yet implemented. Intent: ${paymentDataAny.paymentIntentId}`,
+        );
+      } else {
+        console.error("No payment URL found in response:", paymentData);
+        toast.error("Payment URL not found. Please contact support.");
       }
     } catch (error) {
       console.error("Subscribe error:", error);
@@ -278,6 +276,28 @@ export default function BillingPage() {
             <h2 className="text-2xl font-bold text-on-surface">
               {t("billing.plans.title")}
             </h2>
+            <div className="flex items-center gap-2 bg-surface-container-low dark:bg-surface-container-high rounded-xl p-1">
+              <button
+                onClick={() => setSelectedBillingCycle(0)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                  selectedBillingCycle === 0
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setSelectedBillingCycle(1)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                  selectedBillingCycle === 1
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -305,18 +325,34 @@ export default function BillingPage() {
 
                     <div className="mb-8">
                       <h3 className="text-xl font-bold text-on-surface mb-2">
-                        {t(`billing.plans.names.${plan.name?.toLowerCase()}`, { defaultValue: plan.name })}
+                        {t(`billing.plans.names.${plan.name?.toLowerCase()}`, {
+                          defaultValue: plan.name,
+                        })}
                       </h3>
                       <div className="flex items-baseline gap-1 mb-4">
                         <span className="text-4xl font-bold text-on-surface">
                           ${plan.price || 0}
                         </span>
                         <span className="text-on-surface-variant font-medium">
-                          /{t(`billing.plans.billingCycle.${plan.billingCycle?.toLowerCase()}`, { defaultValue: plan.billingCycle?.toLowerCase() || "month" })}
+                          /
+                          {t(
+                            `billing.plans.billingCycle.${plan.billingCycle === 1 ? "yearly" : "monthly"}`,
+                            {
+                              defaultValue:
+                                plan.billingCycle === 1 ? "year" : "month",
+                            },
+                          )}
                         </span>
                       </div>
                       <p className="text-sm text-on-surface-variant leading-relaxed">
-                        {t(`billing.plans.descriptions.${plan.name?.toLowerCase()}`, { defaultValue: plan.description || t("billing.plans.noDescription") })}
+                        {t(
+                          `billing.plans.descriptions.${plan.name?.toLowerCase()}`,
+                          {
+                            defaultValue:
+                              plan.description ||
+                              t("billing.plans.noDescription"),
+                          },
+                        )}
                       </p>
                     </div>
 
@@ -330,8 +366,10 @@ export default function BillingPage() {
                             <div className="mt-0.5 w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
                             </div>
-                            {t(`billing.plans.limitTypes.${limit.limitType}`, { defaultValue: limit.limitType })}:{" "}
-                            {limit.limitValue?.toLocaleString() || 0}
+                            {t(`billing.plans.limitTypes.${limit.limitType}`, {
+                              defaultValue: limit.limitType,
+                            })}
+                            : {limit.limitValue?.toLocaleString() || 0}
                           </li>
                         ))
                       ) : (
@@ -351,7 +389,9 @@ export default function BillingPage() {
                           : "bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-400 shadow-lg shadow-indigo-500/20 active:scale-[0.98] cursor-pointer",
                       )}
                     >
-                      {isCurrentPlan ? t("billing.plans.currentPlan") : t("billing.plans.subscribe")}
+                      {isCurrentPlan
+                        ? t("billing.plans.currentPlan")
+                        : t("billing.plans.subscribe")}
                       {!isCurrentPlan && <ArrowRight className="w-4 h-4" />}
                     </button>
                   </div>
@@ -413,14 +453,16 @@ export default function BillingPage() {
                         <span
                           className={cn(
                             "px-2.5 py-1 text-[10px] font-bold rounded-full uppercase",
-                            payment.status === "Completed"
+                            payment.status === 2
                               ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                              : payment.status === "Pending"
+                              : payment.status === 0 || payment.status === 1
                                 ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
                                 : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
                           )}
                         >
-                          {payment.status}
+                          {["Pending", "Processing", "Succeeded", "Canceled"][
+                            payment.status
+                          ] ?? "Unknown"}
                         </span>
                       </td>
                       <td className="px-8 py-5 text-right">
