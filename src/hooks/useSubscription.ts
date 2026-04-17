@@ -58,6 +58,17 @@ export const useSubscription = () => {
     fetchData();
   }, []);
 
+  // Listen for global usage updates (e.g. after deleting a project)
+  useEffect(() => {
+    const onUsageUpdated = (_e?: Event) => {
+      // Best-effort refetch when other parts of the app signal usage changed
+      fetchData();
+    };
+
+    window.addEventListener('usage:updated', onUsageUpdated as EventListener);
+    return () => window.removeEventListener('usage:updated', onUsageUpdated as EventListener);
+  }, []);
+
   const subscribeToPlan = async (planId: string): Promise<{ paymentUrl: string; orderId: string } | null> => {
     try {
       const paymentData = await subscriptionService.subscribeToPlan(planId);

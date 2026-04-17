@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   PlusCircle,
@@ -63,7 +63,19 @@ export default function ProjectManagementPage() {
       name: project.name,
       description: project.description,
       isActive: project.isActive,
+      workspaceMode: project.workspaceMode,
     });
+  };
+
+  const handleOpenProject = (project: any) => {
+    if (project.workspaceMode === "Manual") {
+      navigate(`/manual-testing?projectId=${project.id}`);
+      return;
+    }
+
+    handleSelectProject(project);
+
+    navigate(`/project/${project.id}`);
   };
 
   // Form states
@@ -76,14 +88,17 @@ export default function ProjectManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateProject = async () => {
-    if (!formData.name || !formData.description || !formData.specType) {
+    if (!formData.name) {
       showErrorToast(t("projects.toast.fillRequired"));
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const newProject = await createProject(formData);
+      const newProject = await createProject({
+        ...formData,
+        workspaceMode: "Automated",
+      });
 
       if (newProject?.id) {
         setGlobalSelectedProject({
@@ -91,6 +106,7 @@ export default function ProjectManagementPage() {
           name: newProject.name,
           description: newProject.description,
           isActive: (newProject as any).isActive ?? true,
+          workspaceMode: newProject.workspaceMode,
         });
       }
 
@@ -182,7 +198,7 @@ export default function ProjectManagementPage() {
   if (error) {
     return (
       <MainLayout title={t("projects.title")}>
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-100">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
             <p className="text-on-surface-variant mb-4">{error}</p>
@@ -215,7 +231,7 @@ export default function ProjectManagementPage() {
           <div className="relative w-full md:max-w-xl">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
             <input
-              className="w-full pl-12 pr-4 py-4 bg-surface-container-lowest dark:bg-slate-900 rounded-xl border-none outline outline-2 outline-outline-variant/20 dark:outline-slate-800 focus:outline-primary focus:ring-4 focus:ring-primary-fixed dark:focus:ring-indigo-900/30 transition-all text-on-surface placeholder:text-on-surface-variant/60"
+              className="w-full pl-12 pr-4 py-4 bg-surface-container-lowest dark:bg-slate-900 rounded-xl border-none outline-2 outline-outline-variant/20 dark:outline-slate-800 focus:outline-primary focus:ring-4 focus:ring-primary-fixed dark:focus:ring-indigo-900/30 transition-all text-on-surface placeholder:text-on-surface-variant/60"
               placeholder={t("projects.searchPlaceholder")}
               type="text"
               value={searchTerm}
@@ -282,22 +298,24 @@ export default function ProjectManagementPage() {
                 ) : (
                   projects.map((project) => {
                     const p = project as any;
-                    const specLabel = p.activeSpecName || t("projects.noSpecification");
-                    const isActive = p.status?.toLowerCase() === 'active';
+                    const specLabel =
+                      p.activeSpecName || t("projects.noSpecification");
+                    const isActive = p.status?.toLowerCase() === "active";
                     const SpecIcon = p.activeSpecName ? FileText : Database;
                     return (
                       <tr
                         key={project.id}
-                        className="hover:bg-surface-container-lowest dark:hover:bg-slate-800/50 transition-colors group"
+                        onClick={() => handleOpenProject(project)}
+                        className="hover:bg-surface-container-lowest dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
                       >
                         <td className="px-8 py-8">
-                          <Link
-                            to={`/project/${project.id}`}
-                            onClick={() => handleSelectProject(project)}
-                            className="text-base font-semibold text-on-surface block hover:text-primary dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                          <button
+                            type="button"
+                            onClick={() => handleOpenProject(project)}
+                            className="text-base font-semibold text-on-surface block hover:text-primary dark:hover:text-indigo-400 transition-colors cursor-pointer text-left"
                           >
                             {project.name}
-                          </Link>
+                          </button>
                           <span className="text-xs text-on-surface-variant">
                             {project.description}
                           </span>
@@ -330,16 +348,19 @@ export default function ProjectManagementPage() {
                         <td className="px-8 py-8 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => openEditModal(project)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditModal(project);
+                              }}
                               className="p-2 text-on-surface-variant hover:text-primary dark:hover:text-indigo-400 hover:bg-primary-fixed/30 dark:hover:bg-indigo-900/30 rounded-lg transition-all cursor-pointer"
                               title={t("projects.actions.edit")}
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => {
-                                handleSelectProject(project);
-                                navigate(`/project/${project.id}`);
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenProject(project);
                               }}
                               className="p-2 text-on-surface-variant hover:text-primary dark:hover:text-indigo-400 hover:bg-primary-fixed/30 dark:hover:bg-indigo-900/30 rounded-lg transition-all cursor-pointer"
                               title={t("projects.actions.view")}
@@ -347,7 +368,10 @@ export default function ProjectManagementPage() {
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => openDeleteModal(project)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteModal(project);
+                              }}
                               className="p-2 text-on-surface-variant hover:text-error dark:hover:text-rose-400 hover:bg-error-container/30 dark:hover:bg-rose-900/30 rounded-lg transition-all cursor-pointer"
                               title={t("projects.actions.delete")}
                             >
@@ -368,10 +392,8 @@ export default function ProjectManagementPage() {
             <p className="text-sm font-medium text-on-surface-variant">
               {t("projects.showing")}{" "}
               {projects.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}{" "}
-              {t("projects.to")}{" "}
-              {Math.min(currentPage * pageSize, totalCount)}{" "}
-              {t("projects.of")} {totalCount}{" "}
-              {t("projects.projects")}
+              {t("projects.to")} {Math.min(currentPage * pageSize, totalCount)}{" "}
+              {t("projects.of")} {totalCount} {t("projects.projects")}
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -399,9 +421,7 @@ export default function ProjectManagementPage() {
       </div>
 
       {/* Global spinner overlay khi đang tạo project */}
-      {isSubmitting && (
-        <GlobalSpinner label={t("projects.modal.creating")} />
-      )}
+      {isSubmitting && <GlobalSpinner label={t("projects.modal.creating")} />}
 
       {/* Create Project Modal */}
       <Modal
@@ -409,7 +429,12 @@ export default function ProjectManagementPage() {
         onClose={() => {
           if (isSubmitting) return;
           setIsCreateModalOpen(false);
-          setFormData({ name: "", description: "", specType: "", specFile: null });
+          setFormData({
+            name: "",
+            description: "",
+            specType: "",
+            specFile: null,
+          });
         }}
         title={t("projects.modal.title")}
         footer={
@@ -417,7 +442,12 @@ export default function ProjectManagementPage() {
             <button
               onClick={() => {
                 setIsCreateModalOpen(false);
-                setFormData({ name: "", description: "", specType: "", specFile: null });
+                setFormData({
+                  name: "",
+                  description: "",
+                  specType: "",
+                  specFile: null,
+                });
               }}
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
@@ -463,7 +493,7 @@ export default function ProjectManagementPage() {
               placeholder={t("projects.modal.descriptionPlaceholder")}
             />
           </div>
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
               {t("projects.modal.sourceLabel")}
             </label>
@@ -479,7 +509,7 @@ export default function ProjectManagementPage() {
               <option value="postman">Postman Collection</option>
               <option value="graphql">GraphQL Schema</option>
             </select>
-          </div>
+          </div> */}
         </div>
       </Modal>
 

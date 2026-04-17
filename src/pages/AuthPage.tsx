@@ -44,7 +44,7 @@ export default function AuthPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard");
+      navigate("/choose-testing");
     }
   }, [isAuthenticated, navigate]);
 
@@ -54,7 +54,7 @@ export default function AuthPage() {
     try {
       setIsLoading(true);
       await loginWithGoogle(idToken);
-      navigate("/dashboard");
+      navigate("/choose-testing");
     } catch (err: any) {
       showErrorToast(err?.message || t("auth.googleLoginFailed"));
     } finally {
@@ -150,7 +150,7 @@ export default function AuthPage() {
       } else {
         await login(formData.email, formData.password);
         showSuccessToast(t("auth.validation.loginSuccess"));
-        navigate("/dashboard");
+          navigate("/choose-testing");
       }
     } catch (err: any) {
       // BE có thể trả errors array (ApiError.errors) hoặc message string

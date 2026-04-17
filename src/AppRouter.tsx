@@ -29,6 +29,8 @@ import AccountSettingsPage from "./pages/AccountSettingsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import HelpPage from "./pages/HelpPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ManualTestingPage from "./pages/ManualTestingPage";
+import ChooseTestingPage from "./pages/ChooseTestingPage";
 
 export default function AppRouter() {
   return (
@@ -187,6 +189,22 @@ export default function AppRouter() {
           element={
             <ProtectedRoute>
               <HelpPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manual-testing"
+          element={
+            <ProtectedRoute>
+              <ManualTestingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/choose-testing"
+          element={
+            <ProtectedRoute>
+              <ChooseTestingPage />
             </ProtectedRoute>
           }
         />

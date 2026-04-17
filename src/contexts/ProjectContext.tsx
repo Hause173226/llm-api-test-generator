@@ -11,6 +11,7 @@ interface Project {
   name: string;
   description?: string;
   isActive: boolean;
+  workspaceMode?: "Manual" | "Automated";
 }
 
 interface ProjectContextType {
