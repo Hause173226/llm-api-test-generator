@@ -115,8 +115,34 @@ const specificationService = {
     );
   },
 
-  // Note: Parse happens automatically via background job after upload
-  // No manual parse endpoint exists - check parseStatus field instead
+  // Get available upload methods
+  getUploadMethods: async (projectId: string): Promise<any[]> => {
+    return await apiService.get<any[]>(
+      `/projects/${projectId}/specifications/upload-methods`,
+    );
+  },
+
+  // Import from cURL command
+  importCurl: async (projectId: string, data: { curlCommand: string; name?: string }): Promise<any> => {
+    return await apiService.post(
+      `/projects/${projectId}/specifications/curl-import`,
+      data,
+    );
+  },
+
+  // Activate a specification
+  activateSpecification: async (projectId: string, specId: string): Promise<any> => {
+    return await apiService.put(
+      `/projects/${projectId}/specifications/${specId}/activate`,
+    );
+  },
+
+  // Deactivate a specification
+  deactivateSpecification: async (projectId: string, specId: string): Promise<any> => {
+    return await apiService.put(
+      `/projects/${projectId}/specifications/${specId}/deactivate`,
+    );
+  },
 
   // FE-18: Restore a soft-deleted specification
   restoreSpecification: async (
