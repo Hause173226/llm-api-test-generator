@@ -44,10 +44,10 @@ class ApiService {
     const { params, ...requestOptions } = options;
     const queryString = params
       ? new URLSearchParams(
-          Object.entries(params)
-            .filter(([, value]) => value !== undefined && value !== null)
-            .map(([key, value]) => [key, String(value)]),
-        ).toString()
+        Object.entries(params)
+          .filter(([, value]) => value !== undefined && value !== null)
+          .map(([key, value]) => [key, String(value)]),
+      ).toString()
       : "";
     const url = `${this.baseUrl}${endpoint}${queryString ? `${endpoint.includes("?") ? "&" : "?"}${queryString}` : ""}`;
     const token = getAuthToken();
@@ -75,13 +75,24 @@ class ApiService {
           try {
             errorData = await response.json();
             // Try multiple possible error message fields from backend
-            errorMessage =
-              errorData.message ||
-              errorData.title ||
-              errorData.error ||
-              errorData.errors?.[0]?.message ||
-              errorData.detail ||
-              errorMessage;
+            // BE validation errors use { errors: { fieldName: ["msg1", "msg2"] } }
+            if (errorData.errors && typeof errorData.errors === 'object' && !Array.isArray(errorData.errors)) {
+              const fieldErrors = Object.entries(errorData.errors)
+                .map(([field, messages]) => {
+                  const msgs = Array.isArray(messages) ? messages.join(', ') : String(messages);
+                  return `${field}: ${msgs}`;
+                })
+                .join('; ');
+              errorMessage = fieldErrors || errorData.title || errorMessage;
+            } else {
+              errorMessage =
+                errorData.message ||
+                errorData.title ||
+                errorData.error ||
+                errorData.detail ||
+                (Array.isArray(errorData.errors) && errorData.errors[0]?.message) ||
+                errorMessage;
+            }
 
             // Handle 401 Unauthorized
             if (response.status === 401) {
@@ -89,7 +100,8 @@ class ApiService {
               const isLoginRequest = endpoint.includes("/auth/login");
               if (!isLoginRequest && token) {
                 // Token expired - clear auth and redirect to login
-                localStorage.removeItem("token");
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("refreshToken");
                 localStorage.removeItem("user");
                 window.location.href = "/login";
                 throw new ApiError(401, "Session expired. Please login again.");
@@ -114,7 +126,8 @@ class ApiService {
             if (response.status === 401) {
               const isLoginRequest = endpoint.includes("/auth/login");
               if (!isLoginRequest && token) {
-                localStorage.removeItem("token");
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("refreshToken");
                 localStorage.removeItem("user");
                 window.location.href = "/login";
                 throw new ApiError(401, "Session expired. Please login again.");
@@ -239,7 +252,8 @@ class ApiService {
       if (!response.ok) {
         // Handle 401 Unauthorized
         if (response.status === 401 && token) {
-          localStorage.removeItem("token");
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("refreshToken");
           localStorage.removeItem("user");
           window.location.href = "/login";
           throw new ApiError(401, "Session expired. Please login again.");
@@ -276,7 +290,8 @@ class ApiService {
       if (!response.ok) {
         // Handle 401 Unauthorized
         if (response.status === 401 && token) {
-          localStorage.removeItem("token");
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("refreshToken");
           localStorage.removeItem("user");
           window.location.href = "/login";
           throw new ApiError(401, "Session expired. Please login again.");

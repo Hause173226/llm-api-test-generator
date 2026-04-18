@@ -306,6 +306,7 @@ export interface StartTestRunRequest {
   testSuiteId: string;
   environmentId?: string;
   selectedTestCaseIds?: string[]; // Optional: run specific test cases only
+  strictValidation?: boolean; // Optional: defaults to false on BE
 }
 
 const testRunService = {
@@ -337,6 +338,7 @@ const testRunService = {
       {
         environmentId: data.environmentId,
         selectedTestCaseIds: data.selectedTestCaseIds,
+        strictValidation: data.strictValidation,
       },
     );
   },

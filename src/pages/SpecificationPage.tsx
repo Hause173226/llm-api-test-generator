@@ -54,6 +54,7 @@ export default function SpecificationPage() {
     setViewMode,
     refetch,
     uploadSpecification,
+    pollParseStatus,
     deleteSpecification,
     restoreSpecification,
     createManualSpecification,
@@ -124,15 +125,30 @@ export default function SpecificationPage() {
 
     try {
       setIsSubmitting(true);
-      await uploadSpecification(uploadForm);
+      const newSpec = await uploadSpecification(uploadForm);
       showSuccessToast(t("specifications.upload.successToast"));
       setIsUploadModalOpen(false);
       setUploadForm({ name: "", description: "", type: "openapi", file: null });
 
-      // Wait a moment for parse to start, then navigate to endpoints
-      setTimeout(() => {
-        navigate(`/endpoints?projectId=${projectId}`);
-      }, 1500);
+      // If parseStatus is Pending (async parse for YAML/Postman), poll until done
+      if (newSpec && newSpec.parseStatus === "Pending") {
+        toast.loading("Parsing specification... Please wait.", { id: "parse-polling" });
+        try {
+          const parsed = await pollParseStatus(newSpec.id);
+          toast.dismiss("parse-polling");
+          if (parsed.parseStatus === "Failed") {
+            showErrorToast("Specification parsing failed. Please check the file format.");
+            return;
+          }
+          showSuccessToast("Specification parsed successfully!");
+        } catch (pollErr) {
+          toast.dismiss("parse-polling");
+          showErrorToast("Parse status polling timed out. Check specification status manually.");
+          return;
+        }
+      }
+
+      navigate(`/endpoints?projectId=${projectId}`);
     } catch (err) {
       handleError(err);
     } finally {
@@ -439,8 +455,8 @@ export default function SpecificationPage() {
                 {viewMode === "trash"
                   ? `${trashedSpecifications?.length || 0} deleted`
                   : t("specifications.recent.activeCount", {
-                      count: specifications?.length || 0,
-                    })}
+                    count: specifications?.length || 0,
+                  })}
               </span>
             </div>
           </div>
@@ -476,7 +492,7 @@ export default function SpecificationPage() {
                 ) : viewMode === "trash" ? (
                   /* ── TRASH VIEW ── */
                   !trashedSpecifications ||
-                  trashedSpecifications.length === 0 ? (
+                    trashedSpecifications.length === 0 ? (
                     <tr>
                       <td
                         colSpan={5}
