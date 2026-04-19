@@ -1,10 +1,10 @@
-import apiService from './apiService';
+import apiService from "./apiService";
 
 export interface TestRun {
   id: string;
   testSuiteId: string;
   projectId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
   startedAt?: string;
   completedAt?: string;
   totalTests: number;
@@ -25,7 +25,7 @@ export interface TestRun {
 export interface TestRunResult {
   testCaseId: string;
   testCaseName: string;
-  status: 'passed' | 'failed' | 'skipped';
+  status: "passed" | "failed" | "skipped";
   duration: number;
   error?: string;
   actualResponse?: any;
@@ -161,18 +161,24 @@ interface BackendTestRunDetail {
   cases?: BackendTestCaseRunDetail[];
 }
 
-const normalizeStatus = (status?: string): TestRun['status'] => {
-  const value = (status || '').toLowerCase();
-  if (value === 'completed' || value === 'running' || value === 'pending' || value === 'failed' || value === 'cancelled') {
+const normalizeStatus = (status?: string): TestRun["status"] => {
+  const value = (status || "").toLowerCase();
+  if (
+    value === "completed" ||
+    value === "running" ||
+    value === "pending" ||
+    value === "failed" ||
+    value === "cancelled"
+  ) {
     return value;
   }
-  return 'failed';
+  return "failed";
 };
 
 const mapBackendRun = (item: BackendTestRun): TestRun => ({
   id: item.id,
   testSuiteId: item.testSuiteId,
-  projectId: item.projectId || '',
+  projectId: item.projectId || "",
   status: normalizeStatus(item.status),
   startedAt: item.startedAt,
   completedAt: item.completedAt,
@@ -182,8 +188,12 @@ const mapBackendRun = (item: BackendTestRun): TestRun => ({
   skippedTests: item.skippedCount ?? 0,
   duration: item.durationMs,
   environmentId: item.environmentId,
-  triggeredBy: item.triggeredBy || 'system',
-  createdAt: item.createdDateTime || item.createdAt || item.startedAt || new Date().toISOString(),
+  triggeredBy: item.triggeredBy || "system",
+  createdAt:
+    item.createdDateTime ||
+    item.createdAt ||
+    item.startedAt ||
+    new Date().toISOString(),
   updatedAt: item.updatedDateTime,
   runNumber: item.runNumber,
   resultsExpireAt: item.resultsExpireAt,
@@ -194,13 +204,14 @@ const mapBackendRun = (item: BackendTestRun): TestRun => ({
 const mapBackendTestCaseRunDetail = (
   detail: BackendTestCaseRunDetail,
 ): TestCaseRunDetail => ({
-  testCaseId: (detail as any).testCaseId || (detail as any).TestCaseId || '',
+  testCaseId: (detail as any).testCaseId || (detail as any).TestCaseId || "",
   endpointId: (detail as any).endpointId || (detail as any).EndpointId,
-  name: (detail as any).name || (detail as any).Name || 'Unnamed test case',
+  name: (detail as any).name || (detail as any).Name || "Unnamed test case",
   testType: (detail as any).testType || (detail as any).TestType,
   orderIndex: (detail as any).orderIndex ?? (detail as any).OrderIndex ?? 0,
-  status: (detail as any).status || (detail as any).Status || 'Unknown',
-  httpStatusCode: (detail as any).httpStatusCode ?? (detail as any).HttpStatusCode,
+  status: (detail as any).status || (detail as any).Status || "Unknown",
+  httpStatusCode:
+    (detail as any).httpStatusCode ?? (detail as any).HttpStatusCode,
   durationMs: (detail as any).durationMs ?? (detail as any).DurationMs ?? 0,
   resolvedUrl: (detail as any).resolvedUrl || (detail as any).ResolvedUrl,
   httpMethod: (detail as any).httpMethod || (detail as any).HttpMethod,
@@ -208,29 +219,46 @@ const mapBackendTestCaseRunDetail = (
   requestBody: (detail as any).requestBody || (detail as any).RequestBody,
   queryParams: (detail as any).queryParams || (detail as any).QueryParams || {},
   timeoutMs: (detail as any).timeoutMs ?? (detail as any).TimeoutMs,
-  expectedStatus: (detail as any).expectedStatus || (detail as any).ExpectedStatus,
-  requestHeaders: (detail as any).requestHeaders || (detail as any).RequestHeaders || {},
-  responseHeaders: (detail as any).responseHeaders || (detail as any).ResponseHeaders || {},
-  responseBodyPreview: (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,
-  failureReasons: (detail as any).failureReasons || (detail as any).FailureReasons || [],
-  extractedVariables: (detail as any).extractedVariables || (detail as any).ExtractedVariables || {},
-  dependencyIds: (detail as any).dependencyIds || (detail as any).DependencyIds || [],
+  expectedStatus:
+    (detail as any).expectedStatus || (detail as any).ExpectedStatus,
+  requestHeaders:
+    (detail as any).requestHeaders || (detail as any).RequestHeaders || {},
+  responseHeaders:
+    (detail as any).responseHeaders || (detail as any).ResponseHeaders || {},
+  responseBodyPreview:
+    (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,
+  failureReasons:
+    (detail as any).failureReasons || (detail as any).FailureReasons || [],
+  extractedVariables:
+    (detail as any).extractedVariables ||
+    (detail as any).ExtractedVariables ||
+    {},
+  dependencyIds:
+    (detail as any).dependencyIds || (detail as any).DependencyIds || [],
   skippedBecauseDependencyIds:
     (detail as any).skippedBecauseDependencyIds ||
     (detail as any).SkippedBecauseDependencyIds ||
     [],
-  statusCodeMatched: (detail as any).statusCodeMatched ?? (detail as any).StatusCodeMatched,
+  statusCodeMatched:
+    (detail as any).statusCodeMatched ?? (detail as any).StatusCodeMatched,
   schemaMatched: (detail as any).schemaMatched ?? (detail as any).SchemaMatched,
-  headerChecksPassed: (detail as any).headerChecksPassed ?? (detail as any).HeaderChecksPassed,
-  bodyContainsPassed: (detail as any).bodyContainsPassed ?? (detail as any).BodyContainsPassed,
+  headerChecksPassed:
+    (detail as any).headerChecksPassed ?? (detail as any).HeaderChecksPassed,
+  bodyContainsPassed:
+    (detail as any).bodyContainsPassed ?? (detail as any).BodyContainsPassed,
   bodyNotContainsPassed:
-    (detail as any).bodyNotContainsPassed ?? (detail as any).BodyNotContainsPassed,
+    (detail as any).bodyNotContainsPassed ??
+    (detail as any).BodyNotContainsPassed,
   jsonPathChecksPassed:
-    (detail as any).jsonPathChecksPassed ?? (detail as any).JsonPathChecksPassed,
-  responseTimePassed: (detail as any).responseTimePassed ?? (detail as any).ResponseTimePassed,
+    (detail as any).jsonPathChecksPassed ??
+    (detail as any).JsonPathChecksPassed,
+  responseTimePassed:
+    (detail as any).responseTimePassed ?? (detail as any).ResponseTimePassed,
 });
 
-const mapBackendRunDetail = (response: BackendTestRunDetail): TestRunDetailResponse => ({
+const mapBackendRunDetail = (
+  response: BackendTestRunDetail,
+): TestRunDetailResponse => ({
   run: (response as any)?.run
     ? mapBackendRun((response as any).run)
     : (response as any)?.Run
@@ -278,58 +306,44 @@ export interface StartTestRunRequest {
   testSuiteId: string;
   environmentId?: string;
   selectedTestCaseIds?: string[]; // Optional: run specific test cases only
+  strictValidation?: boolean; // Optional: defaults to false on BE
 }
 
 const testRunService = {
-  // Get all test runs for a project
-  getTestRuns: async (
-    projectId: string,
-    pageNumber: number = 1,
-    pageSize: number = 20,
-    status?: string
-  ): Promise<TestRunsResponse> => {
-    const params: any = { pageNumber, pageSize };
-    if (status) params.status = status;
+  // ===== STABLE CONTRACT (FE-07/08 suite-level) =====
 
-    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(`/projects/${projectId}/test-runs`, { params });
-    return mapBackendPagedRuns(response, pageNumber, pageSize);
-  },
-
-  // Get test runs for a specific test suite
+  // Get test runs for a specific test suite (primary API)
   getTestRunsByTestSuite: async (
     testSuiteId: string,
     pageNumber: number = 1,
     pageSize: number = 20,
-    status?: string
+    status?: string,
   ): Promise<TestRunsResponse> => {
     const params: any = { pageNumber, pageSize };
     if (status) params.status = status;
 
-    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(`/test-suites/${testSuiteId}/test-runs`, {
-      params,
-    });
+    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(
+      `/test-suites/${testSuiteId}/test-runs`,
+      {
+        params,
+      },
+    );
     return mapBackendPagedRuns(response, pageNumber, pageSize);
   },
 
-  // Get test run by ID
-  getTestRunById: async (testRunId: string): Promise<TestRun> => {
-    return await apiService.get<TestRun>(`/test-runs/${testRunId}`);
-  },
-
-  // Start a new test run
+  // Start a new test run (suite-level)
   startTestRun: async (data: StartTestRunRequest): Promise<TestRun> => {
-    return await apiService.post<TestRun>(`/test-suites/${data.testSuiteId}/test-runs`, {
-      environmentId: data.environmentId,
-      selectedTestCaseIds: data.selectedTestCaseIds,
-    });
+    return await apiService.post<TestRun>(
+      `/test-suites/${data.testSuiteId}/test-runs`,
+      {
+        environmentId: data.environmentId,
+        selectedTestCaseIds: data.selectedTestCaseIds,
+        strictValidation: data.strictValidation,
+      },
+    );
   },
 
-  // Cancel a running test run
-  cancelTestRun: async (testRunId: string): Promise<void> => {
-    await apiService.post(`/test-runs/${testRunId}/cancel`);
-  },
-
-  // Get test run results
+  // Get test run results (suite-level)
   getTestRunResults: async (
     testSuiteId: string,
     testRunId: string,
@@ -340,21 +354,71 @@ const testRunService = {
     return mapBackendRunDetail(response || {});
   },
 
-  // Get test run statistics
-  getTestRunStats: async (projectId: string, days: number = 30): Promise<any> => {
+  // Get single test run detail (suite-level)
+  getTestRunById: async (
+    testSuiteId: string,
+    testRunId: string,
+  ): Promise<TestRun> => {
+    const response = await apiService.get<BackendTestRun>(
+      `/test-suites/${testSuiteId}/test-runs/${testRunId}`,
+    );
+    return mapBackendRun(response);
+  },
+
+  // Cancel a running test run (suite-level)
+  cancelTestRun: async (
+    testSuiteId: string,
+    testRunId: string,
+  ): Promise<void> => {
+    await apiService.post(
+      `/test-suites/${testSuiteId}/test-runs/${testRunId}/cancel`,
+    );
+  },
+
+  // ===== LEGACY / FALLBACK (kept until backend confirms removal) =====
+
+  /** @deprecated Use getTestRunsByTestSuite instead. Legacy project-level route. */
+  getTestRuns: async (
+    projectId: string,
+    pageNumber: number = 1,
+    pageSize: number = 20,
+    status?: string,
+  ): Promise<TestRunsResponse> => {
+    const params: any = { pageNumber, pageSize };
+    if (status) params.status = status;
+
+    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(
+      `/projects/${projectId}/test-runs`,
+      { params },
+    );
+    return mapBackendPagedRuns(response, pageNumber, pageSize);
+  },
+
+  /** @deprecated Legacy stats route, may not exist in handoff. */
+  getTestRunStats: async (
+    projectId: string,
+    days: number = 30,
+  ): Promise<any> => {
     return await apiService.get(`/projects/${projectId}/test-runs/stats`, {
       params: { days },
     });
   },
 
-  // Retry failed test cases
+  /** @deprecated Legacy retry route. */
   retryFailedTests: async (testRunId: string): Promise<TestRun> => {
-    return await apiService.post<TestRun>(`/test-runs/${testRunId}/retry-failed`);
+    return await apiService.post<TestRun>(
+      `/test-runs/${testRunId}/retry-failed`,
+    );
   },
 
-  // Export test run results
-  exportTestRunResults: async (testRunId: string, format: 'json' | 'csv' | 'html'): Promise<Blob> => {
-    return await apiService.downloadFile(`/test-runs/${testRunId}/export?format=${format}`);
+  /** @deprecated Legacy export route. */
+  exportTestRunResults: async (
+    testRunId: string,
+    format: "json" | "csv" | "html",
+  ): Promise<Blob> => {
+    return await apiService.downloadFile(
+      `/test-runs/${testRunId}/export?format=${format}`,
+    );
   },
 };
 

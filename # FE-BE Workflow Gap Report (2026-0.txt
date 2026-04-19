@@ -1,0 +1,281 @@
+# FE-BE Workflow Gap Report (2026-04-18)
+
+## 1) Muc tieu va pham vi
+
+Report nay danh gia xem FE hien tai da noi dung workflow va API contract cua BE theo:
+
+- FE_BE_AutoTest_LLM_Integration_Guide.json
+- FE_BE_AutoTest_LLM_Integration_Guide.md
+
+Pham vi doi chieu:
+
+- lifecycle specification -> endpoint -> suite -> order gate -> generation -> suggestion review -> execution -> results -> failure explanation
+- request/response contract, status code, polling behavior, enum transport, auth/error envelope
+
+## 2) Xac nhan da chay GitNexus CLI truoc
+
+Da chay GitNexus CLI theo yeu cau:
+
+- `gitnexus --help` (thanh cong)
+- `gitnexus analyze .` (index thanh cong)
+- `gitnexus query --repo llm-api-test-generator ...` (thanh cong)
+
+## 3) Ket luan tong quan
+
+FE hien tai **chua noi chuan day du** voi workflow BE tra ve. Co nhieu phan da noi dung, nhung cac diem quan trong nhat cua luong generation callback (job polling), order gate validation, va spec parsing async van thieu/sai.
+
+Danh gia nhanh:
+
+- Muc do dong bo tong the: **Trung binh (partial alignment)**
+- Rui ro cao nhat: **false-success generation**, **bo qua gate check chinh thuc**, **khong poll parse status cho upload async**
+
+## 4) Diem dung/chuan da co
+
+1. FE da goi dung endpoint generation canonical `POST /test-suites/{suiteId}/generate-tests`.
+2. FE da dung endpoint run results `GET /test-suites/{suiteId}/test-runs/{runId}/results` va co handle state `resultsSource = unavailable`.
+3. FE da tach GET explanation (cache-first) va POST explanation (generate live) trong Suggestions page.
+4. FE da dung `rowVersion` trong update/delete environment va sanitize secret `******` truoc khi submit.
+5. FE da co luong suite creation + selectedEndpointIds + order proposal + approve.
+
+## 5) Cac diem THIEU / SAI / THUA (chi tiet)
+
+## Critical
+
+### C-01 [SAI + THIEU] Generation callback flow bi gia lap thanh cong, khong poll `generation-status`
+
+- Chuan BE yeu cau:
+  - Unified flow tra `202 Accepted` + `jobId`, FE phai poll `GET /generation-status` cho den khi job complete/failed.
+  - Tham chieu: `FE_BE_AutoTest_LLM_Integration_Guide.json` (workflowAtoZ: poll generation-status, apiContracts.test order/generation).
+- FE hien tai:
+  - Goi `POST /test-suites/${suiteId}/generate-tests`, sau do cho timeout co dinh 2 giay va set status success.
+  - Khong goi `GET /generation-status`.
+  - Chung cu:
+    - `src/pages/GeneratingTestCasesPage.tsx:92`
+    - `src/pages/GeneratingTestCasesPage.tsx:105`
+    - `src/pages/GeneratingTestCasesPage.tsx:107`
+- Tac dong:
+  - UI co the bao "Generation complete" khi backend job van dang `Queued/Triggering/WaitingForCallback`.
+  - De redirect sang test cases som, gay nham lan "khong co case" hoac data chua dong bo.
+- Khuyen nghi:
+  - Bat buoc parse response `GenerateTestsAcceptedResponse` lay `jobId`.
+  - Poll `GET /test-suites/{suiteId}/generation-status?jobId=...` theo interval + timeout + cancel.
+  - Chi set success khi backend status `Completed`; set error neu `Failed` + show `errorMessage`.
+
+### C-02 [SAI] Route wiring khong khop: path param `:suiteId` nhung page doc query param `suiteId`
+
+- FE hien tai:
+  - Route khai bao `/test-suites/:suiteId/generating`.
+  - Page lai lay `suiteId` bang `useSearchParams().get("suiteId")`.
+  - Chung cu:
+    - `src/AppRouter.tsx:108`
+    - `src/pages/GeneratingTestCasesPage.tsx:17`
+    - `src/pages/GeneratingTestCasesPage.tsx:18`
+- Tac dong:
+  - Truy cap route dung path param se co kha nang bi "Missing required parameters" neu query khong co.
+- Khuyen nghi:
+  - Dung `useParams<{ suiteId: string }>()` trong `GeneratingTestCasesPage`.
+
+### C-03 [THIEU] Khong poll `parseStatus` cho upload mode parse async
+
+- Chuan BE yeu cau:
+  - OpenAPI YAML/Postman co the tao spec `Pending`; FE phai theo doi `parseStatus` truoc khi di tiep.
+- FE hien tai:
+  - Upload xong thi cho 1.5s roi navigate sang Endpoints, khong poll parse status.
+  - Hook specifications chi fetch 1 lan, khong co poll loop.
+  - Chung cu:
+    - `src/pages/SpecificationPage.tsx:127`
+    - `src/pages/SpecificationPage.tsx:132`
+    - `src/pages/SpecificationPage.tsx:134`
+    - `src/hooks/useSpecifications.ts:15`
+    - `src/hooks/useSpecifications.ts:69`
+- Tac dong:
+  - User vao endpoint/suite khi spec chua parse xong -> danh sach endpoint thieu/rong, workflow tiep theo de loi.
+- Khuyen nghi:
+  - Sau upload, neu `parseStatus` la `Pending`, poll chi tiet spec den khi `Success/Failed`.
+
+## High
+
+### H-01 [THIEU] Khong goi `order-gate-status` truoc generation/suggestion
+
+- Chuan BE checklist:
+  - Truoc generation va suggestion preview, FE nen check `GET /order-gate-status` gate passed.
+- FE hien tai:
+  - Step completion duoc suy ra tu `hasGeneratedSuggestions` thay vi gate status backend.
+  - Suggestion generation duoc goi truc tiep ma khong check gate endpoint.
+  - Chung cu:
+    - `src/pages/TestSuiteDetailPage.tsx:124`
+    - `src/pages/TestSuiteDetailPage.tsx:126`
+    - `src/pages/TestSuiteDetailPage.tsx:605`
+    - `src/pages/TestSuiteDetailPage.tsx:615`
+- Tac dong:
+  - Trang thai buoc UI co the "xanh" nhung gate that su chua dat theo BE.
+  - De gap 400/409 khong ro nguyen nhan o production.
+- Khuyen nghi:
+  - Them call `GET /test-suites/{suiteId}/order-gate-status` va dung no lam source of truth cho Step 1.
+
+### H-02 [THIEU] Coverage API lifecycle specification chua day du
+
+- Chuan BE co cac endpoint quan trong:
+  - `GET /specifications/upload-methods`
+  - `POST /specifications/curl-import`
+  - `PUT /specifications/{specId}/activate`
+  - `PUT /specifications/{specId}/deactivate`
+- FE hien tai service specification chi co: list/detail/upload/manual/update/delete/restore.
+- Chung cu:
+  - `src/services/specificationService.ts:59`
+  - `src/services/specificationService.ts:87`
+  - `src/services/specificationService.ts:107`
+  - `src/services/specificationService.ts:121`
+- Tac dong:
+  - Chua the hien full workflow foundation theo contract BE.
+  - Active spec lifecycle bi gioi han tren FE.
+- Khuyen nghi:
+  - Bo sung service methods + UI hooks cho upload-methods, curl-import, activate/deactivate.
+
+### H-03 [THIEU] Tao suite khong rang buoc spec `parseStatus = Success`
+
+- Chuan BE checklist:
+  - Truoc order/generation, spec dung cho auto test phai parse thanh cong.
+- FE hien tai:
+  - Dropdown spec cho tao suite map toan bo specs khong filter parseStatus.
+  - Chung cu:
+    - `src/pages/TestSuitesPage.tsx:687`
+    - `src/pages/TestSuitesPage.tsx:688`
+- Tac dong:
+  - Co the tao suite tren spec Pending/Failed, dan den luong order/generation that bai ve sau.
+- Khuyen nghi:
+  - Chi cho chon spec `parseStatus === Success` (hoac block submit voi thong bao ro rang).
+
+### H-04 [SAI] Mismatch enum transport cho `TestSuiteScopeModel` (BE co the tra numeric)
+
+- Chuan BE enum transport:
+  - `TestSuiteScopeModel.GenerationType/Status/ApprovalStatus` la numeric tren response.
+- FE hien tai:
+  - Dang compare string thu cong, vi du `suite.status === "Active"`.
+  - `TestSuite` type khai bao status/generationType string, khong co normalize map tu numeric.
+  - Chung cu:
+    - `src/services/testSuiteService.ts:10`
+    - `src/services/testSuiteService.ts:12`
+    - `src/pages/TestSuitesPage.tsx:490`
+    - `src/pages/TestSuitesPage.tsx:498`
+- Tac dong:
+  - Neu backend tra numeric dung theo contract, UI badge/status co the sai hoan toan.
+- Khuyen nghi:
+  - Them normalize function map enum number <-> display string ngay trong service layer.
+
+### H-05 [THUA] Tu dong trigger suggestions + explanations ngay sau khi start run (co nguy co trung lap)
+
+- FE hien tai:
+  - `TestRunsPage` vua su dung `useAutoLLMAnalysis` (SignalR completion driven), vua chay fallback async ngay sau start run de generate suggestion + post explanation.
+  - Chung cu:
+    - `src/pages/TestRunsPage.tsx:45`
+    - `src/pages/TestRunsPage.tsx:114`
+    - `src/pages/TestRunsPage.tsx:322`
+    - `src/pages/TestRunsPage.tsx:334`
+    - `src/pages/TestRunsPage.tsx:366`
+    - `src/hooks/useAutoLLMAnalysis.ts:341`
+    - `src/hooks/useAutoLLMAnalysis.ts:353`
+- Tac dong:
+  - Tang chi phi va nguy co duplicate side effects (2 luong cung co the danh vao cung run).
+  - Kho theo doi nguon trigger nao tao ra ket qua.
+- Khuyen nghi:
+  - Chon 1 co che chinh (uu tien hook theo event completion), fallback chi kich hoat khi event that su khong toi.
+
+### H-06 [SAI] Token key khong nhat quan khi xu ly 401
+
+- FE hien tai:
+  - Token duoc luu/lay bang key `authToken`.
+  - Nhung trong `apiService` khi 401 lai remove key `token`.
+  - Chung cu:
+    - `src/config/api.ts:13`
+    - `src/config/api.ts:17`
+    - `src/services/apiService.ts:92`
+    - `src/services/apiService.ts:117`
+    - `src/services/apiService.ts:242`
+- Tac dong:
+  - Session cleanup co the khong sach, de sinh loi auth lap lai.
+- Khuyen nghi:
+  - Dung duy nhat helper `clearAuthToken()` hoac thong nhat key.
+
+## Medium
+
+### M-01 [SAI/TIEM AN] Query pagination projects dang dung `pageNumber`, contract map ghi `page`
+
+- FE hien tai:
+  - `GET /projects?pageNumber=...&pageSize=...`
+  - Chung cu:
+    - `src/services/projectService.ts:153`
+    - `src/services/projectService.ts:154`
+- Tac dong:
+  - Neu BE khong alias `pageNumber`, FE se phan trang sai/khong dung.
+- Khuyen nghi:
+  - Xac minh va dong bo ten query param theo contract backend that su dang expose.
+
+### M-02 [THIEU] FE chua expose tuy chon `strictValidation` khi start run
+
+- Chuan BE:
+  - `strictValidation` la field hop le (default false neu omit).
+- FE hien tai:
+  - Start run chi gui `environmentId`, `selectedTestCaseIds`.
+  - Chung cu:
+    - `src/services/testRunService.ts:305`
+    - `src/services/testRunService.ts:338`
+- Tac dong:
+  - Mat kha nang cho user chon strict mode tu FE.
+- Khuyen nghi:
+  - Them toggle strict validation o modal run.
+
+### M-03 [THIEU] Type request generationType chua cover `LLMAssisted`
+
+- Chuan BE enum request support: `Auto`, `Manual`, `LLMAssisted`.
+- FE hien tai type chi khai bao `Auto | Manual`.
+- Chung cu:
+  - `src/services/testSuiteService.ts:10`
+  - `src/services/testSuiteService.ts:28`
+- Tac dong:
+  - Han che feature va co the gay type conflict khi backend/UX mo rong.
+- Khuyen nghi:
+  - Mo rong type union va UI mapping cho `LLMAssisted`.
+
+### M-04 [THIEU] Error parsing validation envelope chua doc chi tiet field errors
+
+- Chuan BE validation error tra `errors` (dictionary theo field).
+- FE hien tai:
+  - Dang uu tien `message/title/error/detail` va thu `errors?.[0]?.message` (dang array shape), nen de mat thong tin field-level.
+  - Chung cu:
+    - `src/services/apiService.ts:79`
+    - `src/services/apiService.ts:82`
+- Tac dong:
+  - Toast/UX loi validation khong ro field nao sai.
+- Khuyen nghi:
+  - Parse `errors` object thanh message co nghia cho tung field.
+
+## 6) Danh sach de xuat uu tien sua (roadmap)
+
+1. Sua ngay luong generation callback:
+   - Implement `generation-status` polling va thay fake timeout success.
+2. Sua route va wiring trang generation:
+   - Chuyen sang `useParams` cho `suiteId`.
+3. Them parse-status polling sau upload async.
+4. Them gate check chinh thuc (`order-gate-status`) truoc generation/suggestion.
+5. Dong bo auth token key (`authToken`) trong toan bo 401 flow.
+6. Chuan hoa enum transport cho TestSuite response (numeric -> display).
+7. Bo sung API methods thieu o specification lifecycle.
+8. Giam side effects thua sau run (tranh trigger duplicate).
+
+## 7) Muc do san sang hien tai theo workflow A-Z
+
+- project/spec foundation: Partial
+- endpoint curation: Partial
+- test suite creation: Partial
+- order proposal and gate: Partial
+- unified generation default flow: Not aligned
+- llm suggestion preview/review: Partial-good
+- manual test case flow: Partial
+- execution environment: Good
+- test run execution: Good-partial
+- results and failure explanation: Good-partial
+
+---
+
+Neu can, minh co the tao tiep 1 patch implementation cho top 3 muc Critical (generation polling + route param + parse polling) de dua FE vao dung workflow BE nhanh nhat.

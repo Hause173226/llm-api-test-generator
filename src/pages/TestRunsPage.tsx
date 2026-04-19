@@ -88,6 +88,7 @@ export default function TestRunsPage() {
   >({});
   const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
+  const [strictValidation, setStrictValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pageSize = 20;
 
@@ -309,86 +310,17 @@ export default function TestRunsPage() {
 
     try {
       setIsSubmitting(true);
-      const startedRun = await startTestRun({
+      await startTestRun({
         testSuiteId: selectedTestSuiteId,
         environmentId: selectedEnvironmentId || undefined,
         selectedTestCaseIds:
           selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
+        strictValidation,
       });
 
-      const startedRunId =
-        (startedRun as any)?.id || (startedRun as any)?.run?.id || null;
-
-      // Fallback flow: immediately trigger one-time LLM analysis after run completes,
-      // even when SignalR completion events are not published from backend.
-      if (startedRunId) {
-        void (async () => {
-          try {
-            const suiteDetail = await testSuiteService.getTestSuiteDetail(
-              projectId,
-              selectedTestSuiteId,
-            );
-
-            if (suiteDetail.apiSpecId) {
-              try {
-                await apiService.post(
-                  `/test-suites/${selectedTestSuiteId}/llm-suggestions/generate`,
-                  {
-                    specificationId: suiteDetail.apiSpecId,
-                    forceRefresh: false,
-                  },
-                );
-              } catch (err: any) {
-                const statusCode = err?.status ?? err?.response?.status;
-                const message = String(
-                  err?.message || err?.response?.data?.message || "",
-                );
-                const alreadyHasPendingSuggestions =
-                  statusCode === 400 &&
-                  (message.includes("ForceRefresh=true") ||
-                    message.includes("suggestion preview"));
-
-                if (!alreadyHasPendingSuggestions) {
-                  throw err;
-                }
-              }
-            }
-
-            const runDetail = await testRunService.getTestRunResults(
-              selectedTestSuiteId,
-              startedRunId,
-            );
-
-            const failedCases = (runDetail.cases || []).filter(
-              (c) => (c.status || "").toLowerCase() === "failed",
-            );
-
-            await Promise.all(
-              failedCases.map((testCase) =>
-                apiService.post(
-                  `/test-suites/${selectedTestSuiteId}/test-runs/${startedRunId}/failures/${testCase.testCaseId}/explanation`,
-                ),
-              ),
-            );
-
-            try {
-              const raw = localStorage.getItem("autoLLMAnalysis_processedRuns");
-              const processed = raw ? (JSON.parse(raw) as string[]) : [];
-              if (!processed.includes(startedRunId)) {
-                processed.push(startedRunId);
-                localStorage.setItem(
-                  "autoLLMAnalysis_processedRuns",
-                  JSON.stringify(processed),
-                );
-              }
-            } catch {
-              // Non-blocking localStorage write.
-            }
-          } catch (err) {
-            console.error("Fallback post-run LLM analysis failed:", err);
-          }
-        })();
-      }
+      // Post-run LLM analysis (suggestions + failure explanations) is handled
+      // by the useAutoLLMAnalysis hook via SignalR TestRunStatusChanged events.
+      // No inline fallback trigger needed here to avoid duplicate side effects.
 
       setActiveSuiteId(selectedTestSuiteId);
       if (activeSuiteStorageKey) {
@@ -396,6 +328,7 @@ export default function TestRunsPage() {
       }
       showSuccessToast(t("testRuns.toast.started"));
       closeStartModal();
+      setStrictValidation(false);
       setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
     } catch (err) {
       handleError(err);
@@ -1341,6 +1274,36 @@ export default function TestRunsPage() {
               ? t("testRuns.modal.selectedCasesInfo", { count: selectedTestCaseIds.length })
               : t("testRuns.modal.allCasesInfo")}
           </p>
+
+          {/* Strict Validation Toggle */}
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                Strict Validation
+              </label>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                When enabled, test cases without expectations will fail instead of warn.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStrictValidation((prev) => !prev)}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer",
+                strictValidation
+                  ? "bg-primary dark:bg-indigo-500"
+                  : "bg-slate-300 dark:bg-slate-600",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                  strictValidation ? "translate-x-6" : "translate-x-1",
+                )}
+              />
+            </button>
+          </div>
+
           {!activeSuiteId && testSuites.length === 0 && (
             <p className="text-sm text-on-surface-variant">
               {t("testRuns.modal.noSuitesWarning")}

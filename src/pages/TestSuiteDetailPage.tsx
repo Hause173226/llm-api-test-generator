@@ -715,6 +715,22 @@ export default function TestSuiteDetailPage() {
     try {
       setIsGeneratingSuggestions(true);
 
+      // H-01: Check order gate status before generation/suggestion
+      try {
+        const gateStatus = await testSuiteService.getOrderGateStatus(suiteId);
+        if (!gateStatus.isGatePassed) {
+          showErrorToast(
+            gateStatus.message ||
+            "Order gate not passed. Please approve the API order proposal first.",
+          );
+          setIsGeneratingSuggestions(false);
+          return;
+        }
+      } catch (gateErr: any) {
+        console.warn("Could not check order gate status:", gateErr);
+        // Continue anyway; BE will reject if gate not passed
+      }
+
       try {
         await testSuiteLlmSuggestionService.generate(suiteId, {
           specificationId: suite.apiSpecId,

@@ -1,9 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { apiService } from "../services/apiService";
 import { handleError, showErrorToast } from "../utils/errorHandler";
+
+interface GenerationJobStatus {
+  jobId: string;
+  testSuiteId: string;
+  status: string; // Queued | Triggering | WaitingForCallback | Completed | Failed
+  queuedAt?: string;
+  triggeredAt?: string;
+  completedAt?: string;
+  testCasesGenerated?: number;
+  errorMessage?: string;
+  webhookName?: string;
+}
 
 interface ApiState {
   status: "idle" | "generating" | "success" | "error";
@@ -14,8 +26,7 @@ interface ApiState {
 
 export default function GeneratingTestCasesPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const suiteId = searchParams.get("suiteId");
+  const { suiteId } = useParams<{ suiteId: string }>();
 
   const [happyPathState, setHappyPathState] = useState<ApiState>({
     status: "idle",
@@ -72,37 +83,93 @@ export default function GeneratingTestCasesPage() {
     return "Unknown error";
   };
 
+  const POLL_INTERVAL_MS = 3000;
+  const POLL_TIMEOUT_MS = 300000; // 5 minutes max
+
+  const getProgressForStatus = (jobStatus: string): { progress: number; step: string } => {
+    switch (jobStatus) {
+      case "Queued":
+        return { progress: 15, step: "Job queued, waiting to start..." };
+      case "Triggering":
+        return { progress: 30, step: "Triggering AI generation workflow..." };
+      case "WaitingForCallback":
+        return { progress: 55, step: "LLM generating test cases (this may take a few minutes)..." };
+      case "Completed":
+        return { progress: 100, step: "Unified generation complete!" };
+      case "Failed":
+        return { progress: 0, step: "Generation failed" };
+      default:
+        return { progress: 20, step: `Status: ${jobStatus}` };
+    }
+  };
+
+  const pollGenerationStatus = async (jobId: string): Promise<GenerationJobStatus> => {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < POLL_TIMEOUT_MS) {
+      const jobStatus = await apiService.get<GenerationJobStatus>(
+        `/test-suites/${suiteId}/generation-status`,
+        { params: { jobId } },
+      );
+
+      const { progress, step } = getProgressForStatus(jobStatus.status);
+
+      setHappyPathState((prev) => ({ ...prev, progress, currentStep: step }));
+      setBoundaryNegativeState((prev) => ({ ...prev, progress, currentStep: step }));
+
+      if (jobStatus.status === "Completed") {
+        return jobStatus;
+      }
+
+      if (jobStatus.status === "Failed") {
+        throw new Error(jobStatus.errorMessage || "Generation job failed");
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+
+    throw new Error("Generation timed out. Please check status later.");
+  };
+
   const executeUnifiedGeneration = async () => {
     try {
       setHappyPathState((prev) => ({
         ...prev,
         status: "generating",
-        progress: 25,
-        currentStep: "Analyzing endpoints...",
+        progress: 10,
+        currentStep: "Submitting generation request...",
       }));
       setBoundaryNegativeState((prev) => ({
         ...prev,
         status: "generating",
-        progress: 25,
-        currentStep: "Analyzing endpoints...",
+        progress: 10,
+        currentStep: "Submitting generation request...",
       }));
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // POST generate-tests returns 202 Accepted with jobId
+      const response = await apiService.post<{ jobId: string; testSuiteId: string; mode: string; message: string }>(
+        `/test-suites/${suiteId}/generate-tests`,
+      );
 
-      await apiService.post(`/test-suites/${suiteId}/generate-tests`);
+      const jobId = response.jobId;
+
+      if (!jobId) {
+        throw new Error("No jobId returned from generation request");
+      }
 
       setHappyPathState((prev) => ({
         ...prev,
-        progress: 70,
-        currentStep: "LLM generating mixed test cases...",
+        progress: 15,
+        currentStep: "Generation job queued, polling status...",
       }));
       setBoundaryNegativeState((prev) => ({
         ...prev,
-        progress: 70,
-        currentStep: "LLM generating mixed test cases...",
+        progress: 15,
+        currentStep: "Generation job queued, polling status...",
       }));
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Poll until Completed or Failed
+      await pollGenerationStatus(jobId);
 
       setHappyPathState((prev) => ({
         ...prev,
