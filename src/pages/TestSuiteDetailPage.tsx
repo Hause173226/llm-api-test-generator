@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
-import GlobalSpinner from "../components/ui/GlobalSpinner";
+import TaskProgress from "../components/ui/TaskProgress";
+import { useBackgroundTask } from "../hooks/useBackgroundTask";
 import {
   handleError,
   showErrorToast,
@@ -196,6 +197,26 @@ export default function TestSuiteDetailPage() {
 
     persistGenerationRuns(nextRuns);
   };
+
+  // Background task for non-blocking LLM generation
+  const bgTask = useBackgroundTask({
+    onCompleted: () => {
+      appendGenerationRun(new Date().toISOString());
+      showSuccessToast("AI preview regenerated after approval.");
+      fetchData();
+    },
+    onFailed: (err) => {
+      const statusCode = err?.status ?? err?.response?.status;
+      const message = String(err?.message || err?.response?.data?.message || "");
+      const alreadyHasPendingSuggestions =
+        statusCode === 400 &&
+        (message.includes("ForceRefresh=true") || message.includes("suggestion preview"));
+
+      if (!alreadyHasPendingSuggestions) {
+        showErrorToast("Order approved but AI preview generation failed.");
+      }
+    },
+  });
 
   const getSuggestionFilters = (overrides?: Partial<SuiteSuggestionQuery>): SuiteSuggestionQuery => ({
     reviewStatus: overrides?.reviewStatus !== undefined ? overrides.reviewStatus : (suggestionReviewStatusFilter || undefined),
@@ -604,36 +625,14 @@ export default function TestSuiteDetailPage() {
           );
           showSuccessToast("Order approved successfully");
 
-          try {
+          // Fire LLM generation as background task — UI unblocks immediately
+          bgTask.run(async () => {
             await testSuiteLlmSuggestionService.generate(suite.id, {
               specificationId: suite.apiSpecId,
               forceRefresh: true,
             });
-            appendGenerationRun(new Date().toISOString());
-            showSuccessToast("AI preview regenerated after approval.");
-          } catch (suggestionErr: any) {
-            const statusCode =
-              suggestionErr?.status ?? suggestionErr?.response?.status;
-            const message = String(
-              suggestionErr?.message ||
-              suggestionErr?.response?.data?.message ||
-              "",
-            );
-            const alreadyHasPendingSuggestions =
-              statusCode === 400 &&
-              (message.includes("ForceRefresh=true") ||
-                message.includes("suggestion preview"));
-
-            if (!alreadyHasPendingSuggestions) {
-              console.error(
-                "Failed to auto-generate LLM suggestions after approval:",
-                suggestionErr,
-              );
-              showErrorToast(
-                "Order approved but AI preview generation failed.",
-              );
-            }
-          }
+          });
+          showInfoToast("AI preview generation started in the background.");
         }
       } catch (approveErr) {
         // If auto-approve fails, show a warning but don't fail the whole operation
@@ -1403,7 +1402,11 @@ export default function TestSuiteDetailPage() {
 
   return (
     <>
-      {isSubmitting && <GlobalSpinner label="Đang xử lý..." />}
+      <TaskProgress
+        isRunning={bgTask.isRunning}
+        taskLabel="AI preview generation"
+        onDismiss={() => bgTask.reset()}
+      />
 
       {/* Bulk Reject Modal */}
       <Modal

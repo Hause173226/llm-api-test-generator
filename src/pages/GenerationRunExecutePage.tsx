@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, CheckSquare, Filter, Loader2, Play, Plus, Search, Square } from "lucide-react";
+import { ArrowLeft, CheckSquare, ChevronDown, ChevronRight, Filter, Loader2, Play, Plus, Search, ShieldCheck, Square, X } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
+import TaskProgress from "../components/ui/TaskProgress";
+import { useBackgroundTask } from "../hooks/useBackgroundTask";
 import Modal from "../components/ui/Modal";
 import { useProject } from "../contexts/ProjectContext";
 import environmentService, {
+  ExecutionAuthConfig,
   ExecutionEnvironment,
 } from "../services/environmentService";
 import endpointService, { Endpoint } from "../services/endpointService";
@@ -17,6 +20,7 @@ import { testSuiteService } from "../services/testSuiteService";
 import {
   handleError,
   showErrorToast,
+  showInfoToast,
   showSuccessToast,
 } from "../utils/errorHandler";
 
@@ -73,6 +77,38 @@ export default function GenerationRunExecutePage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Environment creation modal state
+  const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
+  const [isCreatingEnv, setIsCreatingEnv] = useState(false);
+  const [envForm, setEnvForm] = useState({
+    name: "",
+    baseUrl: "",
+    variables: {} as Record<string, string>,
+    headers: {} as Record<string, string>,
+    authConfig: {
+      authType: "None",
+      headerName: null,
+      token: null,
+      username: null,
+      password: null,
+      apiKeyName: null,
+      apiKeyValue: null,
+      apiKeyLocation: "Header",
+      tokenUrl: null,
+      clientId: null,
+      clientSecret: null,
+      scopes: [],
+    } as ExecutionAuthConfig,
+    isDefault: false,
+  });
+  const [envVarKey, setEnvVarKey] = useState("");
+  const [envVarValue, setEnvVarValue] = useState("");
+  const [envHeaderKey, setEnvHeaderKey] = useState("");
+  const [envHeaderValue, setEnvHeaderValue] = useState("");
+  const [showEnvVarsSection, setShowEnvVarsSection] = useState(false);
+  const [showEnvHeadersSection, setShowEnvHeadersSection] = useState(false);
+  const [showEnvAuthSection, setShowEnvAuthSection] = useState(false);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -157,6 +193,99 @@ export default function GenerationRunExecutePage() {
     return defaultEnv?.id || items[0].id;
   };
 
+  // ── Environment creation helpers ──────────────────────────────────────
+  const resetEnvForm = () => {
+    setEnvForm({
+      name: "",
+      baseUrl: "",
+      variables: {},
+      headers: {},
+      authConfig: {
+        authType: "None", headerName: null, token: null, username: null,
+        password: null, apiKeyName: null, apiKeyValue: null, apiKeyLocation: "Header",
+        tokenUrl: null, clientId: null, clientSecret: null, scopes: [],
+      },
+      isDefault: false,
+    });
+    setEnvVarKey(""); setEnvVarValue("");
+    setEnvHeaderKey(""); setEnvHeaderValue("");
+    setShowEnvVarsSection(false);
+    setShowEnvHeadersSection(false);
+    setShowEnvAuthSection(false);
+  };
+
+  const updateEnvAuth = (partial: Partial<ExecutionAuthConfig>) => {
+    setEnvForm((prev) => ({ ...prev, authConfig: { ...prev.authConfig, ...partial } }));
+  };
+
+  const addEnvVar = () => {
+    if (!envVarKey) return;
+    setEnvForm((prev) => ({ ...prev, variables: { ...prev.variables, [envVarKey]: envVarValue } }));
+    setEnvVarKey(""); setEnvVarValue("");
+  };
+
+  const removeEnvVar = (key: string) => {
+    setEnvForm((prev) => {
+      const v = { ...prev.variables }; delete v[key]; return { ...prev, variables: v };
+    });
+  };
+
+  const addEnvHeader = () => {
+    if (!envHeaderKey) return;
+    setEnvForm((prev) => ({ ...prev, headers: { ...prev.headers, [envHeaderKey]: envHeaderValue } }));
+    setEnvHeaderKey(""); setEnvHeaderValue("");
+  };
+
+  const removeEnvHeader = (key: string) => {
+    setEnvForm((prev) => {
+      const h = { ...prev.headers }; delete h[key]; return { ...prev, headers: h };
+    });
+  };
+
+  const handleCreateEnvironment = async () => {
+    if (!envForm.name.trim() || !projectId) return;
+    try {
+      setIsCreatingEnv(true);
+      const auth = envForm.authConfig;
+      const payload = {
+        name: envForm.name.trim(),
+        baseUrl: envForm.baseUrl.trim(),
+        variables: Object.keys(envForm.variables).length > 0 ? envForm.variables : null,
+        headers: Object.keys(envForm.headers).length > 0 ? envForm.headers : null,
+        authConfig: {
+          authType: auth.authType,
+          headerName: auth.headerName || null,
+          token: auth.token || null,
+          username: auth.username || null,
+          password: auth.password || null,
+          apiKeyName: auth.apiKeyName || null,
+          apiKeyValue: auth.apiKeyValue || null,
+          apiKeyLocation: auth.apiKeyLocation || "Header",
+          tokenUrl: auth.tokenUrl || null,
+          clientId: auth.clientId || null,
+          clientSecret: auth.clientSecret || null,
+          scopes: auth.scopes && auth.scopes.length > 0 ? auth.scopes : [""],
+        } as ExecutionAuthConfig,
+        isDefault: envForm.isDefault,
+      };
+      const created = await environmentService.createEnvironment(projectId, payload);
+      setEnvironments((prev) => {
+        const updated = created.isDefault
+          ? prev.map((env) => ({ ...env, isDefault: false }))
+          : prev;
+        return [...updated, created];
+      });
+      setSelectedEnvironmentId(created.id);
+      showSuccessToast("Environment created successfully");
+      setIsEnvModalOpen(false);
+      resetEnvForm();
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsCreatingEnv(false);
+    }
+  };
+
   const buildRunsUrl = () => {
     const params = new URLSearchParams();
     if (suiteId) {
@@ -167,6 +296,17 @@ export default function GenerationRunExecutePage() {
     }
     return params.toString() ? `/runs?${params.toString()}` : "/runs";
   };
+
+  // Background task for non-blocking test execution
+  const executeBgTask = useBackgroundTask({
+    onCompleted: () => {
+      showSuccessToast("Test execution completed!");
+      navigate(buildRunsUrl());
+    },
+    onFailed: (err) => {
+      handleError(err);
+    },
+  });
 
   const buildSuiteDetailUrl = () => {
     if (!suiteId) {
@@ -305,25 +445,20 @@ export default function GenerationRunExecutePage() {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
+    // Fire-and-forget: UI unblocks immediately
+    executeBgTask.run(async () => {
       await testRunService.startTestRun({
         testSuiteId: suiteId,
         environmentId: selectedEnvironmentId,
         selectedTestCaseIds: targetIds,
       });
+    });
 
-      showSuccessToast(
-        mode === "all"
-          ? `Started run for all ${targetIds.length} test case(s)`
-          : `Started run for ${targetIds.length} selected test case(s)`,
-      );
-      navigate(buildRunsUrl());
-    } catch (err) {
-      handleError(err);
-    } finally {
-      setIsSubmitting(false);
-    }
+    showInfoToast(
+      mode === "all"
+        ? `Execution started in the background for all ${targetIds.length} test case(s)`
+        : `Execution started in the background for ${targetIds.length} selected test case(s)`,
+    );
   };
 
   useEffect(() => {
@@ -520,22 +655,15 @@ export default function GenerationRunExecutePage() {
       </Modal>
 
       <StepTransitionOverlay
-        isVisible={isLoading || isSubmitting}
-        title={
-          isSubmitting
-            ? t("overlay.execute.startRunTitle")
-            : t("overlay.execute.preparingTitle")
-        }
-        message={
-          isSubmitting
-            ? t("overlay.execute.startRunMessage")
-            : t("overlay.execute.preparingMessage")
-        }
-        stepLabel={
-          isSubmitting
-            ? t("overlay.execute.startRunStep")
-            : t("overlay.execute.preparingStep")
-        }
+        isVisible={isLoading}
+        title={t("overlay.execute.preparingTitle")}
+        message={t("overlay.execute.preparingMessage")}
+        stepLabel={t("overlay.execute.preparingStep")}
+      />
+      <TaskProgress
+        isRunning={executeBgTask.isRunning}
+        taskLabel="Test execution"
+        onDismiss={() => executeBgTask.reset()}
       />
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -613,23 +741,44 @@ export default function GenerationRunExecutePage() {
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
               Select Environment
             </label>
-            <select
-              value={selectedEnvironmentId}
-              onChange={(e) => setSelectedEnvironmentId(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
-              disabled={environments.length === 0}
-            >
-              {environments.length === 0 ? (
-                <option value="">No environment found</option>
-              ) : (
-                environments.map((env) => (
-                  <option key={env.id} value={env.id}>
-                    {env.name}
-                    {env.isDefault ? " (default)" : ""}
-                  </option>
-                ))
-              )}
-            </select>
+            {environments.length === 0 ? (
+              <div className="rounded-xl border border-amber-300/40 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-4 flex items-center justify-between gap-3">
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  No environment found. Create one to execute test cases.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsEnvModalOpen(true)}
+                  className="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Environment
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedEnvironmentId}
+                  onChange={(e) => setSelectedEnvironmentId(e.target.value)}
+                  className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
+                >
+                  {environments.map((env) => (
+                    <option key={env.id} value={env.id}>
+                      {env.name}
+                      {env.isDefault ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setIsEnvModalOpen(true)}
+                  className="shrink-0 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  title="Create new environment"
+                >
+                  <Plus className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                </button>
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -824,15 +973,15 @@ export default function GenerationRunExecutePage() {
           <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
             {environments.length === 0 && !isLoading && (
               <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
-                No execution environment found. Please create one in{" "}
+                No execution environment found.{" "}
                 <button
                   type="button"
                   className="underline font-semibold"
-                  onClick={() => navigate(`/environments?projectId=${projectId}`)}
+                  onClick={() => setIsEnvModalOpen(true)}
                 >
-                  Environments
+                  Create one
                 </button>{" "}
-                before running tests.
+                to run tests.
               </p>
             )}
             <button
@@ -867,6 +1016,197 @@ export default function GenerationRunExecutePage() {
           </div>
         </section>
       </div>
+
+      {/* Environment Creation Modal */}
+      {isEnvModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 pt-6 pb-2">
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                New Environment
+              </h3>
+              <button
+                onClick={() => { setIsEnvModalOpen(false); resetEnvForm(); }}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="px-6 pb-6 space-y-5">
+              {/* Name */}
+              <input
+                type="text"
+                value={envForm.name}
+                onChange={(e) => setEnvForm({ ...envForm, name: e.target.value })}
+                placeholder="Environment name"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+
+              {/* Base URL */}
+              <input
+                type="url"
+                value={envForm.baseUrl}
+                onChange={(e) => setEnvForm({ ...envForm, baseUrl: e.target.value })}
+                placeholder="Base URL (e.g. https://api.example.com)"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+
+              {/* Variables */}
+              <div>
+                <button type="button" onClick={() => setShowEnvVarsSection(!showEnvVarsSection)} className="flex items-center gap-2 w-full text-left cursor-pointer">
+                  {showEnvVarsSection ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Variables</span>
+                  <span className="text-xs text-slate-400">({Object.keys(envForm.variables).length})</span>
+                </button>
+                {showEnvVarsSection && (
+                  <div className="mt-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
+                      {"Define variables and use them via {{variableName}} syntax."}
+                    </p>
+                    <div className="space-y-2">
+                      {Object.entries(envForm.variables).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
+                          <input type="text" value={key} readOnly className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" />
+                          <input type="text" value={value} onChange={(e) => setEnvForm((p) => ({ ...p, variables: { ...p.variables, [key]: e.target.value } }))} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <button onClick={() => removeEnvVar(key)} className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer">Remove</button>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
+                        <input type="text" value={envVarKey} onChange={(e) => setEnvVarKey(e.target.value)} placeholder="Key" className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input type="text" value={envVarValue} onChange={(e) => setEnvVarValue(e.target.value)} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                      </div>
+                      <button onClick={addEnvVar} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer">+ Add</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Headers */}
+              <div>
+                <button type="button" onClick={() => setShowEnvHeadersSection(!showEnvHeadersSection)} className="flex items-center gap-2 w-full text-left cursor-pointer">
+                  {showEnvHeadersSection ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Headers</span>
+                  <span className="text-xs text-slate-400">({Object.keys(envForm.headers).length})</span>
+                </button>
+                {showEnvHeadersSection && (
+                  <div className="mt-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">Custom headers sent with every request.</p>
+                    <div className="space-y-2">
+                      {Object.entries(envForm.headers).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
+                          <input type="text" value={key} readOnly className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" />
+                          <input type="text" value={value} onChange={(e) => setEnvForm((p) => ({ ...p, headers: { ...p.headers, [key]: e.target.value } }))} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <button onClick={() => removeEnvHeader(key)} className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer">Remove</button>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
+                        <input type="text" value={envHeaderKey} onChange={(e) => setEnvHeaderKey(e.target.value)} placeholder="Header name" className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input type="text" value={envHeaderValue} onChange={(e) => setEnvHeaderValue(e.target.value)} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                      </div>
+                      <button onClick={addEnvHeader} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer">+ Add</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Authentication */}
+              <div>
+                <button type="button" onClick={() => setShowEnvAuthSection(!showEnvAuthSection)} className="flex items-center gap-2 w-full text-left cursor-pointer">
+                  {showEnvAuthSection ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Authentication</span>
+                  <span className="text-xs text-slate-400">({envForm.authConfig.authType})</span>
+                </button>
+                {showEnvAuthSection && (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3 mt-2">
+                    <select
+                      value={envForm.authConfig.authType}
+                      onChange={(e) => updateEnvAuth({ authType: e.target.value as ExecutionAuthConfig["authType"] })}
+                      className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="None">None</option>
+                      <option value="BearerToken">Bearer Token</option>
+                      <option value="Basic">Basic</option>
+                      <option value="ApiKey">API Key</option>
+                      <option value="OAuth2ClientCredentials">OAuth2 Client Credentials</option>
+                    </select>
+
+                    {envForm.authConfig.authType === "BearerToken" && (
+                      <div className="space-y-3">
+                        <input type="text" value={envForm.authConfig.headerName || ""} onChange={(e) => updateEnvAuth({ headerName: e.target.value || null })} placeholder="Header Name (default: Authorization)" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input type="password" value={envForm.authConfig.token || ""} onChange={(e) => updateEnvAuth({ token: e.target.value || null })} placeholder="Token" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      </div>
+                    )}
+
+                    {envForm.authConfig.authType === "Basic" && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <input type="text" value={envForm.authConfig.username || ""} onChange={(e) => updateEnvAuth({ username: e.target.value || null })} placeholder="Username" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input type="password" value={envForm.authConfig.password || ""} onChange={(e) => updateEnvAuth({ password: e.target.value || null })} placeholder="Password" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      </div>
+                    )}
+
+                    {envForm.authConfig.authType === "ApiKey" && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="text" value={envForm.authConfig.apiKeyName || ""} onChange={(e) => updateEnvAuth({ apiKeyName: e.target.value || null })} placeholder="API Key Name" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <input type="password" value={envForm.authConfig.apiKeyValue || ""} onChange={(e) => updateEnvAuth({ apiKeyValue: e.target.value || null })} placeholder="API Key Value" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        <select value={envForm.authConfig.apiKeyLocation || "Header"} onChange={(e) => updateEnvAuth({ apiKeyLocation: e.target.value as ExecutionAuthConfig["apiKeyLocation"] })} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                          <option value="Header">Header</option>
+                          <option value="Query">Query</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {envForm.authConfig.authType === "OAuth2ClientCredentials" && (
+                      <div className="space-y-3">
+                        <input type="url" value={envForm.authConfig.tokenUrl || ""} onChange={(e) => updateEnvAuth({ tokenUrl: e.target.value || null })} placeholder="Token URL" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="text" value={envForm.authConfig.clientId || ""} onChange={(e) => updateEnvAuth({ clientId: e.target.value || null })} placeholder="Client ID" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <input type="password" value={envForm.authConfig.clientSecret || ""} onChange={(e) => updateEnvAuth({ clientSecret: e.target.value || null })} placeholder="Client Secret" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        <input type="text" value={(envForm.authConfig.scopes || []).join(", ")} onChange={(e) => updateEnvAuth({ scopes: e.target.value.trim() ? e.target.value.split(",").map((s) => s.trim()).filter(Boolean) : [] })} placeholder="Scopes (comma separated)" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Default checkbox */}
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="envDefaultCheck" checked={envForm.isDefault} onChange={(e) => setEnvForm({ ...envForm, isDefault: e.target.checked })} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                <label htmlFor="envDefaultCheck" className="text-sm text-slate-700 dark:text-slate-300">Set as default environment</label>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => { setIsEnvModalOpen(false); resetEnvForm(); }}
+                  className="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateEnvironment}
+                  disabled={isCreatingEnv || !envForm.name.trim()}
+                  className="px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-2"
+                >
+                  {isCreatingEnv && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </MainLayout>
   );
 }

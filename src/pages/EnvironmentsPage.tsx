@@ -17,6 +17,8 @@ import {
   Edit,
   Star,
   X,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
@@ -89,6 +91,9 @@ export default function EnvironmentsPage() {
   const [variableValue, setVariableValue] = useState("");
   const [headerKey, setHeaderKey] = useState("");
   const [headerValue, setHeaderValue] = useState("");
+  const [showVariablesSection, setShowVariablesSection] = useState(false);
+  const [showHeadersSection, setShowHeadersSection] = useState(false);
+  const [showAuthSection, setShowAuthSection] = useState(false);
 
   const updateAuthConfig = (partial: Partial<ExecutionAuthConfig>) => {
     setFormData((prev) => ({
@@ -124,6 +129,36 @@ export default function EnvironmentsPage() {
     setVariableValue("");
     setHeaderKey("");
     setHeaderValue("");
+    setShowVariablesSection(false);
+    setShowHeadersSection(false);
+    setShowAuthSection(false);
+  };
+
+  const buildPayload = () => {
+    const vars = Object.keys(formData.variables).length > 0 ? formData.variables : null;
+    const hdrs = Object.keys(formData.headers).length > 0 ? formData.headers : null;
+    const auth = formData.authConfig;
+    return {
+      name: formData.name,
+      baseUrl: formData.baseUrl,
+      variables: vars as any,
+      headers: hdrs as any,
+      authConfig: {
+        authType: auth.authType,
+        headerName: auth.headerName || null,
+        token: auth.token || null,
+        username: auth.username || null,
+        password: auth.password || null,
+        apiKeyName: auth.apiKeyName || null,
+        apiKeyValue: auth.apiKeyValue || null,
+        apiKeyLocation: auth.apiKeyLocation || "Header",
+        tokenUrl: auth.tokenUrl || null,
+        clientId: auth.clientId || null,
+        clientSecret: auth.clientSecret || null,
+        scopes: auth.scopes && auth.scopes.length > 0 ? auth.scopes : [""],
+      },
+      isDefault: formData.isDefault,
+    };
   };
 
   const handleCreate = async () => {
@@ -132,14 +167,7 @@ export default function EnvironmentsPage() {
       return;
     }
 
-    const success = await createEnvironment({
-      name: formData.name,
-      baseUrl: formData.baseUrl,
-      variables: formData.variables,
-      headers: formData.headers,
-      authConfig: formData.authConfig,
-      isDefault: formData.isDefault,
-    });
+    const success = await createEnvironment(buildPayload());
 
     if (success) {
       toast.success(t("environments.success.created"));
@@ -151,7 +179,7 @@ export default function EnvironmentsPage() {
   const handleEdit = async () => {
     if (!selectedEnvId) return;
 
-    const success = await updateEnvironment(selectedEnvId, formData);
+    const success = await updateEnvironment(selectedEnvId, buildPayload());
     if (success) {
       toast.success(t("environments.success.updated"));
       setShowEditModal(false);
@@ -216,6 +244,9 @@ export default function EnvironmentsPage() {
       },
       isDefault: env.isDefault,
     });
+    setShowVariablesSection(Object.keys(env.variables || {}).length > 0);
+    setShowHeadersSection(Object.keys(env.headers || {}).length > 0);
+    setShowAuthSection(env.authConfig?.authType && env.authConfig.authType !== "None");
     setShowEditModal(true);
   };
 
@@ -236,7 +267,7 @@ export default function EnvironmentsPage() {
   };
 
   const addVariable = () => {
-    if (!variableKey || !variableValue) return;
+    if (!variableKey) return;
     setFormData((prev) => ({
       ...prev,
       variables: { ...prev.variables, [variableKey]: variableValue },
@@ -254,7 +285,7 @@ export default function EnvironmentsPage() {
   };
 
   const addHeader = () => {
-    if (!headerKey || !headerValue) return;
+    if (!headerKey) return;
     setFormData((prev) => ({
       ...prev,
       headers: { ...prev.headers, [headerKey]: headerValue },
@@ -489,230 +520,383 @@ export default function EnvironmentsPage() {
       {/* Create/Edit Modal */}
       {(showCreateModal || showEditModal) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-on-surface mb-6">
-              {showCreateModal
-                ? t("environments.create.title")
-                : t("environments.edit.title")}
-            </h3>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-2">
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                {showCreateModal
+                  ? t("environments.create.title")
+                  : t("environments.edit.title")}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setShowEditModal(false);
+                  setSelectedEnvId(null);
+                  resetForm();
+                }}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                  {t("environments.form.name")}
-                </label>
+            <div className="px-6 pb-6 space-y-5">
+              {/* Environment Name */}
+              <div>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                  placeholder={t("environments.form.name")}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                  {t("environments.form.baseUrl")}
-                </label>
+              {/* Base URL */}
+              <div>
                 <input
                   type="url"
                   value={formData.baseUrl}
                   onChange={(e) =>
                     setFormData({ ...formData, baseUrl: e.target.value })
                   }
-                  placeholder="https://api.example.com"
-                  className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                  placeholder={t("environments.form.baseUrl")}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
-              <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  <h4 className="text-sm font-bold text-on-surface uppercase tracking-widest">
-                    Authentication
-                  </h4>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                    Auth Type
-                  </label>
-                  <select
-                    value={formData.authConfig.authType}
-                    onChange={(e) =>
-                      updateAuthConfig({
-                        authType: e.target.value as ExecutionAuthConfig["authType"],
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                  >
-                    <option value="None">None</option>
-                    <option value="BearerToken">Bearer Token</option>
-                    <option value="Basic">Basic</option>
-                    <option value="ApiKey">API Key</option>
-                    <option value="OAuth2ClientCredentials">OAuth2 Client Credentials</option>
-                  </select>
-                </div>
-
-                {formData.authConfig.authType === "BearerToken" && (
-                  <>
+              {/* Variables Section */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowVariablesSection(!showVariablesSection)}
+                  className="flex items-center gap-2 w-full text-left cursor-pointer"
+                >
+                  {showVariablesSection ? (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  )}
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {t("environments.variables.envVars")}
+                  </span>
+                  <span className="text-xs text-slate-400">({Object.keys(formData.variables).length})</span>
+                </button>
+                {showVariablesSection && (
+                  <div className="mt-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
+                      {"You can define variables with any key and use them in URL/Header/Body via syntax {{variableName}}."}
+                    </p>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                        Header Name
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.authConfig.headerName || ""}
-                        onChange={(e) => updateAuthConfig({ headerName: e.target.value || null })}
-                        placeholder="Authorization"
-                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                        Token
-                      </label>
-                      <input
-                        type="password"
-                        value={formData.authConfig.token || ""}
-                        onChange={(e) => updateAuthConfig({ token: e.target.value || null })}
-                        placeholder="eyJhbGciOi..."
-                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {formData.authConfig.authType === "Basic" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.authConfig.username || ""}
-                        onChange={(e) => updateAuthConfig({ username: e.target.value || null })}
-                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        value={formData.authConfig.password || ""}
-                        onChange={(e) => updateAuthConfig({ password: e.target.value || null })}
-                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                      />
+                      {Object.entries(formData.variables).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked
+                            readOnly
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="text"
+                            value={key}
+                            readOnly
+                            className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm"
+                          />
+                          <input
+                            type="text"
+                            value={value}
+                            onChange={(e) => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                variables: { ...prev.variables, [key]: e.target.value },
+                              }));
+                            }}
+                            placeholder="Variable value"
+                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => removeVariable(key)}
+                            className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked
+                          readOnly
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={variableKey}
+                          onChange={(e) => setVariableKey(e.target.value)}
+                          placeholder="Key"
+                          className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={variableValue}
+                          onChange={(e) => setVariableValue(e.target.value)}
+                          placeholder="Variable value"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                      </div>
+                      <button
+                        onClick={addVariable}
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer"
+                      >
+                        + Add
+                      </button>
                     </div>
                   </div>
                 )}
+              </div>
 
-                {formData.authConfig.authType === "ApiKey" && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                          API Key Name
-                        </label>
+              {/* Headers Section */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowHeadersSection(!showHeadersSection)}
+                  className="flex items-center gap-2 w-full text-left cursor-pointer"
+                >
+                  {showHeadersSection ? (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  )}
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {t("environments.variables.headers")}
+                  </span>
+                  <span className="text-xs text-slate-400">({Object.keys(formData.headers).length})</span>
+                </button>
+                {showHeadersSection && (
+                  <div className="mt-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
+                      Custom headers sent with every request.
+                    </p>
+                    <div className="space-y-2">
+                      {Object.entries(formData.headers).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked
+                            readOnly
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="text"
+                            value={key}
+                            readOnly
+                            className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm"
+                          />
+                          <input
+                            type="text"
+                            value={value}
+                            onChange={(e) => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                headers: { ...prev.headers, [key]: e.target.value },
+                              }));
+                            }}
+                            placeholder="Header value"
+                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => removeHeader(key)}
+                            className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked
+                          readOnly
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
                         <input
                           type="text"
-                          value={formData.authConfig.apiKeyName || ""}
-                          onChange={(e) => updateAuthConfig({ apiKeyName: e.target.value || null })}
-                          placeholder="x-api-key"
-                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                          value={headerKey}
+                          onChange={(e) => setHeaderKey(e.target.value)}
+                          placeholder="Header name"
+                          className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                          API Key Value
-                        </label>
                         <input
-                          type="password"
-                          value={formData.authConfig.apiKeyValue || ""}
-                          onChange={(e) => updateAuthConfig({ apiKeyValue: e.target.value || null })}
-                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                          type="text"
+                          value={headerValue}
+                          onChange={(e) => setHeaderValue(e.target.value)}
+                          placeholder="Header value"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
+                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                        API Key Location
-                      </label>
-                      <select
-                        value={formData.authConfig.apiKeyLocation || "Header"}
-                        onChange={(e) =>
-                          updateAuthConfig({
-                            apiKeyLocation: e.target.value as ExecutionAuthConfig["apiKeyLocation"],
-                          })
-                        }
-                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      <button
+                        onClick={addHeader}
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer"
                       >
-                        <option value="Header">Header</option>
-                        <option value="Query">Query</option>
-                      </select>
+                        + Add
+                      </button>
                     </div>
-                  </>
-                )}
-
-                {formData.authConfig.authType === "OAuth2ClientCredentials" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                        Token URL
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.authConfig.tokenUrl || ""}
-                        onChange={(e) => updateAuthConfig({ tokenUrl: e.target.value || null })}
-                        placeholder="https://auth.example.com/connect/token"
-                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                          Client ID
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.authConfig.clientId || ""}
-                          onChange={(e) => updateAuthConfig({ clientId: e.target.value || null })}
-                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                          Client Secret
-                        </label>
-                        <input
-                          type="password"
-                          value={formData.authConfig.clientSecret || ""}
-                          onChange={(e) => updateAuthConfig({ clientSecret: e.target.value || null })}
-                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                        Scopes (comma separated)
-                      </label>
-                      <input
-                        type="text"
-                        value={(formData.authConfig.scopes || []).join(", ")}
-                        onChange={(e) => updateAuthConfig({ scopes: parseScopes(e.target.value) })}
-                        placeholder="openid, profile, api.read"
-                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
-                      />
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
+              {/* Authentication Section */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAuthSection(!showAuthSection)}
+                  className="flex items-center gap-2 w-full text-left cursor-pointer"
+                >
+                  {showAuthSection ? (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  )}
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    Authentication
+                  </span>
+                  <span className="text-xs text-slate-400">({formData.authConfig.authType})</span>
+                </button>
+                {showAuthSection && (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3 mt-2">
+                    <select
+                      value={formData.authConfig.authType}
+                      onChange={(e) =>
+                        updateAuthConfig({
+                          authType: e.target.value as ExecutionAuthConfig["authType"],
+                        })
+                      }
+                      className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="None">None</option>
+                      <option value="BearerToken">Bearer Token</option>
+                      <option value="Basic">Basic</option>
+                      <option value="ApiKey">API Key</option>
+                      <option value="OAuth2ClientCredentials">OAuth2 Client Credentials</option>
+                    </select>
+
+                    {formData.authConfig.authType === "BearerToken" && (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={formData.authConfig.headerName || ""}
+                          onChange={(e) => updateAuthConfig({ headerName: e.target.value || null })}
+                          placeholder="Header Name (default: Authorization)"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="password"
+                          value={formData.authConfig.token || ""}
+                          onChange={(e) => updateAuthConfig({ token: e.target.value || null })}
+                          placeholder="Token"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    )}
+
+                    {formData.authConfig.authType === "Basic" && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={formData.authConfig.username || ""}
+                          onChange={(e) => updateAuthConfig({ username: e.target.value || null })}
+                          placeholder="Username"
+                          className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="password"
+                          value={formData.authConfig.password || ""}
+                          onChange={(e) => updateAuthConfig({ password: e.target.value || null })}
+                          placeholder="Password"
+                          className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    )}
+
+                    {formData.authConfig.authType === "ApiKey" && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            value={formData.authConfig.apiKeyName || ""}
+                            onChange={(e) => updateAuthConfig({ apiKeyName: e.target.value || null })}
+                            placeholder="API Key Name (e.g. x-api-key)"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="password"
+                            value={formData.authConfig.apiKeyValue || ""}
+                            onChange={(e) => updateAuthConfig({ apiKeyValue: e.target.value || null })}
+                            placeholder="API Key Value"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <select
+                          value={formData.authConfig.apiKeyLocation || "Header"}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              apiKeyLocation: e.target.value as ExecutionAuthConfig["apiKeyLocation"],
+                            })
+                          }
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="Header">Header</option>
+                          <option value="Query">Query</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {formData.authConfig.authType === "OAuth2ClientCredentials" && (
+                      <div className="space-y-3">
+                        <input
+                          type="url"
+                          value={formData.authConfig.tokenUrl || ""}
+                          onChange={(e) => updateAuthConfig({ tokenUrl: e.target.value || null })}
+                          placeholder="Token URL"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            value={formData.authConfig.clientId || ""}
+                            onChange={(e) => updateAuthConfig({ clientId: e.target.value || null })}
+                            placeholder="Client ID"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="password"
+                            value={formData.authConfig.clientSecret || ""}
+                            onChange={(e) => updateAuthConfig({ clientSecret: e.target.value || null })}
+                            placeholder="Client Secret"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          value={(formData.authConfig.scopes || []).join(", ")}
+                          onChange={(e) => updateAuthConfig({ scopes: parseScopes(e.target.value) })}
+                          placeholder="Scopes (comma separated)"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Default checkbox */}
+              <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="isDefault"
@@ -720,23 +904,18 @@ export default function EnvironmentsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, isDefault: e.target.checked })
                   }
-                  className="w-5 h-5 rounded"
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label
                   htmlFor="isDefault"
-                  className="text-sm font-bold text-on-surface"
+                  className="text-sm text-slate-700 dark:text-slate-300"
                 >
                   {t("environments.form.setAsDefault")}
                 </label>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={showCreateModal ? handleCreate : handleEdit}
-                  className="flex-1 px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:scale-[1.02] transition-all cursor-pointer"
-                >
-                  {showCreateModal ? t("common.create") : t("common.save")}
-                </button>
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
@@ -744,9 +923,15 @@ export default function EnvironmentsPage() {
                     setSelectedEnvId(null);
                     resetForm();
                   }}
-                  className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all cursor-pointer"
+                  className="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   {t("common.cancel")}
+                </button>
+                <button
+                  onClick={showCreateModal ? handleCreate : handleEdit}
+                  className="px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors cursor-pointer"
+                >
+                  {showCreateModal ? t("common.create") : t("common.save")}
                 </button>
               </div>
             </div>

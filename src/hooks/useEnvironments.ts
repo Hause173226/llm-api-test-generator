@@ -38,7 +38,12 @@ export const useEnvironments = (projectId: string) => {
   const createEnvironment = async (data: CreateEnvironmentRequest): Promise<boolean> => {
     try {
       const newEnv = await environmentService.createEnvironment(projectId, data);
-      setEnvironments(prev => [...prev, newEnv]);
+      setEnvironments(prev => {
+        const updated = newEnv.isDefault
+          ? prev.map(env => ({ ...env, isDefault: false }))
+          : prev;
+        return [...updated, newEnv];
+      });
       return true;
     } catch (err) {
       handleError(err);

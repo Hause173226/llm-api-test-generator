@@ -44,8 +44,8 @@ export interface ExecutionEnvironment {
 export interface CreateEnvironmentRequest {
   name: string;
   baseUrl: string;
-  variables?: Record<string, string>;
-  headers?: Record<string, string>;
+  variables?: Record<string, string> | null;
+  headers?: Record<string, string> | null;
   authConfig?: ExecutionAuthConfig | null;
   isDefault?: boolean;
 }
@@ -54,8 +54,8 @@ export interface UpdateEnvironmentRequest {
   rowVersion: string;
   name: string;
   baseUrl: string;
-  variables?: Record<string, string>;
-  headers?: Record<string, string>;
+  variables?: Record<string, string> | null;
+  headers?: Record<string, string> | null;
   authConfig?: ExecutionAuthConfig | null;
   isDefault?: boolean;
 }
@@ -134,8 +134,8 @@ const environmentService = {
     const payload: CreateEnvironmentRequest = {
       name: data.name,
       baseUrl: data.baseUrl,
-      variables: data.variables ?? {},
-      headers: data.headers ?? {},
+      variables: data.variables !== undefined ? data.variables : null,
+      headers: data.headers !== undefined ? data.headers : null,
       authConfig: sanitizeAuthConfig(data.authConfig),
       isDefault: data.isDefault ?? false,
     };
@@ -159,8 +159,8 @@ const environmentService = {
       rowVersion: data.rowVersion,
       name: data.name,
       baseUrl: data.baseUrl,
-      variables: data.variables ?? {},
-      headers: data.headers ?? {},
+      variables: data.variables !== undefined ? data.variables : null,
+      headers: data.headers !== undefined ? data.headers : null,
       authConfig: sanitizeAuthConfig(data.authConfig),
       isDefault: data.isDefault ?? false,
     };
