@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, CheckSquare, Filter, Loader2, Play, Search, Square } from "lucide-react";
+import { ArrowLeft, CheckSquare, Filter, Loader2, Play, Plus, Search, Square } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
+import Modal from "../components/ui/Modal";
 import { useProject } from "../contexts/ProjectContext";
 import environmentService, {
   ExecutionEnvironment,
 } from "../services/environmentService";
 import endpointService, { Endpoint } from "../services/endpointService";
+import { apiService } from "../services/apiService";
 import testCaseService, { TestCase } from "../services/testCaseService";
 import testRunService from "../services/testRunService";
 import { testSuiteService } from "../services/testSuiteService";
@@ -59,6 +61,16 @@ export default function GenerationRunExecutePage() {
   );
   const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
+  const [manualTestCaseModalOpen, setManualTestCaseModalOpen] = useState(false);
+  const [isCreatingManualTestCase, setIsCreatingManualTestCase] =
+    useState(false);
+  const [manualTestCaseForm, setManualTestCaseForm] = useState({
+    name: "",
+    description: "",
+    method: "GET",
+    endpointUrl: "",
+    expectedStatus: "200",
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -179,6 +191,99 @@ export default function GenerationRunExecutePage() {
     });
   };
 
+  const openManualTestCaseModal = () => {
+    const fallbackEndpoint = Object.values(endpointById)[0];
+    const defaultMethod = String(fallbackEndpoint?.method || "GET").toUpperCase();
+    const defaultUrl = String(fallbackEndpoint?.path || "").trim();
+
+    setManualTestCaseForm({
+      name: `Manual Test Case ${new Date().toLocaleString()}`,
+      description: "",
+      method: defaultMethod,
+      endpointUrl: defaultUrl,
+      expectedStatus: "200",
+    });
+    setManualTestCaseModalOpen(true);
+  };
+
+  const handleCreateManualTestCase = async () => {
+    if (!suiteId) return;
+
+    const endpointUrl = manualTestCaseForm.endpointUrl.trim();
+    if (!endpointUrl) {
+      showErrorToast("Endpoint URL is required");
+      return;
+    }
+
+    try {
+      setIsCreatingManualTestCase(true);
+
+      const methodText = String(manualTestCaseForm.method || "GET").toUpperCase();
+      const methodToEnum: Record<string, number> = {
+        GET: 0,
+        POST: 1,
+        PUT: 2,
+        DELETE: 3,
+        PATCH: 4,
+        HEAD: 5,
+        OPTIONS: 6,
+      };
+      const httpMethod = methodToEnum[methodText] ?? 0;
+
+      const payload = {
+        endpointId: undefined,
+        name:
+          manualTestCaseForm.name.trim() ||
+          `Manual Test Case ${new Date().toLocaleString()}`,
+        description:
+          manualTestCaseForm.description.trim() || "Created manually from run page",
+        testType: 0,
+        priority: 2,
+        isEnabled: true,
+        tags: [],
+        request: {
+          httpMethod,
+          url: endpointUrl,
+          headers: JSON.stringify({}),
+          pathParams: null,
+          queryParams: JSON.stringify({}),
+          bodyType: 0,
+          body: null,
+          timeout: 30000,
+        },
+        expectation: {
+          expectedStatus: String(Number(manualTestCaseForm.expectedStatus || "200") || 200),
+          responseSchema: null,
+          headerChecks: null,
+          bodyContains: null,
+          bodyNotContains: null,
+          jsonPathChecks: null,
+          maxResponseTime: null,
+        },
+        variables: [],
+      };
+
+      const created = await apiService.post<any>(
+        `/test-suites/${suiteId}/test-cases`,
+        payload,
+      );
+
+      const createdId = created?.id || created?.Id;
+      if (createdId) {
+        const createdTestCase = await testCaseService.getTestCaseById(suiteId, createdId);
+        setTestCases((prev) => [createdTestCase, ...prev]);
+        setSelectedTestCaseIds((prev) => [createdId, ...prev]);
+      }
+
+      setManualTestCaseModalOpen(false);
+      showSuccessToast("Manual test case created in run page");
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsCreatingManualTestCase(false);
+    }
+  };
+
   const handleExecute = async (mode: "selected" | "all") => {
     if (!suiteId) return;
 
@@ -297,6 +402,123 @@ export default function GenerationRunExecutePage() {
 
   return (
     <MainLayout title="Run Generated Test Cases">
+      <Modal
+        isOpen={manualTestCaseModalOpen}
+        onClose={() => {
+          if (!isCreatingManualTestCase) {
+            setManualTestCaseModalOpen(false);
+          }
+        }}
+        title="Add Manual Test Case"
+        footer={(
+          <>
+            <button
+              type="button"
+              onClick={() => setManualTestCaseModalOpen(false)}
+              disabled={isCreatingManualTestCase}
+              className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-700 text-on-surface text-sm font-semibold disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateManualTestCase}
+              disabled={isCreatingManualTestCase}
+              className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
+            >
+              {isCreatingManualTestCase ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              Add Test Case
+            </button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+              Name
+            </label>
+            <input
+              value={manualTestCaseForm.name}
+              onChange={(e) =>
+                setManualTestCaseForm((prev) => ({ ...prev, name: e.target.value }))
+              }
+              className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                Method
+              </label>
+              <select
+                value={manualTestCaseForm.method}
+                onChange={(e) =>
+                  setManualTestCaseForm((prev) => ({ ...prev, method: e.target.value }))
+                }
+                className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+                <option value="HEAD">HEAD</option>
+                <option value="OPTIONS">OPTIONS</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                Expected Status
+              </label>
+              <input
+                type="number"
+                min={100}
+                max={599}
+                value={manualTestCaseForm.expectedStatus}
+                onChange={(e) =>
+                  setManualTestCaseForm((prev) => ({ ...prev, expectedStatus: e.target.value }))
+                }
+                className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+              Endpoint URL
+            </label>
+            <input
+              value={manualTestCaseForm.endpointUrl}
+              onChange={(e) =>
+                setManualTestCaseForm((prev) => ({ ...prev, endpointUrl: e.target.value }))
+              }
+              className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+              placeholder="/api/products"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+              Description
+            </label>
+            <textarea
+              rows={3}
+              value={manualTestCaseForm.description}
+              onChange={(e) =>
+                setManualTestCaseForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+              className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+              placeholder="Optional description"
+            />
+          </div>
+        </div>
+      </Modal>
+
       <StepTransitionOverlay
         isVisible={isLoading || isSubmitting}
         title={
@@ -421,6 +643,25 @@ export default function GenerationRunExecutePage() {
             </div>
           ) : (
             <>
+              <div className="rounded-xl border border-outline-variant/10 dark:border-slate-800 bg-surface-container-low dark:bg-slate-800/40 p-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-on-surface-variant">
+                  Add a manual test case directly from this run page.
+                </p>
+                <button
+                  type="button"
+                  onClick={openManualTestCaseModal}
+                  disabled={isCreatingManualTestCase}
+                  className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
+                >
+                  {isCreatingManualTestCase ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  Add Test Case
+                </button>
+              </div>
+
               {/* Filter Bar */}
               <div className="bg-surface-container-lowest dark:bg-slate-900/90 p-4 rounded-2xl border border-outline-variant/10 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">

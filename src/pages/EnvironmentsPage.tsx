@@ -22,10 +22,26 @@ import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
 import { useEnvironments } from "../hooks/useEnvironments";
 import { useProject } from "../contexts/ProjectContext";
+import type { ExecutionAuthConfig } from "../services/environmentService";
 import NoProjectSelected from "../components/common/NoProjectSelected";
 import toast from "react-hot-toast";
 import Skeleton from "../components/ui/Skeleton";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
+
+const createDefaultAuthConfig = (): ExecutionAuthConfig => ({
+  authType: "None",
+  headerName: null,
+  token: null,
+  username: null,
+  password: null,
+  apiKeyName: null,
+  apiKeyValue: null,
+  apiKeyLocation: "Header",
+  tokenUrl: null,
+  clientId: null,
+  clientSecret: null,
+  scopes: [],
+});
 
 export default function EnvironmentsPage() {
   const { t } = useTranslation();
@@ -51,11 +67,21 @@ export default function EnvironmentsPage() {
     refetch,
   } = useEnvironments(projectId);
 
-  const [formData, setFormData] = useState({
+  type EnvironmentFormData = {
+    name: string;
+    baseUrl: string;
+    variables: Record<string, string>;
+    headers: Record<string, string>;
+    authConfig: ExecutionAuthConfig;
+    isDefault: boolean;
+  };
+
+  const [formData, setFormData] = useState<EnvironmentFormData>({
     name: "",
     baseUrl: "",
     variables: {} as Record<string, string>,
     headers: {} as Record<string, string>,
+    authConfig: createDefaultAuthConfig(),
     isDefault: false,
   });
 
@@ -64,12 +90,34 @@ export default function EnvironmentsPage() {
   const [headerKey, setHeaderKey] = useState("");
   const [headerValue, setHeaderValue] = useState("");
 
+  const updateAuthConfig = (partial: Partial<ExecutionAuthConfig>) => {
+    setFormData((prev) => ({
+      ...prev,
+      authConfig: {
+        ...prev.authConfig,
+        ...partial,
+      },
+    }));
+  };
+
+  const parseScopes = (raw: string) => {
+    if (!raw.trim()) {
+      return [] as string[];
+    }
+
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
       baseUrl: "",
       variables: {},
       headers: {},
+      authConfig: createDefaultAuthConfig(),
       isDefault: false,
     });
     setVariableKey("");
@@ -89,6 +137,7 @@ export default function EnvironmentsPage() {
       baseUrl: formData.baseUrl,
       variables: formData.variables,
       headers: formData.headers,
+      authConfig: formData.authConfig,
       isDefault: formData.isDefault,
     });
 
@@ -161,6 +210,10 @@ export default function EnvironmentsPage() {
       baseUrl: env.baseUrl,
       variables: env.variables || {},
       headers: env.headers || {},
+      authConfig: {
+        ...createDefaultAuthConfig(),
+        ...(env.authConfig || {}),
+      },
       isDefault: env.isDefault,
     });
     setShowEditModal(true);
@@ -173,6 +226,10 @@ export default function EnvironmentsPage() {
       baseUrl: env.baseUrl,
       variables: env.variables || {},
       headers: env.headers || {},
+      authConfig: {
+        ...createDefaultAuthConfig(),
+        ...(env.authConfig || {}),
+      },
       isDefault: env.isDefault,
     });
     setShowVariablesModal(true);
@@ -219,6 +276,7 @@ export default function EnvironmentsPage() {
     const success = await updateEnvironment(selectedEnvId, {
       variables: formData.variables,
       headers: formData.headers,
+      authConfig: formData.authConfig,
     });
     if (success) {
       toast.success(t("environments.success.variablesSaved"));
@@ -466,6 +524,192 @@ export default function EnvironmentsPage() {
                   placeholder="https://api.example.com"
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 />
+              </div>
+
+              <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-bold text-on-surface uppercase tracking-widest">
+                    Authentication
+                  </h4>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                    Auth Type
+                  </label>
+                  <select
+                    value={formData.authConfig.authType}
+                    onChange={(e) =>
+                      updateAuthConfig({
+                        authType: e.target.value as ExecutionAuthConfig["authType"],
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                  >
+                    <option value="None">None</option>
+                    <option value="BearerToken">Bearer Token</option>
+                    <option value="Basic">Basic</option>
+                    <option value="ApiKey">API Key</option>
+                    <option value="OAuth2ClientCredentials">OAuth2 Client Credentials</option>
+                  </select>
+                </div>
+
+                {formData.authConfig.authType === "BearerToken" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                        Header Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.authConfig.headerName || ""}
+                        onChange={(e) => updateAuthConfig({ headerName: e.target.value || null })}
+                        placeholder="Authorization"
+                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                        Token
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.authConfig.token || ""}
+                        onChange={(e) => updateAuthConfig({ token: e.target.value || null })}
+                        placeholder="eyJhbGciOi..."
+                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {formData.authConfig.authType === "Basic" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.authConfig.username || ""}
+                        onChange={(e) => updateAuthConfig({ username: e.target.value || null })}
+                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.authConfig.password || ""}
+                        onChange={(e) => updateAuthConfig({ password: e.target.value || null })}
+                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {formData.authConfig.authType === "ApiKey" && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                          API Key Name
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.authConfig.apiKeyName || ""}
+                          onChange={(e) => updateAuthConfig({ apiKeyName: e.target.value || null })}
+                          placeholder="x-api-key"
+                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                          API Key Value
+                        </label>
+                        <input
+                          type="password"
+                          value={formData.authConfig.apiKeyValue || ""}
+                          onChange={(e) => updateAuthConfig({ apiKeyValue: e.target.value || null })}
+                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                        API Key Location
+                      </label>
+                      <select
+                        value={formData.authConfig.apiKeyLocation || "Header"}
+                        onChange={(e) =>
+                          updateAuthConfig({
+                            apiKeyLocation: e.target.value as ExecutionAuthConfig["apiKeyLocation"],
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      >
+                        <option value="Header">Header</option>
+                        <option value="Query">Query</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {formData.authConfig.authType === "OAuth2ClientCredentials" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                        Token URL
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.authConfig.tokenUrl || ""}
+                        onChange={(e) => updateAuthConfig({ tokenUrl: e.target.value || null })}
+                        placeholder="https://auth.example.com/connect/token"
+                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                          Client ID
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.authConfig.clientId || ""}
+                          onChange={(e) => updateAuthConfig({ clientId: e.target.value || null })}
+                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                          Client Secret
+                        </label>
+                        <input
+                          type="password"
+                          value={formData.authConfig.clientSecret || ""}
+                          onChange={(e) => updateAuthConfig({ clientSecret: e.target.value || null })}
+                          className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                        Scopes (comma separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={(formData.authConfig.scopes || []).join(", ")}
+                        onChange={(e) => updateAuthConfig({ scopes: parseScopes(e.target.value) })}
+                        placeholder="openid, profile, api.read"
+                        className="w-full px-4 py-3 bg-surface-container-high rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center gap-3">
