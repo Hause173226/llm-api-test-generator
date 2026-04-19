@@ -14,6 +14,7 @@ export interface TestCase {
   expectedStatus: number;
   expectedResponse?: any;
   assertions?: any[];
+  testType?: string;
   isActive: boolean;
   order: number;
   createdAt: string;
@@ -74,6 +75,7 @@ const normalizeTestCase = (item: any): TestCase => {
       200,
     expectedResponse: item?.expectedResponse ?? item?.ExpectedResponse,
     assertions: item?.assertions ?? item?.Assertions ?? [],
+    testType: item?.testType || item?.TestType || item?.testCategory || item?.TestCategory || "",
     isActive: item?.isActive ?? item?.IsActive ?? true,
     order:
       item?.order ?? item?.Order ?? item?.orderIndex ?? item?.OrderIndex ?? 0,

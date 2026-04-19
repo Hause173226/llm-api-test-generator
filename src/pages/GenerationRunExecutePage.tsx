@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, CheckSquare, Loader2, Play, Square } from "lucide-react";
+import { ArrowLeft, CheckSquare, Filter, Loader2, Play, Search, Square } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { useProject } from "../contexts/ProjectContext";
@@ -62,6 +62,12 @@ export default function GenerationRunExecutePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterMethod, setFilterMethod] = useState("");
+  const [filterEndpoint, setFilterEndpoint] = useState("");
+  const [filterTestType, setFilterTestType] = useState("");
+
   const endpointList = useMemo(() => {
     const map = new Map<string, number>();
     for (const testCase of testCases) {
@@ -74,6 +80,64 @@ export default function GenerationRunExecutePage() {
       total,
     }));
   }, [testCases, endpointById]);
+
+  // Unique filter options derived from test cases
+  const uniqueMethods = useMemo(() => {
+    const methods = new Set<string>();
+    for (const tc of testCases) {
+      const m = String(tc.method || endpointById[tc.endpointId]?.method || "GET").toUpperCase();
+      methods.add(m);
+    }
+    return Array.from(methods).sort();
+  }, [testCases, endpointById]);
+
+  const uniqueEndpoints = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const tc of testCases) {
+      const key = toEndpointKey(tc, endpointById);
+      if (!map.has(key)) map.set(key, key);
+    }
+    return Array.from(map.keys()).sort();
+  }, [testCases, endpointById]);
+
+  const uniqueTestTypes = useMemo(() => {
+    const types = new Set<string>();
+    for (const tc of testCases) {
+      if (tc.testType) types.add(tc.testType);
+    }
+    return Array.from(types).sort();
+  }, [testCases]);
+
+  // Filtered test cases
+  const filteredTestCases = useMemo(() => {
+    let result = testCases;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (tc) =>
+          tc.name.toLowerCase().includes(q) ||
+          (tc.description || "").toLowerCase().includes(q),
+      );
+    }
+
+    if (filterMethod) {
+      result = result.filter((tc) => {
+        const m = String(tc.method || endpointById[tc.endpointId]?.method || "GET").toUpperCase();
+        return m === filterMethod;
+      });
+    }
+
+    if (filterEndpoint) {
+      result = result.filter((tc) => toEndpointKey(tc, endpointById) === filterEndpoint);
+    }
+
+    if (filterTestType) {
+      result = result.filter((tc) => tc.testType === filterTestType);
+    }
+
+    return result;
+  }, [testCases, searchQuery, filterMethod, filterEndpoint, filterTestType, endpointById]);
 
   const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
     if (items.length === 0) return "";
@@ -357,8 +421,84 @@ export default function GenerationRunExecutePage() {
             </div>
           ) : (
             <>
+              {/* Filter Bar */}
+              <div className="bg-surface-container-lowest dark:bg-slate-900/90 p-4 rounded-2xl border border-outline-variant/10 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Filter className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
+                  <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
+                    Test Case Filters
+                  </span>
+                  {(searchQuery || filterMethod || filterEndpoint || filterTestType) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setFilterMethod("");
+                        setFilterEndpoint("");
+                        setFilterTestType("");
+                      }}
+                      className="ml-auto text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search test cases by name or description..."
+                    className="w-full pl-9 pr-4 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all placeholder:text-on-surface-variant/60"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <select
+                    value={filterMethod}
+                    onChange={(e) => setFilterMethod(e.target.value)}
+                    className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                  >
+                    <option value="">All methods</option>
+                    {uniqueMethods.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterTestType}
+                    onChange={(e) => setFilterTestType(e.target.value)}
+                    className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                  >
+                    <option value="">All test types</option>
+                    {uniqueTestTypes.map((tt) => (
+                      <option key={tt} value={tt}>{tt}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterEndpoint}
+                    onChange={(e) => setFilterEndpoint(e.target.value)}
+                    className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                  >
+                    <option value="">All endpoints</option>
+                    {uniqueEndpoints.map((ep) => (
+                      <option key={ep} value={ep}>{ep}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {(searchQuery || filterMethod || filterEndpoint || filterTestType) && (
+                  <p className="text-xs text-on-surface-variant mt-2">
+                    Showing {filteredTestCases.length} of {testCases.length} test cases
+                  </p>
+                )}
+              </div>
+
               <div className="flex items-center gap-2">
-                {selectedTestCaseIds.length === testCases.length ? (
+                {selectedTestCaseIds.length === filteredTestCases.length && filteredTestCases.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => setSelectedTestCaseIds([])}
@@ -370,17 +510,22 @@ export default function GenerationRunExecutePage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setSelectedTestCaseIds(testCases.map((item) => item.id))}
+                    onClick={() => setSelectedTestCaseIds(filteredTestCases.map((item) => item.id))}
                     className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
                     <CheckSquare className="w-3.5 h-3.5" />
-                    Select all
+                    Select all ({filteredTestCases.length})
                   </button>
                 )}
               </div>
 
               <div className="space-y-2">
-                {testCases.map((testCase) => {
+                {filteredTestCases.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-on-surface-variant">
+                    No test cases match the current filters.
+                  </div>
+                ) : null}
+                {filteredTestCases.map((testCase) => {
                   const checked = selectedTestCaseIds.includes(testCase.id);
                   const endpointLabel = toEndpointKey(testCase, endpointById);
 
