@@ -89,6 +89,35 @@ export function useSpecifications(projectId: string) {
     }
   };
 
+  /**
+   * Poll a specification's parseStatus until it resolves to Success or Failed.
+   * Useful after uploading OpenAPI YAML or Postman files which parse asynchronously.
+   */
+  const pollParseStatus = async (
+    specId: string,
+    options?: { intervalMs?: number; timeoutMs?: number },
+  ): Promise<Specification> => {
+    const intervalMs = options?.intervalMs ?? 2000;
+    const timeoutMs = options?.timeoutMs ?? 120000; // 2 min default
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      const spec = await specificationService.getSpecificationById(
+        projectId,
+        specId,
+      );
+
+      if (spec.parseStatus === "Success" || spec.parseStatus === "Failed") {
+        await fetchSpecifications();
+        return spec;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    throw new Error("Specification parse timed out. Please check status later.");
+  };
+
   const updateSpecification = async (
     specId: string,
     data: { name?: string; description?: string },
@@ -152,6 +181,7 @@ export function useSpecifications(projectId: string) {
     setViewMode,
     refetch,
     uploadSpecification,
+    pollParseStatus,
     updateSpecification,
     deleteSpecification,
     restoreSpecification,

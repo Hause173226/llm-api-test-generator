@@ -684,11 +684,13 @@ export default function TestSuitesPage() {
                 <option value="">
                   {t("testSuites.modal.specPlaceholder")}
                 </option>
-                {specifications.map((spec) => (
-                  <option key={spec.id} value={spec.id}>
-                    {spec.name}
-                  </option>
-                ))}
+                {specifications
+                  .filter((spec) => spec.parseStatus === "Success")
+                  .map((spec) => (
+                    <option key={spec.id} value={spec.id}>
+                      {spec.name}
+                    </option>
+                  ))}
               </select>
             )}
           </div>
@@ -729,7 +731,7 @@ export default function TestSuitesPage() {
                       className={cn(
                         "flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-b-0",
                         selectedEndpointIds.includes(endpoint.id) &&
-                          "bg-primary/5 dark:bg-indigo-900/20",
+                        "bg-primary/5 dark:bg-indigo-900/20",
                       )}
                     >
                       <div className="relative flex items-center justify-center">
@@ -744,15 +746,15 @@ export default function TestSuitesPage() {
                         className={cn(
                           "px-2 py-1 rounded text-xs font-bold min-w-[60px] text-center",
                           endpoint.method === "GET" &&
-                            "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
+                          "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
                           endpoint.method === "POST" &&
-                            "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+                          "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
                           endpoint.method === "PUT" &&
-                            "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+                          "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
                           endpoint.method === "DELETE" &&
-                            "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
+                          "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
                           endpoint.method === "PATCH" &&
-                            "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
+                          "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
                         )}
                       >
                         {endpoint.method}

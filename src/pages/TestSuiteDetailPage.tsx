@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Check,
   X,
+  Plus,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -84,6 +85,7 @@ export default function TestSuiteDetailPage() {
 
   const [suite, setSuite] = useState<any>(null);
   const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [allSpecEndpoints, setAllSpecEndpoints] = useState<any[]>([]);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [suggestions, setSuggestions] = useState<SuiteSuggestionModel[]>([]);
   const [allSuggestions, setAllSuggestions] = useState<SuiteSuggestionModel[]>(
@@ -104,6 +106,15 @@ export default function TestSuiteDetailPage() {
     useState(false);
   const [bulkRejectModalOpen, setBulkRejectModalOpen] = useState(false);
   const [bulkRejectNotes, setBulkRejectNotes] = useState("");
+  const [addEndpointModalOpen, setAddEndpointModalOpen] = useState(false);
+  const [manualEndpointModalOpen, setManualEndpointModalOpen] = useState(false);
+  const [selectedEndpointIdsToAdd, setSelectedEndpointIdsToAdd] = useState<string[]>([]);
+  const [manualEndpointForm, setManualEndpointForm] = useState({
+    method: "GET",
+    path: "",
+    description: "",
+  });
+  const [isCreatingEndpoint, setIsCreatingEndpoint] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -263,6 +274,95 @@ export default function TestSuiteDetailPage() {
     fetchData();
   }, [suiteId, projectId]);
 
+  const availableSpecEndpoints = allSpecEndpoints.filter(
+    (endpoint) => !endpoints.some((selected) => selected.id === endpoint.id),
+  );
+
+  const handleAddEndpointsFromSpec = () => {
+    if (selectedEndpointIdsToAdd.length === 0) {
+      showInfoToast("Please choose at least one endpoint to add.");
+      return;
+    }
+
+    const selectedSet = new Set(selectedEndpointIdsToAdd);
+    const toAdd = allSpecEndpoints.filter((endpoint) => selectedSet.has(endpoint.id));
+    if (toAdd.length === 0) {
+      showInfoToast("No valid endpoints selected.");
+      return;
+    }
+
+    setEndpoints((prev) => {
+      const prevIds = new Set(prev.map((item) => item.id));
+      const deduped = toAdd.filter((item) => !prevIds.has(item.id));
+      return [...prev, ...deduped];
+    });
+    setHasChanges(true);
+    setSelectedEndpointIdsToAdd([]);
+    setAddEndpointModalOpen(false);
+    showSuccessToast(`Added ${toAdd.length} endpoint(s) to Step 1.`);
+  };
+
+  const handleCreateManualEndpoint = async () => {
+    if (!projectId || !suite?.apiSpecId) {
+      showErrorToast("Missing project/spec context.");
+      return;
+    }
+
+    const path = manualEndpointForm.path.trim();
+    if (!path) {
+      showErrorToast("Endpoint path is required.");
+      return;
+    }
+
+    try {
+      setIsCreatingEndpoint(true);
+      const method = manualEndpointForm.method.toUpperCase();
+
+      const created = await endpointService.createEndpoint(
+        projectId,
+        suite.apiSpecId,
+        {
+          path,
+          method: method as any,
+          httpMethod: method,
+          description: manualEndpointForm.description.trim() || undefined,
+        } as any,
+      );
+
+      const normalized = {
+        id: created?.id,
+        projectId,
+        path: created?.path || path,
+        method: String(created?.method || method).toUpperCase(),
+        description: created?.description || manualEndpointForm.description.trim(),
+        tags: created?.tags || [],
+      };
+
+      if (!normalized.id) {
+        showErrorToast("Create endpoint failed: missing endpoint id.");
+        return;
+      }
+
+      setAllSpecEndpoints((prev) => {
+        if (prev.some((item) => item.id === normalized.id)) return prev;
+        return [...prev, normalized];
+      });
+      setEndpoints((prev) => {
+        if (prev.some((item) => item.id === normalized.id)) return prev;
+        return [...prev, normalized];
+      });
+
+      setHasChanges(true);
+      setManualEndpointForm({ method: "GET", path: "", description: "" });
+      setManualEndpointModalOpen(false);
+      showSuccessToast("Manual endpoint created and added to Step 1.");
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsCreatingEndpoint(false);
+    }
+  };
+
   const fetchData = async () => {
     if (!suiteId || !projectId) return;
 
@@ -317,14 +417,15 @@ export default function TestSuiteDetailPage() {
         setAllSuggestions([]);
       }
 
-      // Fetch endpoints if suite has them
-      if (suiteData.apiSpecId && suiteData.selectedEndpointIds?.length > 0) {
+      // Fetch all endpoints for this spec and map selected ones into Step 1 order
+      if (suiteData.apiSpecId) {
         const response = await endpointService.getEndpoints(
           suiteData.projectId,
           suiteData.apiSpecId,
         );
 
         const allEndpoints = response.items || [];
+        setAllSpecEndpoints(allEndpoints);
 
         const normalizeOrder = (
           items?: Array<{ endpointId?: string; orderIndex?: number }>,
@@ -379,6 +480,9 @@ export default function TestSuiteDetailPage() {
           .filter(Boolean);
 
         setEndpoints(orderedEndpoints);
+      } else {
+        setAllSpecEndpoints([]);
+        setEndpoints([]);
       }
     } catch (err) {
       setError(handleError(err));
@@ -610,6 +714,22 @@ export default function TestSuiteDetailPage() {
 
     try {
       setIsGeneratingSuggestions(true);
+
+      // H-01: Check order gate status before generation/suggestion
+      try {
+        const gateStatus = await testSuiteService.getOrderGateStatus(suiteId);
+        if (!gateStatus.isGatePassed) {
+          showErrorToast(
+            gateStatus.message ||
+            "Order gate not passed. Please approve the API order proposal first.",
+          );
+          setIsGeneratingSuggestions(false);
+          return;
+        }
+      } catch (gateErr: any) {
+        console.warn("Could not check order gate status:", gateErr);
+        // Continue anyway; BE will reject if gate not passed
+      }
 
       try {
         await testSuiteLlmSuggestionService.generate(suiteId, {
@@ -984,29 +1104,57 @@ export default function TestSuiteDetailPage() {
   };
 
   const fallbackGenerationItems = () => {
-    const bucketMs = 60 * 1000;
-    const grouped = new Map<string, SuiteSuggestionModel[]>();
+    // Cluster suggestions by time-gap so two generate actions close in time are still separated.
+    const splitGapMs = 20 * 1000;
+    const withTime = allSuggestions
+      .map((suggestion) => ({ suggestion, time: getSuggestionDate(suggestion) }))
+      .sort((a, b) => {
+        if (a.time === null && b.time === null) return 0;
+        if (a.time === null) return -1;
+        if (b.time === null) return 1;
+        return a.time - b.time;
+      });
 
-    allSuggestions.forEach((suggestion) => {
-      const suggestionTime = getSuggestionDate(suggestion);
-      const key = suggestionTime
-        ? `auto-${Math.floor(suggestionTime / bucketMs) * bucketMs}`
-        : `auto-unknown-${suggestion.id}`;
+    const groups: Array<{ id: string; generatedAt?: string; items: SuiteSuggestionModel[] }> = [];
+    let currentGroup: { id: string; generatedAt?: string; items: SuiteSuggestionModel[] } | null = null;
+    let lastTime: number | null = null;
 
-      const existing = grouped.get(key) || [];
-      existing.push(suggestion);
-      grouped.set(key, existing);
-    });
+    for (const entry of withTime) {
+      const { suggestion, time } = entry;
 
-    return Array.from(grouped.entries())
-      .map(([key, items], index) => {
-        const generatedAt = key.startsWith("auto-")
-          ? key.replace("auto-", "")
-          : undefined;
-        const generatedAtIso =
-          generatedAt && !Number.isNaN(Number(generatedAt))
-            ? new Date(Number(generatedAt)).toISOString()
-            : undefined;
+      if (!currentGroup) {
+        currentGroup = {
+          id: `auto-${time ?? `unknown-${suggestion.id}`}`,
+          generatedAt: time !== null ? new Date(time).toISOString() : undefined,
+          items: [suggestion],
+        };
+        lastTime = time;
+        continue;
+      }
+
+      if (time === null || lastTime === null || time - lastTime <= splitGapMs) {
+        currentGroup.items.push(suggestion);
+      } else {
+        groups.push(currentGroup);
+        currentGroup = {
+          id: `auto-${time}`,
+          generatedAt: new Date(time).toISOString(),
+          items: [suggestion],
+        };
+      }
+
+      if (time !== null) {
+        lastTime = time;
+      }
+    }
+
+    if (currentGroup) {
+      groups.push(currentGroup);
+    }
+
+    return groups
+      .map((group, index) => {
+        const items = group.items;
 
         const pendingSuggestions = items.filter(
           (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
@@ -1025,9 +1173,9 @@ export default function TestSuiteDetailPage() {
         ).length;
 
         return {
-          id: key,
+          id: group.id,
           label: `Generate #${index + 1}`,
-          generatedAt: generatedAtIso,
+          generatedAt: group.generatedAt,
           totalSuggestions: items.length,
           pendingSuggestions,
           approvedSuggestions,
@@ -1055,7 +1203,8 @@ export default function TestSuiteDetailPage() {
       return [];
     }
 
-    if (generationRuns.length === 0) {
+    // If local run markers are missing or only partially available, fallback clustering is safer.
+    if (generationRuns.length <= 1) {
       return fallbackGenerationItems();
     }
 
@@ -1305,6 +1454,141 @@ export default function TestSuiteDetailPage() {
         </div>
       </Modal>
 
+      <Modal
+        isOpen={addEndpointModalOpen}
+        onClose={() => setAddEndpointModalOpen(false)}
+        title="Add Endpoints From Spec"
+        footer={
+          <>
+            <button
+              onClick={() => setAddEndpointModalOpen(false)}
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddEndpointsFromSpec}
+              disabled={selectedEndpointIdsToAdd.length === 0}
+              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add Selected ({selectedEndpointIdsToAdd.length})
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          {availableSpecEndpoints.length === 0 ? (
+            <p className="text-sm text-on-surface-variant">
+              All endpoints from this spec are already in Step 1.
+            </p>
+          ) : (
+            <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+              {availableSpecEndpoints.map((endpoint) => {
+                const checked = selectedEndpointIdsToAdd.includes(endpoint.id);
+                return (
+                  <label
+                    key={endpoint.id}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedEndpointIdsToAdd((prev) => [...prev, endpoint.id]);
+                        } else {
+                          setSelectedEndpointIdsToAdd((prev) => prev.filter((id) => id !== endpoint.id));
+                        }
+                      }}
+                      className="mt-1"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-on-surface">
+                        {endpoint.method} {endpoint.path}
+                      </p>
+                      {!!endpoint.description && (
+                        <p className="text-xs text-on-surface-variant mt-1 truncate">
+                          {endpoint.description}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={manualEndpointModalOpen}
+        onClose={() => { if (!isCreatingEndpoint) setManualEndpointModalOpen(false); }}
+        title="Add Manual Endpoint"
+        footer={
+          <>
+            <button
+              onClick={() => setManualEndpointModalOpen(false)}
+              disabled={isCreatingEndpoint}
+              className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreateManualEndpoint}
+              disabled={isCreatingEndpoint || !manualEndpointForm.path.trim()}
+              className="px-8 py-3 bg-primary dark:bg-indigo-600 text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isCreatingEndpoint ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Create Endpoint
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                Method
+              </label>
+              <select
+                value={manualEndpointForm.method}
+                onChange={(e) => setManualEndpointForm((prev) => ({ ...prev, method: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                Path
+              </label>
+              <input
+                value={manualEndpointForm.path}
+                onChange={(e) => setManualEndpointForm((prev) => ({ ...prev, path: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+                placeholder="/api/products/{id}"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+              Description
+            </label>
+            <textarea
+              rows={3}
+              value={manualEndpointForm.description}
+              onChange={(e) => setManualEndpointForm((prev) => ({ ...prev, description: e.target.value }))}
+              className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
+              placeholder="Optional description"
+            />
+          </div>
+        </div>
+      </Modal>
+
       <MainLayout
         title={suite?.name || "Test Suite Details"}
         breadcrumbs={breadcrumbs}
@@ -1455,7 +1739,6 @@ export default function TestSuiteDetailPage() {
 
           {activeTab === "testcases" && (
             <div className="space-y-4">
-
               <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
@@ -1733,14 +2016,41 @@ export default function TestSuiteDetailPage() {
               {/* Endpoints List - Drag & Drop */}
               <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-xl border border-outline-variant/10 dark:border-slate-800 overflow-hidden">
                 <div className="px-6 py-4 border-b border-outline-variant/10 dark:border-slate-800">
-                  <h2 className="text-xl font-bold text-on-surface">
-                    Endpoints ({filteredEndpoints.length}/{endpoints.length})
-                  </h2>
-                  <p className="text-sm text-on-surface-variant mt-1">
-                    {isFiltering
-                      ? "Filtering is active. Clear search/filter to reorder endpoints."
-                      : "Drag and drop to reorder execution sequence"}
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-on-surface">
+                        Endpoints ({filteredEndpoints.length}/{endpoints.length})
+                      </h2>
+                      <p className="text-sm text-on-surface-variant mt-1">
+                        {isFiltering
+                          ? "Filtering is active. Clear search/filter to reorder endpoints."
+                          : "Drag and drop to reorder execution sequence"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedEndpointIdsToAdd([]);
+                          setAddEndpointModalOpen(true);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold"
+                      >
+                        Add From Spec
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualEndpointForm({ method: "GET", path: "", description: "" });
+                          setManualEndpointModalOpen(true);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white text-xs font-semibold flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Manual
+                      </button>
+                    </div>
+                  </div>
                   <div className="mt-4">
                     <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
                       Global Business Rules

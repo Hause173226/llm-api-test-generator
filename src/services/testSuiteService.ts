@@ -1,14 +1,34 @@
 import { apiService } from './apiService';
 
 // Types
+// BE returns TestSuiteScopeModel enums as numbers. Map them here.
+const GENERATION_TYPE_MAP: Record<number, string> = { 0: 'Auto', 1: 'Manual', 2: 'LLMAssisted' };
+const SUITE_STATUS_MAP: Record<number, string> = { 0: 'Draft', 1: 'Active', 2: 'Ready', 3: 'Archived' };
+const APPROVAL_STATUS_MAP: Record<number, string> = { 0: 'Pending', 1: 'Approved', 2: 'Rejected' };
+
+function normalizeEnum(value: any, map: Record<number, string>): string {
+  if (typeof value === 'number' && map[value] !== undefined) return map[value];
+  if (typeof value === 'string') return value;
+  return String(value);
+}
+
+function normalizeTestSuite<T extends Record<string, any>>(suite: T): T {
+  return {
+    ...suite,
+    generationType: normalizeEnum(suite.generationType, GENERATION_TYPE_MAP),
+    status: normalizeEnum(suite.status, SUITE_STATUS_MAP),
+    approvalStatus: normalizeEnum(suite.approvalStatus, APPROVAL_STATUS_MAP),
+  };
+}
+
 export interface TestSuite {
   id: string;
   projectId: string;
   apiSpecId?: string;
   name: string;
   description?: string;
-  generationType: 'Auto' | 'Manual';
-  status: 'Draft' | 'Active' | 'Archived';
+  generationType: 'Auto' | 'Manual' | 'LLMAssisted';
+  status: 'Draft' | 'Active' | 'Ready' | 'Archived';
   approvalStatus: 'Pending' | 'Approved' | 'Rejected';
   selectedEndpointIds: string[];
   endpointBusinessContexts: Record<string, string>;
@@ -25,7 +45,7 @@ export interface CreateTestSuiteRequest {
   name: string;
   description?: string;
   apiSpecId?: string;
-  generationType?: 'Auto' | 'Manual';
+  generationType?: 'Auto' | 'Manual' | 'LLMAssisted';
   selectedEndpointIds?: string[];
   endpointBusinessContexts?: Record<string, string>;
   globalBusinessRules?: string;
@@ -75,14 +95,15 @@ class TestSuiteService {
       `/projects/${projectId}/test-suites`
     );
     // Backend returns array directly, not paginated response
-    return Array.isArray(response) ? response : [];
+    const items = Array.isArray(response) ? response : [];
+    return items.map(normalizeTestSuite);
   }
 
   async getTestSuiteDetail(projectId: string, suiteId: string): Promise<TestSuite> {
     const response = await apiService.get<TestSuite>(
       `/projects/${projectId}/test-suites/${suiteId}`
     );
-    return response;
+    return normalizeTestSuite(response);
   }
 
   async createTestSuite(
@@ -99,11 +120,12 @@ class TestSuiteService {
       EndpointBusinessContexts: data.endpointBusinessContexts || {},
       GlobalBusinessRules: data.globalBusinessRules || '',
     };
-    
-    return await apiService.post<TestSuite>(
+
+    const response = await apiService.post<TestSuite>(
       `/projects/${projectId}/test-suites`,
       payload
     );
+    return normalizeTestSuite(response);
   }
 
   async proposeOrder(
@@ -136,6 +158,18 @@ class TestSuiteService {
     );
   }
 
+  /**
+   * Check the order gate status before generation or LLM suggestion preview.
+   * Returns whether the gate is passed (approved order exists).
+   */
+  async getOrderGateStatus(suiteId: string): Promise<{
+    isGatePassed: boolean;
+    activeProposalStatus?: number | null;
+    message?: string;
+  }> {
+    return await apiService.get(`/test-suites/${suiteId}/order-gate-status`);
+  }
+
   async generateTestSuite(
     projectId: string,
     data: GenerateTestSuiteRequest
@@ -162,7 +196,7 @@ class TestSuiteService {
       GlobalBusinessRules: data.globalBusinessRules || '',
       RowVersion: data.rowVersion,
     };
-    
+
     return await apiService.put<TestSuite>(
       `/projects/${projectId}/test-suites/${suiteId}`,
       payload
