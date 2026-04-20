@@ -20,7 +20,6 @@ import {
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
-import TaskProgress from "../components/ui/TaskProgress";
 import { cn } from "../lib/utils";
 import { useTestSuites } from "../hooks/useTestSuites";
 import { useProject } from "../contexts/ProjectContext";
@@ -29,7 +28,6 @@ import {
   handleError,
   showErrorToast,
   showSuccessToast,
-  showInfoToast,
 } from "../utils/errorHandler";
 import specificationService from "../services/specificationService";
 import endpointService from "../services/endpointService";
@@ -67,9 +65,6 @@ export default function TestSuitesPage() {
     message: "",
     stepLabel: "",
   });
-
-  // Background task state for non-blocking test suite creation
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
   // Load specifications when modal opens
   useEffect(() => {
@@ -188,7 +183,12 @@ export default function TestSuitesPage() {
 
     try {
       setIsSubmitting(true);
-
+      setOverlayState({
+        isVisible: true,
+        title: t("overlay.testSuites.createTitle"),
+        message: t("overlay.testSuites.createMessage"),
+        stepLabel: t("overlay.testSuites.createStep"),
+      });
       const newSuite = await createTestSuite({
         name: formData.name,
         description: formData.description,
@@ -196,15 +196,6 @@ export default function TestSuitesPage() {
         selectedEndpointIds: selectedEndpointIds,
         generationType: "Auto",
       } as any);
-
-      // Backend returns task_id for background processing
-      const taskId = (newSuite as any)?.task_id;
-      if (taskId) {
-        setActiveTaskId(taskId);
-        showInfoToast(t("testSuites.toast.generationStarted", "Test suite generation started in the background"));
-      } else {
-        showSuccessToast(t("testSuites.toast.created"));
-      }
 
       if (newSuite?.id) {
         try {
@@ -237,6 +228,7 @@ export default function TestSuitesPage() {
         }
       }
 
+      showSuccessToast(t("testSuites.toast.created"));
       setIsCreateModalOpen(false);
       setFormData({ name: "", description: "", environmentId: "" });
       setSelectedSpecId("");
@@ -251,6 +243,12 @@ export default function TestSuitesPage() {
       handleError(err);
     } finally {
       setIsSubmitting(false);
+      setOverlayState({
+        isVisible: false,
+        title: "",
+        message: "",
+        stepLabel: "",
+      });
     }
   };
 
@@ -387,15 +385,6 @@ export default function TestSuitesPage() {
         title={overlayState.title}
         message={overlayState.message}
         stepLabel={overlayState.stepLabel}
-      />
-      <TaskProgress
-        taskId={activeTaskId}
-        taskLabel={t("testSuites.taskProgress", "Test suite generation")}
-        onCompleted={() => {
-          setActiveTaskId(null);
-          refetch();
-        }}
-        onDismiss={() => setActiveTaskId(null)}
       />
       <div className="space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">

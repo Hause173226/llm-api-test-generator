@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckSquare, ChevronDown, ChevronRight, Filter, Loader2, Play, Plus, Search, ShieldCheck, Square, X } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
-import TaskProgress from "../components/ui/TaskProgress";
-import { useBackgroundTask } from "../hooks/useBackgroundTask";
 import Modal from "../components/ui/Modal";
 import { useProject } from "../contexts/ProjectContext";
 import environmentService, {
@@ -20,7 +18,6 @@ import { testSuiteService } from "../services/testSuiteService";
 import {
   handleError,
   showErrorToast,
-  showInfoToast,
   showSuccessToast,
 } from "../utils/errorHandler";
 
@@ -297,17 +294,6 @@ export default function GenerationRunExecutePage() {
     return params.toString() ? `/runs?${params.toString()}` : "/runs";
   };
 
-  // Background task for non-blocking test execution
-  const executeBgTask = useBackgroundTask({
-    onCompleted: () => {
-      showSuccessToast("Test execution completed!");
-      navigate(buildRunsUrl());
-    },
-    onFailed: (err) => {
-      handleError(err);
-    },
-  });
-
   const buildSuiteDetailUrl = () => {
     if (!suiteId) {
       return "/test-suites";
@@ -445,20 +431,25 @@ export default function GenerationRunExecutePage() {
       return;
     }
 
-    // Fire-and-forget: UI unblocks immediately
-    executeBgTask.run(async () => {
+    try {
+      setIsSubmitting(true);
       await testRunService.startTestRun({
         testSuiteId: suiteId,
         environmentId: selectedEnvironmentId,
         selectedTestCaseIds: targetIds,
       });
-    });
 
-    showInfoToast(
-      mode === "all"
-        ? `Execution started in the background for all ${targetIds.length} test case(s)`
-        : `Execution started in the background for ${targetIds.length} selected test case(s)`,
-    );
+      showSuccessToast(
+        mode === "all"
+          ? `Started run for all ${targetIds.length} test case(s)`
+          : `Started run for ${targetIds.length} selected test case(s)`,
+      );
+      navigate(buildRunsUrl());
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -655,15 +646,22 @@ export default function GenerationRunExecutePage() {
       </Modal>
 
       <StepTransitionOverlay
-        isVisible={isLoading}
-        title={t("overlay.execute.preparingTitle")}
-        message={t("overlay.execute.preparingMessage")}
-        stepLabel={t("overlay.execute.preparingStep")}
-      />
-      <TaskProgress
-        isRunning={executeBgTask.isRunning}
-        taskLabel="Test execution"
-        onDismiss={() => executeBgTask.reset()}
+        isVisible={isLoading || isSubmitting}
+        title={
+          isSubmitting
+            ? t("overlay.execute.startRunTitle")
+            : t("overlay.execute.preparingTitle")
+        }
+        message={
+          isSubmitting
+            ? t("overlay.execute.startRunMessage")
+            : t("overlay.execute.preparingMessage")
+        }
+        stepLabel={
+          isSubmitting
+            ? t("overlay.execute.startRunStep")
+            : t("overlay.execute.preparingStep")
+        }
       />
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
