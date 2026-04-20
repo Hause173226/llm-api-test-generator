@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, Filter, RefreshCw, Search, Sparkles } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { cn } from "../lib/utils";
@@ -56,6 +56,12 @@ export default function SuggestionsPage() {
   const [isLoadingRuns, setIsLoadingRuns] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterTestType, setFilterTestType] = useState("");
+  const [filterEndpoint, setFilterEndpoint] = useState("");
 
   const { testSuites, isLoading: isLoadingSuites } =
     useTestSuites(selectedProjectId);
@@ -278,6 +284,68 @@ export default function SuggestionsPage() {
   const failedCases = (runDetail?.cases || []).filter(
     (testCase) => normalizeStatus(testCase.status) === "failed",
   );
+
+  // Unique filter options from current run
+  const uniqueStatuses = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of runDetail?.cases || []) {
+      if (c.status) set.add(c.status);
+    }
+    return Array.from(set).sort();
+  }, [runDetail]);
+
+  const uniqueTestTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of runDetail?.cases || []) {
+      if (c.testType) set.add(c.testType);
+    }
+    return Array.from(set).sort();
+  }, [runDetail]);
+
+  const uniqueEndpoints = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of runDetail?.cases || []) {
+      const url = c.resolvedUrl || "";
+      let path = url;
+      try { path = new URL(url).pathname; } catch { /* keep as-is */ }
+      const ep = c.httpMethod ? `${c.httpMethod} ${path}` : path;
+      if (ep.trim()) set.add(ep);
+    }
+    return Array.from(set).sort();
+  }, [runDetail]);
+
+  const filteredCases = useMemo(() => {
+    let result = runDetail?.cases || [];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.resolvedUrl || "").toLowerCase().includes(q),
+      );
+    }
+
+    if (filterStatus) {
+      result = result.filter((c) => c.status === filterStatus);
+    }
+
+    if (filterTestType) {
+      result = result.filter((c) => c.testType === filterTestType);
+    }
+
+    if (filterEndpoint) {
+      result = result.filter((c) => {
+        const url = c.resolvedUrl || "";
+        let path = url;
+        try { path = new URL(url).pathname; } catch { /* keep as-is */ }
+        const ep = c.httpMethod ? `${c.httpMethod} ${path}` : path;
+        return ep === filterEndpoint;
+      });
+    }
+
+    return result;
+  }, [runDetail, searchQuery, filterStatus, filterTestType, filterEndpoint]);
 
   const getCheckStateClass = (value?: boolean) => {
     if (value === true) {
@@ -553,7 +621,83 @@ export default function SuggestionsPage() {
               </div>
             )}
 
-            {runDetail.cases.map((testCase) => {
+            {/* Filter Bar */}
+            <div className="bg-surface-container-lowest dark:bg-slate-900/90 p-4 rounded-2xl border border-outline-variant/10 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Filter className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
+                <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
+                  Test Case Filters
+                </span>
+                {(searchQuery || filterStatus || filterTestType || filterEndpoint) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setFilterStatus("");
+                      setFilterTestType("");
+                      setFilterEndpoint("");
+                    }}
+                    className="ml-auto text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by test case name or URL..."
+                  className="w-full pl-9 pr-4 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all placeholder:text-on-surface-variant/60"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                >
+                  <option value="">All statuses</option>
+                  {uniqueStatuses.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterTestType}
+                  onChange={(e) => setFilterTestType(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                >
+                  <option value="">All test types</option>
+                  {uniqueTestTypes.map((tt) => (
+                    <option key={tt} value={tt}>{tt}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterEndpoint}
+                  onChange={(e) => setFilterEndpoint(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                >
+                  <option value="">All endpoints</option>
+                  {uniqueEndpoints.map((ep) => (
+                    <option key={ep} value={ep}>{ep}</option>
+                  ))}
+                </select>
+              </div>
+
+              {(searchQuery || filterStatus || filterTestType || filterEndpoint) && (
+                <p className="text-xs text-on-surface-variant mt-2">
+                  Showing {filteredCases.length} of {runDetail?.cases?.length || 0} test cases
+                </p>
+              )}
+            </div>
+
+            {filteredCases.map((testCase) => {
               const explanation = explanationsByCaseId[testCase.testCaseId];
               const loadingExplanation =
                 !!loadingExplanationByCaseId[testCase.testCaseId];

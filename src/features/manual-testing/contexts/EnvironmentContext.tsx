@@ -199,18 +199,27 @@ export const EnvironmentProvider: React.FC<EnvironmentProviderProps> = ({
           ?.value ||
         "";
 
+      const vars = toVariableRecord(environment.variables);
+
       void environmentService
-        .createEnvironment({
-          projectId,
+        .createEnvironment(projectId, {
           name: environment.name,
-          description: "Created from Manual Testing",
           baseUrl,
-          variables: toVariableRecord(environment.variables),
+          variables: Object.keys(vars).length > 0 ? vars : null,
+          headers: environment.headers && Object.keys(environment.headers).length > 0
+            ? environment.headers
+            : null,
+          authConfig: environment.authConfig ?? null,
           isDefault: environment.isDefault || false,
         })
         .then((created) => {
           const mapped = mapApiEnvironmentToContext(projectId, created);
-          setEnvironmentsState((prev) => [...prev, mapped]);
+          setEnvironmentsState((prev) => {
+            const updated = created.isDefault
+              ? prev.map((env) => ({ ...env, isDefault: false }))
+              : prev;
+            return [...updated, mapped];
+          });
           setActiveEnvironmentState(mapped);
         })
         .catch((error) => {

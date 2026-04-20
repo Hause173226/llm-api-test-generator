@@ -109,6 +109,8 @@ export interface Environment {
   variables: EnvironmentVariable[];
   projectId?: string;
   baseUrl?: string;
+  headers?: Record<string, string>;
+  authConfig?: import("../../../services/environmentService").ExecutionAuthConfig | null;
   isDefault?: boolean;
   rowVersion?: string;
   isActive?: boolean;
