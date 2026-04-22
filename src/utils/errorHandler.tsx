@@ -46,28 +46,40 @@ const defaultPositions = {
   position: "top-center",
 };
 
-export const showErrorToast = (message: string, options?: ToastOptions): void => {
+export const showErrorToast = (
+  message: string,
+  options?: ToastOptions,
+): void => {
   toast.custom(
     (t) => <CustomToast type="error" message={message} toastId={t.id} />,
     { ...{ duration: 5000 }, ...defaultPositions, ...options },
   );
 };
 
-export const showSuccessToast = (message: string, options?: ToastOptions): void => {
+export const showSuccessToast = (
+  message: string,
+  options?: ToastOptions,
+): void => {
   toast.custom(
     (t) => <CustomToast type="success" message={message} toastId={t.id} />,
     { ...{ duration: 3000 }, ...defaultPositions, ...options },
   );
 };
 
-export const showLoadingToast = (message: string, options?: ToastOptions): string => {
+export const showLoadingToast = (
+  message: string,
+  options?: ToastOptions,
+): string => {
   return toast.custom(
     (t) => <CustomToast type="loading" message={message} toastId={t.id} />,
     { ...defaultPositions, ...options, duration: Infinity },
   );
 };
 
-export const showInfoToast = (message: string, options?: ToastOptions): void => {
+export const showInfoToast = (
+  message: string,
+  options?: ToastOptions,
+): void => {
   toast.custom(
     (t) => <CustomToast type="info" message={message} toastId={t.id} />,
     { ...{ duration: 4000 }, ...defaultPositions, ...options },

@@ -134,7 +134,9 @@ export default function SpecificationPage() {
 
       // If parseStatus is Pending (async parse for YAML/Postman), poll until done
       if (newSpec && newSpec.parseStatus === "Pending") {
-        const loadingId = showLoadingToast("Parsing specification... Please wait.");
+        const loadingId = showLoadingToast(
+          "Parsing specification... Please wait.",
+        );
         try {
           const parsed = await pollParseStatus(newSpec.id);
           toast.dismiss(loadingId);
@@ -183,10 +185,18 @@ export default function SpecificationPage() {
               viewBox="0 0 24 24"
               fill="none"
             >
-              <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M9 12l2 2 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold leading-relaxed break-words">Deleted <b>{deletedSpecName}</b></p>
+              <p className="text-sm font-bold leading-relaxed break-words">
+                Deleted <b>{deletedSpecName}</b>
+              </p>
             </div>
             <button
               onClick={async () => {
@@ -459,7 +469,7 @@ export default function SpecificationPage() {
                                   {spec.name}
                                 </span>
                                 <div className="text-[10px] text-rose-500">
-                                  Deleted {" "}
+                                  Deleted{" "}
                                   {spec.deletedAt
                                     ? formatDate(spec.deletedAt)
                                     : ""}
@@ -539,7 +549,7 @@ export default function SpecificationPage() {
                                 {spec.name}
                               </button>
                               <div className="text-[10px] text-on-surface-variant">
-                                {t("specifications.modified")} {" "}
+                                {t("specifications.modified")}{" "}
                                 {modifiedDate ? formatDate(modifiedDate) : "—"}
                               </div>
                             </div>
@@ -656,7 +666,6 @@ export default function SpecificationPage() {
         </div>
 
         {/* Recent Specifications Table */}
-
       </div>
 
       {/* Global spinner khi đang upload */}
