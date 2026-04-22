@@ -52,6 +52,9 @@ export interface TestCaseRunDetail {
   requestHeaders: Record<string, string>;
   responseHeaders: Record<string, string>;
   responseBodyPreview?: string;
+  warnings?: string[];
+  checksPerformed?: number;
+  checksSkipped?: number;
   failureReasons: Array<{ code?: string; message?: string }>;
   extractedVariables: Record<string, string>;
   dependencyIds: string[];
@@ -140,6 +143,9 @@ interface BackendTestCaseRunDetail {
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
   responseBodyPreview?: string;
+  warnings?: string[];
+  checksPerformed?: number;
+  checksSkipped?: number;
   failureReasons?: Array<{ code?: string; message?: string }>;
   extractedVariables?: Record<string, string>;
   dependencyIds?: string[];
@@ -227,6 +233,9 @@ const mapBackendTestCaseRunDetail = (
     (detail as any).responseHeaders || (detail as any).ResponseHeaders || {},
   responseBodyPreview:
     (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,
+  warnings: (detail as any).warnings || (detail as any).Warnings,
+  checksPerformed: (detail as any).checksPerformed ?? (detail as any).ChecksPerformed,
+  checksSkipped: (detail as any).checksSkipped ?? (detail as any).ChecksSkipped,
   failureReasons:
     (detail as any).failureReasons || (detail as any).FailureReasons || [],
   extractedVariables:

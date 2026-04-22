@@ -110,15 +110,15 @@ class TestSuiteService {
     projectId: string,
     data: CreateTestSuiteRequest
   ): Promise<TestSuite> {
-    // Backend expects PascalCase
+    // Backend uses camelCase (JsonStringEnumConverter)
     const payload = {
-      Name: data.name,
-      Description: data.description || '',
-      ApiSpecId: data.apiSpecId,
-      GenerationType: data.generationType || 'Auto',
-      SelectedEndpointIds: data.selectedEndpointIds || [],
-      EndpointBusinessContexts: data.endpointBusinessContexts || {},
-      GlobalBusinessRules: data.globalBusinessRules || '',
+      name: data.name,
+      description: data.description || '',
+      apiSpecId: data.apiSpecId,
+      generationType: data.generationType || 'Auto',
+      selectedEndpointIds: data.selectedEndpointIds || [],
+      endpointBusinessContexts: data.endpointBusinessContexts || {},
+      globalBusinessRules: data.globalBusinessRules || '',
     };
 
     const response = await apiService.post<TestSuite>(
