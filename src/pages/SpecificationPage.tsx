@@ -26,6 +26,8 @@ import {
   handleError,
   showErrorToast,
   showSuccessToast,
+  showLoadingToast,
+  showCustomToast,
 } from "../utils/errorHandler";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 import GlobalSpinner from "../components/ui/GlobalSpinner";
@@ -132,12 +134,10 @@ export default function SpecificationPage() {
 
       // If parseStatus is Pending (async parse for YAML/Postman), poll until done
       if (newSpec && newSpec.parseStatus === "Pending") {
-        toast.loading("Parsing specification... Please wait.", {
-          id: "parse-polling",
-        });
+        const loadingId = showLoadingToast("Parsing specification... Please wait.");
         try {
           const parsed = await pollParseStatus(newSpec.id);
-          toast.dismiss("parse-polling");
+          toast.dismiss(loadingId);
           if (parsed.parseStatus === "Failed") {
             showErrorToast(
               "Specification parsing failed. Please check the file format.",
@@ -146,7 +146,7 @@ export default function SpecificationPage() {
           }
           showSuccessToast("Specification parsed successfully!");
         } catch (pollErr) {
-          toast.dismiss("parse-polling");
+          toast.dismiss(loadingId);
           showErrorToast(
             "Parse status polling timed out. Check specification status manually.",
           );
@@ -175,15 +175,22 @@ export default function SpecificationPage() {
       setSelectedSpec(null);
 
       // Show undo toast (FE-18: quick undo via restore)
-      toast(
-        (toastInstance) => (
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">
-              Deleted <b>{deletedSpecName}</b>
-            </span>
+      showCustomToast(
+        (t) => (
+          <div className="flex items-start gap-3 p-4 rounded-2xl border-2 shadow-2xl min-w-[320px] max-w-[500px] bg-emerald-50 dark:bg-emerald-950 border-emerald-500 text-emerald-900 dark:text-emerald-100">
+            <svg
+              className="w-6 h-6 flex-shrink-0 text-emerald-600 dark:text-emerald-400"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold leading-relaxed break-words">Deleted <b>{deletedSpecName}</b></p>
+            </div>
             <button
               onClick={async () => {
-                toast.dismiss(toastInstance.id);
+                toast.dismiss(t.id);
                 try {
                   await restoreSpecification(deletedSpecId);
                   showSuccessToast("Specification restored!");

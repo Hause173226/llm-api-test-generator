@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { signalRService } from "../services/signalrService";
 import { AuthContext, useAuth } from "./AuthContext";
-import toast from "react-hot-toast";
+import { showInfoToast } from "../utils/errorHandler";
 
 interface SignalRContextType {
   isConnected: boolean;
@@ -46,10 +46,7 @@ export const SignalRProvider: React.FC<{ children: ReactNode }> = ({
       };
 
       const handleNewNotification = (data: any) => {
-        toast.success(data.message || "New notification received", {
-          duration: 4000,
-          position: "top-right",
-        });
+        showInfoToast(data.message || "New notification received");
       };
 
       signalRService.on("TestRunStatusChanged", handleTestRunStatusChanged);

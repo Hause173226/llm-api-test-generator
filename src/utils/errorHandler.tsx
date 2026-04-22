@@ -40,44 +40,46 @@ export const handleApiError = (error: any): void => {
 };
 
 // Toast notification helpers with custom component
-export const showErrorToast = (message: string): void => {
+type ToastOptions = any;
+
+const defaultPositions = {
+  position: "top-center",
+};
+
+export const showErrorToast = (message: string, options?: ToastOptions): void => {
   toast.custom(
     (t) => <CustomToast type="error" message={message} toastId={t.id} />,
-    {
-      duration: 5000,
-      position: "top-center",
-    },
+    { ...{ duration: 5000 }, ...defaultPositions, ...options },
   );
 };
 
-export const showSuccessToast = (message: string): void => {
+export const showSuccessToast = (message: string, options?: ToastOptions): void => {
   toast.custom(
     (t) => <CustomToast type="success" message={message} toastId={t.id} />,
-    {
-      duration: 3000,
-      position: "top-center",
-    },
+    { ...{ duration: 3000 }, ...defaultPositions, ...options },
   );
 };
 
-export const showLoadingToast = (message: string): string => {
+export const showLoadingToast = (message: string, options?: ToastOptions): string => {
   return toast.custom(
     (t) => <CustomToast type="loading" message={message} toastId={t.id} />,
-    {
-      position: "top-center",
-      duration: Infinity,
-    },
+    { ...defaultPositions, ...options, duration: Infinity },
   );
 };
 
-export const showInfoToast = (message: string): void => {
+export const showInfoToast = (message: string, options?: ToastOptions): void => {
   toast.custom(
     (t) => <CustomToast type="info" message={message} toastId={t.id} />,
-    {
-      duration: 4000,
-      position: "top-center",
-    },
+    { ...{ duration: 4000 }, ...defaultPositions, ...options },
   );
+};
+
+// Generic helper to show fully custom content but using the same toast.custom API
+export const showCustomToast = (
+  render: (t: { id: string }) => React.ReactNode,
+  options?: ToastOptions,
+): string => {
+  return toast.custom(render, { ...defaultPositions, ...options });
 };
 
 // Generic error handler that returns error message

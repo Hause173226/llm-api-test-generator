@@ -12,7 +12,7 @@ import {
 import { cn } from "../lib/utils";
 import { useTranslation } from "react-i18next";
 import { useUserProfile } from "../hooks/useUserProfile";
-import toast from "react-hot-toast";
+import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 import Skeleton from "../components/ui/Skeleton";
 
 export default function AccountSettingsPage() {
@@ -50,7 +50,7 @@ export default function AccountSettingsPage() {
     try {
       const success = await updateProfile(profileData);
       if (success) {
-        toast.success(t("settings.profile.updateSuccess"));
+        showSuccessToast(t("settings.profile.updateSuccess"));
       }
     } finally {
       setIsSaving(false);
@@ -59,20 +59,20 @@ export default function AccountSettingsPage() {
 
   const handleChangePassword = async () => {
     if (securityData.newPassword !== securityData.confirmPassword) {
-      toast.error(t("settings.security.passwordMismatch"));
+      showErrorToast(t("settings.security.passwordMismatch"));
       return;
     }
 
     if (securityData.newPassword.length < 8) {
-      toast.error(t("settings.security.passwordTooShort"));
+      showErrorToast(t("settings.security.passwordTooShort"));
       return;
     }
 
     setIsSaving(true);
     try {
       const success = await changePassword(securityData);
-      if (success) {
-        toast.success(t("settings.security.passwordChanged"));
+        if (success) {
+        showSuccessToast(t("settings.security.passwordChanged"));
         setSecurityData({
           currentPassword: "",
           newPassword: "",
@@ -98,25 +98,25 @@ export default function AccountSettingsPage() {
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      toast.error(t("settings.profile.invalidFileType"));
+      showErrorToast(t("settings.profile.invalidFileType"));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error(t("settings.profile.fileTooLarge"));
+      showErrorToast(t("settings.profile.fileTooLarge"));
       return;
     }
 
     const success = await uploadAvatar(file);
-    if (success) {
-      toast.success(t("settings.profile.avatarUploaded"));
+      if (success) {
+      showSuccessToast(t("settings.profile.avatarUploaded"));
     }
   };
 
   const handleDeleteAvatar = async () => {
     // NOTE: Backend API not available yet (DELETE /users/me/avatar)
-    toast.error(
+    showErrorToast(
       "Delete avatar feature is not available yet. Backend API not implemented.",
     );
   };
