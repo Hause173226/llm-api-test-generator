@@ -11,6 +11,8 @@ export interface Report {
   status?: string;
   generatedAt: string;
   downloadUrl?: string;
+  expiresAt?: string | null;
+  coverage?: Record<string, any> | null;
   recentHistoryLimit?: number;
   // Keep backward-compat display fields
   name?: string;

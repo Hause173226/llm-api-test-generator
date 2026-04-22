@@ -59,17 +59,48 @@ export interface TestCasesResponse {
   totalPages: number;
 }
 
+export interface TestCaseRequestInput {
+  httpMethod: string;
+  url: string;
+  headers?: string;
+  pathParams?: string;
+  queryParams?: string;
+  bodyType: string;
+  body?: string;
+  timeout: number;
+}
+
+export interface TestCaseExpectationInput {
+  expectedStatus?: string;
+  responseSchema?: string;
+  headerChecks?: string;
+  bodyContains?: string;
+  bodyNotContains?: string;
+  jsonPathChecks?: string;
+  maxResponseTime?: number | null;
+}
+
+export interface TestCaseVariableInput {
+  variableName: string;
+  extractFrom: string;
+  jsonPath?: string;
+  headerName?: string;
+  regex?: string;
+  defaultValue?: string;
+}
+
 export interface CreateTestCaseRequest {
   testSuiteId: string;
+  endpointId?: string | null;
   name: string;
   description?: string;
-  endpointId: string;
-  requestBody?: any;
-  headers?: Record<string, string>;
-  queryParams?: Record<string, string>;
-  expectedStatus: number;
-  expectedResponse?: any;
-  assertions?: any[];
+  testType: string;
+  priority: string;
+  isEnabled: boolean;
+  tags?: string[];
+  request: TestCaseRequestInput;
+  expectation: TestCaseExpectationInput;
+  variables?: TestCaseVariableInput[];
 }
 
 const normalizeTestCase = (item: any): TestCase => {
@@ -312,9 +343,9 @@ const testCaseService = {
 
   // Create test case
   createTestCase: async (data: CreateTestCaseRequest): Promise<TestCase> => {
-    const payload = normalizeEnumsForRequest(data as any);
+    const { testSuiteId, ...payload } = data;
     const response = await apiService.post<any>(
-      `/test-suites/${data.testSuiteId}/test-cases`,
+      `/test-suites/${testSuiteId}/test-cases`,
       payload,
     );
     return normalizeTestCase(response);
