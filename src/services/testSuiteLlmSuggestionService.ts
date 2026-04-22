@@ -178,6 +178,25 @@ const testSuiteLlmSuggestionService = {
       payload,
     );
   },
+
+  async bulkRestore(
+    suiteId: string,
+    payload: { suggestionIds: string[] },
+  ): Promise<any> {
+    return await apiService.post<any>(
+      `/test-suites/${suiteId}/llm-suggestions/bulk-restore`,
+      payload,
+    );
+  },
+  async bulkApprove(
+    suiteId: string,
+    payload: { suggestionIds: string[] },
+  ): Promise<any> {
+    return await apiService.post<any>(
+      `/test-suites/${suiteId}/llm-suggestions/bulk-approve`,
+      payload,
+    );
+  },
 };
 
 export default testSuiteLlmSuggestionService;

@@ -398,7 +398,7 @@ export default function EndpointsPage() {
             >
               {specifications.map((spec) => (
                 <option key={spec.id} value={spec.id}>
-                  {spec.name} ({spec.type}) - {spec.parseStatus}
+                  {spec.name} 
                 </option>
               ))}
             </select>

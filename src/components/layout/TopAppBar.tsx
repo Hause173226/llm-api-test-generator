@@ -42,7 +42,6 @@ export default function TopAppBar({
   );
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const LAST_AUTOMATED_ROUTE_KEY = "last-automated-route";
 
   useEffect(() => {
     if (isDark) {
@@ -64,13 +63,6 @@ export default function TopAppBar({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    if (!location.pathname.startsWith("/manual-testing")) {
-      const fullPath = `${location.pathname}${location.search}${location.hash}`;
-      sessionStorage.setItem(LAST_AUTOMATED_ROUTE_KEY, fullPath);
-    }
-  }, [location.pathname, location.search, location.hash]);
 
   const toggleLanguage = () => {
     const newLang = i18n.language === "en" ? "vi" : "en";
@@ -187,8 +179,7 @@ export default function TopAppBar({
             onClick={() => {
               const isManual = location.pathname.startsWith("/manual-testing");
               if (isManual) {
-                const fallback = sessionStorage.getItem(LAST_AUTOMATED_ROUTE_KEY);
-                navigate(fallback || "/runs");
+                navigate("/dashboard");
                 return;
               }
               navigate("/manual-testing");

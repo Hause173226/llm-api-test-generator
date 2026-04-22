@@ -132,18 +132,24 @@ export default function SpecificationPage() {
 
       // If parseStatus is Pending (async parse for YAML/Postman), poll until done
       if (newSpec && newSpec.parseStatus === "Pending") {
-        toast.loading("Parsing specification... Please wait.", { id: "parse-polling" });
+        toast.loading("Parsing specification... Please wait.", {
+          id: "parse-polling",
+        });
         try {
           const parsed = await pollParseStatus(newSpec.id);
           toast.dismiss("parse-polling");
           if (parsed.parseStatus === "Failed") {
-            showErrorToast("Specification parsing failed. Please check the file format.");
+            showErrorToast(
+              "Specification parsing failed. Please check the file format.",
+            );
             return;
           }
           showSuccessToast("Specification parsed successfully!");
         } catch (pollErr) {
           toast.dismiss("parse-polling");
-          showErrorToast("Parse status polling timed out. Check specification status manually.");
+          showErrorToast(
+            "Parse status polling timed out. Check specification status manually.",
+          );
           return;
         }
       }
@@ -305,7 +311,7 @@ export default function SpecificationPage() {
   return (
     <MainLayout title={t("specifications.title")} breadcrumbs={breadcrumbs}>
       <div className="space-y-12">
-        <header className="mb-16">
+        <header className="mb-8">
           <h1 className="text-4xl font-bold tracking-tight text-on-surface mt-10 mb-2">
             {t("specifications.title")}
             {project && (
@@ -318,83 +324,6 @@ export default function SpecificationPage() {
             {t("specifications.subtitle")}
           </p>
         </header>
-
-        {/* Asymmetric Grid for Upload and Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-20">
-          {/* Upload Zone */}
-          <div className="lg:col-span-8 group">
-            <div
-              onClick={() => setIsUploadModalOpen(true)}
-              className="relative overflow-hidden bg-surface-container-low dark:bg-slate-900 rounded-xl p-12 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-surface-container-high dark:hover:bg-slate-800 min-h-[400px] border-2 border-dashed border-outline-variant/20 dark:border-slate-800 cursor-pointer"
-            >
-              {/* Recommended badge */}
-              <span className="absolute top-4 right-4 inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
-                ✦ Recommended
-              </span>
-              <div className="relative z-10">
-                <div className="mb-8 p-6 bg-surface-container-lowest dark:bg-slate-800 rounded-full shadow-sm inline-block">
-                  <UploadCloud className="w-12 h-12 text-primary dark:text-indigo-400" />
-                </div>
-                <h2 className="text-2xl font-semibold text-on-surface mb-2">
-                  {t("specifications.upload.title")}
-                </h2>
-                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-4">
-                  {t("specifications.upload.recommendedDesc")}
-                </p>
-                <p className="text-on-surface-variant font-medium mb-8">
-                  {t("specifications.upload.formats")}{" "}
-                  <span className="text-primary dark:text-indigo-400">
-                    OpenAPI
-                  </span>
-                  ,{" "}
-                  <span className="text-primary dark:text-indigo-400">
-                    Swagger
-                  </span>
-                  ,{" "}
-                  <span className="text-primary dark:text-indigo-400">
-                    Postman
-                  </span>
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-4">
-                  <button className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all flex items-center gap-2 cursor-pointer">
-                    <Plus className="w-5 h-5" />
-                    {t("specifications.upload.button")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Side Action / Manual Entry */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col h-full justify-between shadow-sm">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <Edit3 className="w-5 h-5 text-secondary dark:text-amber-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                    {t("specifications.manual.label")}
-                  </span>
-                </div>
-                <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-5">
-                  {t("specifications.manual.moreControl")}
-                </p>
-                <h3 className="text-xl font-semibold mb-4 leading-snug text-on-surface">
-                  {t("specifications.manual.title")}
-                </h3>
-                <p className="text-on-surface-variant text-sm mb-8">
-                  {t("specifications.manual.description")}
-                </p>
-              </div>
-              <button
-                className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer"
-                onClick={() => setIsManualModalOpen(true)}
-              >
-                <Keyboard className="w-5 h-5" />
-                {t("specifications.manual.button")}
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Recent Specifications Table */}
         <section className="space-y-8">
@@ -455,8 +384,8 @@ export default function SpecificationPage() {
                 {viewMode === "trash"
                   ? `${trashedSpecifications?.length || 0} deleted`
                   : t("specifications.recent.activeCount", {
-                    count: specifications?.length || 0,
-                  })}
+                      count: specifications?.length || 0,
+                    })}
               </span>
             </div>
           </div>
@@ -492,7 +421,7 @@ export default function SpecificationPage() {
                 ) : viewMode === "trash" ? (
                   /* ── TRASH VIEW ── */
                   !trashedSpecifications ||
-                    trashedSpecifications.length === 0 ? (
+                  trashedSpecifications.length === 0 ? (
                     <tr>
                       <td
                         colSpan={5}
@@ -523,7 +452,7 @@ export default function SpecificationPage() {
                                   {spec.name}
                                 </span>
                                 <div className="text-[10px] text-rose-500">
-                                  Deleted{" "}
+                                  Deleted {" "}
                                   {spec.deletedAt
                                     ? formatDate(spec.deletedAt)
                                     : ""}
@@ -603,7 +532,7 @@ export default function SpecificationPage() {
                                 {spec.name}
                               </button>
                               <div className="text-[10px] text-on-surface-variant">
-                                {t("specifications.modified")}{" "}
+                                {t("specifications.modified")} {" "}
                                 {modifiedDate ? formatDate(modifiedDate) : "—"}
                               </div>
                             </div>
@@ -641,6 +570,86 @@ export default function SpecificationPage() {
             </table>
           </div>
         </section>
+
+        {/* Asymmetric Grid for Upload and Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-20">
+          {/* Upload Zone */}
+          <div className="lg:col-span-8 group">
+            <div
+              onClick={() => setIsUploadModalOpen(true)}
+              className="relative overflow-hidden bg-surface-container-low dark:bg-slate-900 rounded-xl p-12 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-surface-container-high dark:hover:bg-slate-800 min-h-[400px] border-2 border-dashed border-outline-variant/20 dark:border-slate-800 cursor-pointer"
+            >
+              {/* Recommended badge */}
+              <span className="absolute top-4 right-4 inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
+                ✦ Recommended
+              </span>
+              <div className="relative z-10">
+                <div className="mb-8 p-6 bg-surface-container-lowest dark:bg-slate-800 rounded-full shadow-sm inline-block">
+                  <UploadCloud className="w-12 h-12 text-primary dark:text-indigo-400" />
+                </div>
+                <h2 className="text-2xl font-semibold text-on-surface mb-2">
+                  {t("specifications.upload.title")}
+                </h2>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-4">
+                  {t("specifications.upload.recommendedDesc")}
+                </p>
+                <p className="text-on-surface-variant font-medium mb-8">
+                  {t("specifications.upload.formats")}{" "}
+                  <span className="text-primary dark:text-indigo-400">
+                    OpenAPI
+                  </span>
+                  ,{" "}
+                  <span className="text-primary dark:text-indigo-400">
+                    Swagger
+                  </span>
+                  ,{" "}
+                  <span className="text-primary dark:text-indigo-400">
+                    Postman
+                  </span>
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-4">
+                  <button className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all flex items-center gap-2 cursor-pointer">
+                    <Plus className="w-5 h-5" />
+                    {t("specifications.upload.button")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Side Action / Manual Entry */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col h-full justify-between shadow-sm">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <Edit3 className="w-5 h-5 text-secondary dark:text-amber-400" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                    {t("specifications.manual.label")}
+                  </span>
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-5">
+                  {t("specifications.manual.moreControl")}
+                </p>
+                <h3 className="text-xl font-semibold mb-4 leading-snug text-on-surface">
+                  {t("specifications.manual.title")}
+                </h3>
+                <p className="text-on-surface-variant text-sm mb-8">
+                  {t("specifications.manual.description")}
+                </p>
+              </div>
+              <button
+                className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => setIsManualModalOpen(true)}
+              >
+                <Keyboard className="w-5 h-5" />
+                {t("specifications.manual.button")}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Specifications Table */}
+
       </div>
 
       {/* Global spinner khi đang upload */}

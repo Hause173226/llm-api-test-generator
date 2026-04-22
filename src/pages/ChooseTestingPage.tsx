@@ -25,7 +25,7 @@ export default function ChooseTestingPage() {
               </p>
               <div className="mt-6 text-right">
                 <button
-                  onClick={() => navigate("/runs")}
+                  onClick={() => navigate("/dashboard")}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition"
                 >
                   Go to Automated

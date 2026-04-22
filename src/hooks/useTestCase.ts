@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import testCaseService, { TestCase, CreateTestCaseRequest } from '../services/testCaseService';
 import { handleError } from '../utils/errorHandler';
 
-export const useTestCase = (testSuiteId: string, testCaseId?: string) => {
+export const useTestCase = (
+  testSuiteId: string,
+  testCaseId?: string,
+  suppressErrorToast = false,
+) => {
   const [testCase, setTestCase] = useState<TestCase | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -21,7 +25,7 @@ export const useTestCase = (testSuiteId: string, testCaseId?: string) => {
       const data = await testCaseService.getTestCaseById(testSuiteId, testCaseId);
       setTestCase(data);
     } catch (err) {
-      const errorMessage = handleError(err);
+      const errorMessage = handleError(err, undefined, suppressErrorToast);
       setError(errorMessage);
     } finally {
       setLoading(false);

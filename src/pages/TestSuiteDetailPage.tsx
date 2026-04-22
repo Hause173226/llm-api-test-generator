@@ -91,6 +91,9 @@ export default function TestSuiteDetailPage() {
   const [allSuggestions, setAllSuggestions] = useState<SuiteSuggestionModel[]>(
     [],
   );
+  const [archivedSuggestions, setArchivedSuggestions] = useState<
+    SuiteSuggestionModel[]
+  >([]);
   const [generationRuns, setGenerationRuns] = useState<LocalGenerationRun[]>(
     [],
   );
@@ -102,13 +105,19 @@ export default function TestSuiteDetailPage() {
   const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
   const [isBulkReviewingSuggestions, setIsBulkReviewingSuggestions] =
     useState(false);
+  const [isBulkRestoringSuggestions, setIsBulkRestoringSuggestions] =
+    useState(false);
+  const [isBulkApprovingSuggestions, setIsBulkApprovingSuggestions] =
+    useState(false);
   const [isLoadingSuggestionDetail, setIsLoadingSuggestionDetail] =
     useState(false);
   const [bulkRejectModalOpen, setBulkRejectModalOpen] = useState(false);
   const [bulkRejectNotes, setBulkRejectNotes] = useState("");
   const [addEndpointModalOpen, setAddEndpointModalOpen] = useState(false);
   const [manualEndpointModalOpen, setManualEndpointModalOpen] = useState(false);
-  const [selectedEndpointIdsToAdd, setSelectedEndpointIdsToAdd] = useState<string[]>([]);
+  const [selectedEndpointIdsToAdd, setSelectedEndpointIdsToAdd] = useState<
+    string[]
+  >([]);
   const [manualEndpointForm, setManualEndpointForm] = useState({
     method: "GET",
     path: "",
@@ -118,6 +127,7 @@ export default function TestSuiteDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [hasApprovedOrderOnce, setHasApprovedOrderOnce] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
   const [testCaseSearchTerm, setTestCaseSearchTerm] = useState("");
@@ -156,11 +166,11 @@ export default function TestSuiteDetailPage() {
       const parsed = raw ? JSON.parse(raw) : [];
       const items = Array.isArray(parsed)
         ? parsed.filter(
-          (item) =>
-            item &&
-            typeof item.id === "string" &&
-            typeof item.generatedAt === "string",
-        )
+            (item) =>
+              item &&
+              typeof item.id === "string" &&
+              typeof item.generatedAt === "string",
+          )
         : [];
 
       setGenerationRuns(
@@ -197,10 +207,21 @@ export default function TestSuiteDetailPage() {
     persistGenerationRuns(nextRuns);
   };
 
-  const getSuggestionFilters = (overrides?: Partial<SuiteSuggestionQuery>): SuiteSuggestionQuery => ({
-    reviewStatus: overrides?.reviewStatus !== undefined ? overrides.reviewStatus : (suggestionReviewStatusFilter || undefined),
-    testType: overrides?.testType !== undefined ? overrides.testType : (suggestionTestTypeFilter || undefined),
-    endpointId: overrides?.endpointId !== undefined ? overrides.endpointId : (suggestionEndpointFilter || undefined),
+  const getSuggestionFilters = (
+    overrides?: Partial<SuiteSuggestionQuery>,
+  ): SuiteSuggestionQuery => ({
+    reviewStatus:
+      overrides?.reviewStatus !== undefined
+        ? overrides.reviewStatus
+        : suggestionReviewStatusFilter || undefined,
+    testType:
+      overrides?.testType !== undefined
+        ? overrides.testType
+        : suggestionTestTypeFilter || undefined,
+    endpointId:
+      overrides?.endpointId !== undefined
+        ? overrides.endpointId
+        : suggestionEndpointFilter || undefined,
   });
 
   const applySuggestionToLocalState = (updated: SuiteSuggestionModel) => {
@@ -285,7 +306,9 @@ export default function TestSuiteDetailPage() {
     }
 
     const selectedSet = new Set(selectedEndpointIdsToAdd);
-    const toAdd = allSpecEndpoints.filter((endpoint) => selectedSet.has(endpoint.id));
+    const toAdd = allSpecEndpoints.filter((endpoint) =>
+      selectedSet.has(endpoint.id),
+    );
     if (toAdd.length === 0) {
       showInfoToast("No valid endpoints selected.");
       return;
@@ -334,7 +357,8 @@ export default function TestSuiteDetailPage() {
         projectId,
         path: created?.path || path,
         method: String(created?.method || method).toUpperCase(),
-        description: created?.description || manualEndpointForm.description.trim(),
+        description:
+          created?.description || manualEndpointForm.description.trim(),
         tags: created?.tags || [],
       };
 
@@ -369,6 +393,8 @@ export default function TestSuiteDetailPage() {
     try {
       setIsLoading(true);
       setError(null);
+      let approvedOrderDetected = false;
+      let hasLoadedSuggestions = false;
 
       // Fetch suite details
       const suiteData = await testSuiteService.getTestSuiteDetail(
@@ -411,10 +437,17 @@ export default function TestSuiteDetailPage() {
       }
 
       try {
-        await Promise.all([refreshSuggestions(), refreshAllSuggestions()]);
+        const [loadedSuggestions] = await Promise.all([
+          refreshSuggestions(),
+          refreshAllSuggestions(),
+        ]);
+        hasLoadedSuggestions = Array.isArray(loadedSuggestions)
+          ? loadedSuggestions.length > 0
+          : false;
       } catch (suggestionErr) {
         console.warn("Failed to load LLM suggestions:", suggestionErr);
         setAllSuggestions([]);
+        hasLoadedSuggestions = false;
       }
 
       // Fetch all endpoints for this spec and map selected ones into Step 1 order
@@ -446,12 +479,16 @@ export default function TestSuiteDetailPage() {
             `/test-suites/${suiteId}/order-proposals/latest`,
           );
 
+          const latestProposalStatus = String(
+            latestProposal?.status || latestProposal?.Status || "",
+          ).toLowerCase();
+
           const appliedOrder = normalizeOrder(
             latestProposal?.appliedOrder || latestProposal?.AppliedOrder,
           );
           const userModifiedOrder = normalizeOrder(
             latestProposal?.userModifiedOrder ||
-            latestProposal?.UserModifiedOrder,
+              latestProposal?.UserModifiedOrder,
           );
           const proposedOrder = normalizeOrder(
             latestProposal?.proposedOrder || latestProposal?.ProposedOrder,
@@ -466,6 +503,14 @@ export default function TestSuiteDetailPage() {
 
           if (proposalOrder.length > 0) {
             orderedEndpointIds = proposalOrder;
+          }
+
+          if (
+            appliedOrder.length > 0 ||
+            latestProposalStatus === "approved" ||
+            latestProposalStatus === "applied"
+          ) {
+            approvedOrderDetected = true;
           }
         } catch (proposalErr) {
           console.warn(
@@ -484,6 +529,8 @@ export default function TestSuiteDetailPage() {
         setAllSpecEndpoints([]);
         setEndpoints([]);
       }
+
+      setHasApprovedOrderOnce(approvedOrderDetected || hasLoadedSuggestions);
     } catch (err) {
       setError(handleError(err));
     } finally {
@@ -602,6 +649,7 @@ export default function TestSuiteDetailPage() {
               ReviewNotes: "Auto-approved after order save",
             },
           );
+          setHasApprovedOrderOnce(true);
           showSuccessToast("Order approved successfully");
 
           try {
@@ -616,8 +664,8 @@ export default function TestSuiteDetailPage() {
               suggestionErr?.status ?? suggestionErr?.response?.status;
             const message = String(
               suggestionErr?.message ||
-              suggestionErr?.response?.data?.message ||
-              "",
+                suggestionErr?.response?.data?.message ||
+                "",
             );
             const alreadyHasPendingSuggestions =
               statusCode === 400 &&
@@ -703,8 +751,33 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  // Alias để không phải đổi tất cả chỗ gọi refreshAllSuggestions
-  const refreshAllSuggestions = refreshSuggestions;
+  // Refresh archived (superseded) suggestions used only for timeline/history view
+  const refreshArchivedSuggestions = async (): Promise<
+    SuiteSuggestionModel[]
+  > => {
+    if (!suiteId) return [];
+
+    try {
+      const items = await testSuiteLlmSuggestionService.list(suiteId, {
+        reviewStatus: "Superseded",
+      });
+      const result = Array.isArray(items) ? items : [];
+      setArchivedSuggestions(result);
+      return result;
+    } catch (err) {
+      handleError(err);
+      setArchivedSuggestions([]);
+      return [];
+    }
+  };
+
+  // Refresh both active and archived suggestions; return active suggestions for compatibility
+  const refreshAllSuggestions = async (): Promise<SuiteSuggestionModel[]> => {
+    const active = await refreshSuggestions();
+    // Keep archived refresh separate to avoid disturbing active loading flag
+    await refreshArchivedSuggestions();
+    return active;
+  };
 
   const handleGenerateSuggestions = async (forceRefresh = false) => {
     if (!suite || !suiteId || !suite.apiSpecId) {
@@ -721,7 +794,7 @@ export default function TestSuiteDetailPage() {
         if (!gateStatus.isGatePassed) {
           showErrorToast(
             gateStatus.message ||
-            "Order gate not passed. Please approve the API order proposal first.",
+              "Order gate not passed. Please approve the API order proposal first.",
           );
           setIsGeneratingSuggestions(false);
           return;
@@ -767,7 +840,7 @@ export default function TestSuiteDetailPage() {
   };
 
   const handleOpenSuggestionDetail = async (suggestionId: string) => {
-    if (!suiteId || !suggestionId) return;
+    if (!suiteId || !suggestionId) return null as any;
 
     try {
       setIsLoadingSuggestionDetail(true);
@@ -776,9 +849,10 @@ export default function TestSuiteDetailPage() {
         suggestionId,
       );
       applySuggestionToLocalState(detail);
-      showSuccessToast("Loaded latest suggestion details.");
+      return detail;
     } catch (err) {
       handleError(err);
+      return null as any;
     } finally {
       setIsLoadingSuggestionDetail(false);
     }
@@ -918,7 +992,10 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  const handleBulkReview = async (action: "Approve" | "Reject", rejectNotes?: string) => {
+  const handleBulkReview = async (
+    action: "Approve" | "Reject",
+    rejectNotes?: string,
+  ) => {
     if (!suiteId) return;
 
     const hasFilteredSuggestions = displayedSuggestions.length > 0;
@@ -959,6 +1036,68 @@ export default function TestSuiteDetailPage() {
     }
   };
 
+  const handleBulkRestore = async (suggestionIds: string[]) => {
+    if (!suiteId) return;
+    if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
+      showInfoToast("No suggestions selected for restore.");
+      return;
+    }
+
+    try {
+      setIsBulkRestoringSuggestions(true);
+      const result = await testSuiteLlmSuggestionService.bulkRestore(suiteId, {
+        suggestionIds,
+      });
+
+      showSuccessToast(
+        `Restore processed. Restored ${result?.processedCount || suggestionIds.length} suggestion(s).`,
+      );
+
+      const [nextSuggestions, , nextTestCases] = await Promise.all([
+        refreshSuggestions(),
+        refreshAllSuggestions(),
+        refreshTestCases(),
+      ]);
+
+      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsBulkRestoringSuggestions(false);
+    }
+  };
+
+  const handleBulkApprove = async (suggestionIds: string[]) => {
+    if (!suiteId) return;
+    if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
+      showInfoToast("No suggestions selected for approve.");
+      return;
+    }
+
+    try {
+      setIsBulkApprovingSuggestions(true);
+      const result = await testSuiteLlmSuggestionService.bulkApprove(suiteId, {
+        suggestionIds,
+      });
+
+      showSuccessToast(
+        `Approve processed. Approved ${result?.processedCount || suggestionIds.length} suggestion(s).`,
+      );
+
+      const [nextSuggestions, , nextTestCases] = await Promise.all([
+        refreshSuggestions(),
+        refreshAllSuggestions(),
+        refreshTestCases(),
+      ]);
+
+      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsBulkApprovingSuggestions(false);
+    }
+  };
+
   const handleBulkRejectConfirm = async () => {
     if (!bulkRejectNotes.trim()) {
       showErrorToast("Review notes are required for bulk reject.");
@@ -994,7 +1133,7 @@ export default function TestSuiteDetailPage() {
     return status === "approved" || status === "modifiedandapproved";
   }).length;
   const shouldShowSuggestionBulkActions = allSuggestions.some(
-    (item) => String(item.reviewStatus || "").toLowerCase() === "pending"
+    (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
   );
 
   const steps: Array<{
@@ -1003,37 +1142,37 @@ export default function TestSuiteDetailPage() {
     helper: string;
     isDone: boolean;
   }> = [
-      {
-        id: "details",
-        title: "Step 1: Configure",
-        helper: hasChanges
-          ? "Endpoint changes pending approval"
-          : allSuggestions.length > 0
-            ? "Order approved and AI preview is available"
-            : "Approve order to generate AI preview",
-        isDone: isStep1Completed,
-      },
-      {
-        id: "suggestions",
-        title: "Step 2: AI Review",
-        helper:
-          reviewableSuggestions.length === 0
-            ? "Generate AI suggestions"
-            : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
-        isDone:
-          reviewableSuggestions.length > 0 &&
-          pendingSuggestionsCount === 0 &&
-          approvedSuggestionsCount > 0,
-      },
-      {
-        id: "testcases",
-        title: "Step 3: Test Cases",
-        helper: hasAnyTestCases
-          ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
-          : "No test cases yet",
-        isDone: hasAnyTestCases,
-      },
-    ];
+    {
+      id: "details",
+      title: "Step 1: Configure",
+      helper: hasChanges
+        ? "Endpoint changes pending approval"
+        : allSuggestions.length > 0
+          ? "Order approved and AI preview is available"
+          : "Approve order to generate AI preview",
+      isDone: isStep1Completed,
+    },
+    {
+      id: "suggestions",
+      title: "Step 2: AI Review",
+      helper:
+        reviewableSuggestions.length === 0
+          ? "Generate AI suggestions"
+          : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
+      isDone:
+        reviewableSuggestions.length > 0 &&
+        pendingSuggestionsCount === 0 &&
+        approvedSuggestionsCount > 0,
+    },
+    {
+      id: "testcases",
+      title: "Step 3: Test Cases",
+      helper: hasAnyTestCases
+        ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
+        : "No test cases yet",
+      isDone: hasAnyTestCases,
+    },
+  ];
 
   const activeStepIndex = steps.findIndex((step) => step.id === activeTab);
 
@@ -1106,8 +1245,12 @@ export default function TestSuiteDetailPage() {
   const fallbackGenerationItems = () => {
     // Cluster suggestions by time-gap so two generate actions close in time are still separated.
     const splitGapMs = 20 * 1000;
-    const withTime = allSuggestions
-      .map((suggestion) => ({ suggestion, time: getSuggestionDate(suggestion) }))
+    const combined = [...allSuggestions, ...archivedSuggestions];
+    const withTime = combined
+      .map((suggestion) => ({
+        suggestion,
+        time: getSuggestionDate(suggestion),
+      }))
       .sort((a, b) => {
         if (a.time === null && b.time === null) return 0;
         if (a.time === null) return -1;
@@ -1115,8 +1258,16 @@ export default function TestSuiteDetailPage() {
         return a.time - b.time;
       });
 
-    const groups: Array<{ id: string; generatedAt?: string; items: SuiteSuggestionModel[] }> = [];
-    let currentGroup: { id: string; generatedAt?: string; items: SuiteSuggestionModel[] } | null = null;
+    const groups: Array<{
+      id: string;
+      generatedAt?: string;
+      items: SuiteSuggestionModel[];
+    }> = [];
+    let currentGroup: {
+      id: string;
+      generatedAt?: string;
+      items: SuiteSuggestionModel[];
+    } | null = null;
     let lastTime: number | null = null;
 
     for (const entry of withTime) {
@@ -1199,7 +1350,8 @@ export default function TestSuiteDetailPage() {
   };
 
   const generationItems: GenerationItem[] = (() => {
-    if (allSuggestions.length === 0) {
+    const combinedForTimeline = [...allSuggestions, ...archivedSuggestions];
+    if (combinedForTimeline.length === 0) {
       return [];
     }
 
@@ -1216,7 +1368,7 @@ export default function TestSuiteDetailPage() {
     const groups = new Map<string, SuiteSuggestionModel[]>();
     sortedRuns.forEach((run) => groups.set(run.id, []));
 
-    allSuggestions.forEach((suggestion) => {
+    combinedForTimeline.forEach((suggestion) => {
       const suggestionTime = getSuggestionDate(suggestion);
       if (suggestionTime === null) {
         const firstRun = sortedRuns[0];
@@ -1314,15 +1466,26 @@ export default function TestSuiteDetailPage() {
 
   const displayedSuggestions = (() => {
     const base = expandedGenerationItem
-      ? allSuggestions.filter((item) => new Set(expandedGenerationItem.suggestionIds).has(item.id))
+      ? // When viewing a specific generation, include both active and archived (superseded)
+        [...allSuggestions, ...archivedSuggestions].filter((item) =>
+          new Set(expandedGenerationItem.suggestionIds).has(item.id),
+        )
       : allSuggestions;
 
     return base.filter((item) => {
       if (suggestionReviewStatusFilter) {
-        if (String(item.reviewStatus || "").toLowerCase() !== suggestionReviewStatusFilter.toLowerCase()) return false;
+        if (
+          String(item.reviewStatus || "").toLowerCase() !==
+          suggestionReviewStatusFilter.toLowerCase()
+        )
+          return false;
       }
       if (suggestionTestTypeFilter) {
-        if (String(item.testType || "").toLowerCase() !== suggestionTestTypeFilter.toLowerCase()) return false;
+        if (
+          String(item.testType || "").toLowerCase() !==
+          suggestionTestTypeFilter.toLowerCase()
+        )
+          return false;
       }
       if (suggestionEndpointFilter) {
         if (item.endpointId !== suggestionEndpointFilter) return false;
@@ -1408,7 +1571,9 @@ export default function TestSuiteDetailPage() {
       {/* Bulk Reject Modal */}
       <Modal
         isOpen={bulkRejectModalOpen}
-        onClose={() => { if (!isBulkReviewingSuggestions) setBulkRejectModalOpen(false); }}
+        onClose={() => {
+          if (!isBulkReviewingSuggestions) setBulkRejectModalOpen(false);
+        }}
         title="Bulk Reject Suggestions"
         footer={
           <>
@@ -1436,7 +1601,16 @@ export default function TestSuiteDetailPage() {
       >
         <div className="space-y-3">
           <p className="text-sm text-on-surface-variant">
-            This will reject all <span className="font-bold text-on-surface">{displayedSuggestions.filter(s => String(s.reviewStatus || "").toLowerCase() === "pending").length}</span> pending suggestions matching current filters.
+            This will reject all{" "}
+            <span className="font-bold text-on-surface">
+              {
+                displayedSuggestions.filter(
+                  (s) =>
+                    String(s.reviewStatus || "").toLowerCase() === "pending",
+                ).length
+              }
+            </span>{" "}
+            pending suggestions matching current filters.
           </p>
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
@@ -1495,9 +1669,14 @@ export default function TestSuiteDetailPage() {
                       checked={checked}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedEndpointIdsToAdd((prev) => [...prev, endpoint.id]);
+                          setSelectedEndpointIdsToAdd((prev) => [
+                            ...prev,
+                            endpoint.id,
+                          ]);
                         } else {
-                          setSelectedEndpointIdsToAdd((prev) => prev.filter((id) => id !== endpoint.id));
+                          setSelectedEndpointIdsToAdd((prev) =>
+                            prev.filter((id) => id !== endpoint.id),
+                          );
                         }
                       }}
                       className="mt-1"
@@ -1522,7 +1701,9 @@ export default function TestSuiteDetailPage() {
 
       <Modal
         isOpen={manualEndpointModalOpen}
-        onClose={() => { if (!isCreatingEndpoint) setManualEndpointModalOpen(false); }}
+        onClose={() => {
+          if (!isCreatingEndpoint) setManualEndpointModalOpen(false);
+        }}
         title="Add Manual Endpoint"
         footer={
           <>
@@ -1538,7 +1719,11 @@ export default function TestSuiteDetailPage() {
               disabled={isCreatingEndpoint || !manualEndpointForm.path.trim()}
               className="px-8 py-3 bg-primary dark:bg-indigo-600 text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {isCreatingEndpoint ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {isCreatingEndpoint ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
               Create Endpoint
             </button>
           </>
@@ -1552,7 +1737,12 @@ export default function TestSuiteDetailPage() {
               </label>
               <select
                 value={manualEndpointForm.method}
-                onChange={(e) => setManualEndpointForm((prev) => ({ ...prev, method: e.target.value }))}
+                onChange={(e) =>
+                  setManualEndpointForm((prev) => ({
+                    ...prev,
+                    method: e.target.value,
+                  }))
+                }
                 className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               >
                 <option value="GET">GET</option>
@@ -1568,7 +1758,12 @@ export default function TestSuiteDetailPage() {
               </label>
               <input
                 value={manualEndpointForm.path}
-                onChange={(e) => setManualEndpointForm((prev) => ({ ...prev, path: e.target.value }))}
+                onChange={(e) =>
+                  setManualEndpointForm((prev) => ({
+                    ...prev,
+                    path: e.target.value,
+                  }))
+                }
                 className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
                 placeholder="/api/products/{id}"
               />
@@ -1581,7 +1776,12 @@ export default function TestSuiteDetailPage() {
             <textarea
               rows={3}
               value={manualEndpointForm.description}
-              onChange={(e) => setManualEndpointForm((prev) => ({ ...prev, description: e.target.value }))}
+              onChange={(e) =>
+                setManualEndpointForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               placeholder="Optional description"
             />
@@ -1619,44 +1819,10 @@ export default function TestSuiteDetailPage() {
                   className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-semibold flex items-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50"
                 >
                   <Save className="w-5 h-5" />
-                  {hasChanges
-                    ? "Re Approve & Regenerate AI Preview"
+                  {hasChanges && hasApprovedOrderOnce
+                    ? "Save & Approve Order"
                     : "Approve Order"}
                 </button>
-              )}
-
-              {activeTab === "suggestions" && shouldShowSuggestionBulkActions && (
-                <>
-                  <button
-                    onClick={() => handleBulkReview("Approve")}
-                    disabled={
-                      isBulkReviewingSuggestions || displayedSuggestions.length === 0
-                    }
-                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-                  >
-                    {isBulkReviewingSuggestions ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    Approve All
-                  </button>
-
-                  <button
-                    onClick={() => handleBulkReview("Reject")}
-                    disabled={
-                      isBulkReviewingSuggestions || displayedSuggestions.length === 0
-                    }
-                    className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-                  >
-                    {isBulkReviewingSuggestions ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <X className="w-4 h-4" />
-                    )}
-                    Reject All
-                  </button>
-                </>
               )}
             </div>
           </header>
@@ -1832,103 +1998,103 @@ export default function TestSuiteDetailPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {generationItems.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
-                      >
-                        {(() => {
-                          const isExpanded = expandedGenerationItemId === item.id;
-
-                          return (
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-semibold text-on-surface">
-                                    {item.label}
+                    {generationItems.map((item, index) => {
+                      // Highlight if all suggestions are superseded
+                      const isSupersededBatch =
+                        item.supersededSuggestions === item.totalSuggestions &&
+                        item.totalSuggestions > 0;
+                      return (
+                        <div
+                          key={item.id}
+                          className={
+                            `rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 ` +
+                            (isSupersededBatch
+                              ? "bg-slate-200 dark:bg-slate-700/80 opacity-80"
+                              : "bg-surface-container-low dark:bg-slate-800/50")
+                          }
+                        >
+                          {(() => {
+                            const isExpanded =
+                              expandedGenerationItemId === item.id;
+                            return (
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-semibold text-on-surface">
+                                      {item.label}
+                                    </p>
+                                    {index === generationItems.length - 1 && (
+                                      <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
+                                        Latest
+                                      </span>
+                                    )}
+                                    {isSupersededBatch && (
+                                      <span className="px-2 py-0.5 rounded bg-slate-400 text-white text-[10px] font-bold uppercase tracking-wider">
+                                        Superseded
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-on-surface-variant">
+                                    {item.generatedAt
+                                      ? new Date(
+                                          item.generatedAt,
+                                        ).toLocaleString()
+                                      : "Unknown generate time"}
                                   </p>
-                                  {index === generationItems.length - 1 && (
-                                    <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold uppercase tracking-wider">
-                                      Latest
-                                    </span>
-                                  )}
                                 </div>
-                                <p className="text-xs text-on-surface-variant">
-                                  {item.generatedAt
-                                    ? new Date(item.generatedAt).toLocaleString()
-                                    : "Unknown generate time"}
-                                </p>
-                              </div>
 
-                              <div className="flex flex-col items-start md:items-end gap-2">
-                                <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                                  <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
-                                    Total: {item.totalSuggestions}
-                                  </span>
-                                  <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
-                                    Pending: {item.pendingSuggestions}
-                                  </span>
-                                  <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
-                                    Approved: {item.approvedSuggestions}
-                                  </span>
-                                  <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
-                                    Rejected: {item.rejectedSuggestions}
-                                  </span>
-                                  <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
-                                    Superseded: {item.supersededSuggestions}
-                                  </span>
+                                <div className="flex flex-col items-start md:items-end gap-2">
+                                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                                    <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                                      Total: {item.totalSuggestions}
+                                    </span>
+                                    <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                                      Pending: {item.pendingSuggestions}
+                                    </span>
+                                    <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
+                                      Approved: {item.approvedSuggestions}
+                                    </span>
+                                    <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                                      Rejected: {item.rejectedSuggestions}
+                                    </span>
+                                    <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                                      Superseded: {item.supersededSuggestions}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newId =
+                                        expandedGenerationItemId === item.id
+                                          ? null
+                                          : item.id;
+                                      setExpandedGenerationItemId(newId);
+                                      // Reset filter về All khi mở generation item để hiện tất cả suggestions
+                                      if (newId) {
+                                        setSuggestionReviewStatusFilter("");
+                                        setSuggestionTestTypeFilter("");
+                                        setSuggestionEndpointFilter("");
+                                      }
+                                    }}
+                                    className="px-3 py-1.5 rounded-md bg-primary dark:bg-indigo-600 text-on-primary text-xs font-semibold flex items-center gap-1"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronUp className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <ChevronDown className="w-3.5 h-3.5" />
+                                    )}
+                                    {isExpanded ? "Hide" : "Open"}
+                                  </button>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newId = expandedGenerationItemId === item.id ? null : item.id;
-                                    setExpandedGenerationItemId(newId);
-                                    // Reset filter về All khi mở generation item để hiện tất cả suggestions
-                                    if (newId) {
-                                      setSuggestionReviewStatusFilter("");
-                                      setSuggestionTestTypeFilter("");
-                                      setSuggestionEndpointFilter("");
-                                    }
-                                  }}
-                                  className="px-3 py-1.5 rounded-md bg-primary dark:bg-indigo-600 text-on-primary text-xs font-semibold flex items-center gap-1"
-                                >
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-3.5 h-3.5" />
-                                  ) : (
-                                    <ChevronDown className="w-3.5 h-3.5" />
-                                  )}
-                                  {isExpanded ? "Hide" : "Open"}
-                                </button>
                               </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    ))}
+                            );
+                          })()}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
-
-              {expandedGenerationItem && (
-                <div className="bg-surface-container-lowest dark:bg-slate-900 p-3 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex items-center justify-between gap-3">
-                  <p className="text-sm text-on-surface">
-                    Showing suggestions for{" "}
-                    <span className="font-bold">
-                      {expandedGenerationItem.label}
-                    </span>
-                    {expandedGenerationItem.generatedAt
-                      ? ` (${new Date(expandedGenerationItem.generatedAt).toLocaleString()})`
-                      : ""}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedGenerationItemId(null)}
-                    className="px-3 py-1.5 rounded-md bg-surface-container-high dark:bg-slate-800 text-on-surface text-xs font-semibold"
-                  >
-                    Show all
-                  </button>
-                </div>
-              )}
 
               {expandedGenerationItem ? (
                 <SuggestionReviewPanel
@@ -1953,6 +2119,10 @@ export default function TestSuiteDetailPage() {
                   onLoadDetail={handleOpenSuggestionDetail}
                   onApprove={handleApproveSuggestion}
                   onReject={handleRejectSuggestion}
+                  onBulkRestore={handleBulkRestore}
+                  isBulkRestoringSuggestions={isBulkRestoringSuggestions}
+                  onBulkApprove={handleBulkApprove}
+                  isBulkApprovingSuggestions={isBulkApprovingSuggestions}
                 />
               ) : (
                 <div className="text-sm text-on-surface-variant text-center py-8">
@@ -2007,8 +2177,9 @@ export default function TestSuiteDetailPage() {
                 <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
                   <p className="text-sm text-amber-800 dark:text-amber-400">
                     💡 No test cases yet. Continue to "AI Review" after saving
-                    this step, then approve suggestions to materialize test cases.
-                    You can reorder endpoints below to control the sequence first.
+                    this step, then approve suggestions to materialize test
+                    cases. You can reorder endpoints below to control the
+                    sequence first.
                   </p>
                 </div>
               )}
@@ -2019,7 +2190,8 @@ export default function TestSuiteDetailPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h2 className="text-xl font-bold text-on-surface">
-                        Endpoints ({filteredEndpoints.length}/{endpoints.length})
+                        Endpoints ({filteredEndpoints.length}/{endpoints.length}
+                        )
                       </h2>
                       <p className="text-sm text-on-surface-variant mt-1">
                         {isFiltering
@@ -2041,7 +2213,11 @@ export default function TestSuiteDetailPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setManualEndpointForm({ method: "GET", path: "", description: "" });
+                          setManualEndpointForm({
+                            method: "GET",
+                            path: "",
+                            description: "",
+                          });
                           setManualEndpointModalOpen(true);
                         }}
                         className="px-3 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-white text-xs font-semibold flex items-center gap-1.5"
@@ -2076,7 +2252,9 @@ export default function TestSuiteDetailPage() {
                       <div
                         key={endpoint.id}
                         draggable={!isFiltering}
-                        onDragStart={() => !isFiltering && handleDragStart(index)}
+                        onDragStart={() =>
+                          !isFiltering && handleDragStart(index)
+                        }
                         onDragOver={(e) =>
                           !isFiltering && handleDragOver(e, index)
                         }

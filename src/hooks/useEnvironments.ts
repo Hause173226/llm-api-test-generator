@@ -75,12 +75,31 @@ export const useEnvironments = (projectId: string) => {
     } catch (err) {
       const reasonCode = getConflictReasonCode(err);
       if (reasonCode === 'CONCURRENCY_CONFLICT') {
-        // Caller nên reload data và thử lại
-        handleError(new Error('Dữ liệu đã thay đổi bởi thao tác khác. Vui long tải lại và thử lại.'));
+        try {
+          // Fetch latest environment to obtain fresh rowVersion and retry once
+          const latest = await environmentService.getEnvironmentById(projectId, environmentId);
+          const retryPayload: UpdateEnvironmentRequest = {
+            rowVersion: latest.rowVersion,
+            name: data.name ?? latest.name,
+            baseUrl: data.baseUrl ?? latest.baseUrl,
+            variables: data.variables ?? latest.variables,
+            headers: data.headers ?? latest.headers,
+            authConfig: data.authConfig !== undefined ? data.authConfig : latest.authConfig,
+            isDefault: data.isDefault ?? latest.isDefault,
+          };
+
+          const retried = await environmentService.updateEnvironment(projectId, environmentId, retryPayload);
+          setEnvironments(prev => prev.map(env => (env.id === environmentId ? retried : env)));
+          return true;
+        } catch (retryErr) {
+          // If retry also fails, surface a clear message
+          handleError(new Error('Dữ liệu đã thay đổi bởi thao tác khác. Vui lòng tải lại trang và thử lại.'));
+          return false;
+        }
       } else {
         handleError(err);
+        return false;
       }
-      return false;
     }
   };
 

@@ -531,7 +531,7 @@
     }
   },
   "testCaseStudio": {
-    "title": "Test Case Studio",
+    "title": "Test Case Detail",
     "subtitle": "Design and refine individual API test cases with real-time validation.",
     "saveButton": "Save Case",
     "runButton": "Run Test",
