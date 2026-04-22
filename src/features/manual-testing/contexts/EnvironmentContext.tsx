@@ -29,7 +29,6 @@ const EnvironmentContext = createContext<EnvironmentContextValue | undefined>(
   undefined,
 );
 
-const STORAGE_KEY = "manual-testing-environments";
 const ACTIVE_ENV_KEY = "manual-testing-active-environment";
 const PROJECT_ACTIVE_ENV_KEY_PREFIX = "manual-testing-active-environment:";
 
@@ -89,33 +88,10 @@ export const EnvironmentProvider: React.FC<EnvironmentProviderProps> = ({
     return `${PROJECT_ACTIVE_ENV_KEY_PREFIX}${projectId}`;
   }, []);
 
-  const [environments, setEnvironmentsState] = useState<Environment[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error("Failed to load environments from localStorage:", error);
-      return [];
-    }
-  });
+  const [environments, setEnvironmentsState] = useState<Environment[]>([]);
 
   const [activeEnvironment, setActiveEnvironmentState] =
-    useState<Environment | null>(() => {
-      try {
-        const activeId = localStorage.getItem(ACTIVE_ENV_KEY);
-        if (activeId) {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          const envs: Environment[] = stored ? JSON.parse(stored) : [];
-          return envs.find((env) => env.id === activeId) || null;
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load active environment from localStorage:",
-          error,
-        );
-      }
-      return null;
-    });
+    useState<Environment | null>(null);
 
   useEffect(() => {
     if (!projectId) {
@@ -152,19 +128,7 @@ export const EnvironmentProvider: React.FC<EnvironmentProviderProps> = ({
     void run();
   }, [getActiveEnvStorageKey, projectId]);
 
-  // Persist environments to localStorage whenever they change
-  useEffect(() => {
-    try {
-      if (projectId) {
-        return;
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(environments));
-    } catch (error) {
-      console.error("Failed to save environments to localStorage:", error);
-    }
-  }, [environments, projectId]);
-
-  // Persist active environment to localStorage whenever it changes
+  // Persist active environment selection to localStorage whenever it changes
   useEffect(() => {
     try {
       const activeKey = getActiveEnvStorageKey(projectId || "");

@@ -25,6 +25,8 @@
     "clone": "Nhân bản",
     "delete": "Xóa",
     "create": "Tạo mới",
+    "generate": "Tạo",
+    "generating": "Đang tạo...",
     "save": "Lưu",
     "cancel": "Hủy"
   },
@@ -681,6 +683,7 @@
     "title": "Phân tích & Báo cáo",
     "subtitle": "Thông tin chi tiết về hiệu suất kiểm thử API và xu hướng độ tin cậy của bạn.",
     "exportPdf": "Xuất PDF",
+    "generating": "Đang tạo báo cáo...",
     "metrics": {
       "passRate": "Tỷ lệ Vượt qua Tổng thể",
       "responseTime": "Thời gian Phản hồi Trung bình",

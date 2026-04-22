@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useRequestConfig } from "../contexts/ManualTestingContext";
 import { useEnvironment } from "../contexts/EnvironmentContext";
 import KeyValueEditor from "./KeyValueEditor";
-import { Environment } from "../types";
+import { Environment, EnvironmentVariable } from "../types";
 import { HttpMethod, KeyValuePair, RequestConfig } from "../types";
 import Modal from "../../../components/ui/Modal";
 import apiService from "../../../services/apiService";
@@ -19,7 +19,10 @@ import {
 } from "../../../services/testSuiteService";
 import testCaseService, { TestCase } from "../../../services/testCaseService";
 import { X, ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
-import type { ExecutionAuthConfig } from "../../../services/environmentService";
+import type {
+  ExecutionAuthConfig,
+  ExecutionEnvironment,
+} from "../../../services/environmentService";
 
 const methodToEnumMap: Record<HttpMethod, number> = {
   GET: 0,
@@ -171,6 +174,41 @@ type EnvFormData = {
   isDefault: boolean;
 };
 
+const mapBEEnvToContext = (
+  apiEnv: ExecutionEnvironment,
+  projId: string,
+): Environment => {
+  const variables: EnvironmentVariable[] = Object.entries(
+    apiEnv.variables || {},
+  ).map(([key, value], i) => ({
+    id: `${apiEnv.id}-var-${i}`,
+    key,
+    value: value ?? "",
+    enabled: true,
+  }));
+  return {
+    id: apiEnv.id,
+    projectId: projId,
+    name: apiEnv.name,
+    baseUrl: apiEnv.baseUrl || "",
+    variables,
+    headers:
+      apiEnv.headers && Object.keys(apiEnv.headers).length > 0
+        ? apiEnv.headers
+        : undefined,
+    authConfig: apiEnv.authConfig ?? null,
+    isDefault: apiEnv.isDefault,
+    rowVersion: apiEnv.rowVersion,
+    isActive: true,
+    createdAt: apiEnv.createdDateTime
+      ? new Date(apiEnv.createdDateTime)
+      : new Date(),
+    updatedAt: apiEnv.updatedDateTime
+      ? new Date(apiEnv.updatedDateTime)
+      : new Date(),
+  };
+};
+
 const SavedRequestsPanel: React.FC = () => {
   const { t } = useTranslation();
   const { requestConfig, setRequestConfig, setExecutionTarget, resetRequest } =
@@ -182,6 +220,7 @@ const SavedRequestsPanel: React.FC = () => {
     updateEnvironment,
     deleteEnvironment,
     setActiveEnvironment,
+    setEnvironments,
   } = useEnvironment();
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -344,6 +383,8 @@ const SavedRequestsPanel: React.FC = () => {
       setSuites([]);
       setSelectedSuiteId("");
       setTestCases([]);
+      setEnvironments([]);
+      setActiveEnvironment(null);
       return;
     }
 
@@ -351,6 +392,16 @@ const SavedRequestsPanel: React.FC = () => {
       try {
         setIsLoading(true);
         await loadProjectContext(selectedProjectId);
+
+        // Load environments from BE for the selected project
+        const envResponse =
+          await environmentService.getEnvironments(selectedProjectId);
+        const mapped = envResponse.map((item) =>
+          mapBEEnvToContext(item, selectedProjectId),
+        );
+        setEnvironments(mapped);
+        const active = mapped.find((e) => e.isDefault) || mapped[0] || null;
+        setActiveEnvironment(active);
       } catch (error) {
         console.error(error);
         alert(t("manualTesting.projectLoadFailed"));
@@ -742,17 +793,13 @@ const SavedRequestsPanel: React.FC = () => {
     });
   };
 
-  const buildEnvPayload = () => {
-    const vars =
-      Object.keys(envFormData.variables).length > 0
-        ? envFormData.variables
-        : null;
-    const hdrs =
-      Object.keys(envFormData.headers).length > 0 ? envFormData.headers : null;
-    const auth = envFormData.authConfig;
+  const buildEnvPayload = (form: EnvFormData = envFormData) => {
+    const vars = Object.keys(form.variables).length > 0 ? form.variables : null;
+    const hdrs = Object.keys(form.headers).length > 0 ? form.headers : null;
+    const auth = form.authConfig;
     return {
-      name: envFormData.name,
-      baseUrl: envFormData.baseUrl,
+      name: form.name,
+      baseUrl: form.baseUrl,
       variables: vars,
       headers: hdrs,
       authConfig: {
@@ -769,7 +816,7 @@ const SavedRequestsPanel: React.FC = () => {
         clientSecret: auth.clientSecret || null,
         scopes: auth.scopes && auth.scopes.length > 0 ? auth.scopes : [""],
       } as ExecutionAuthConfig,
-      isDefault: envFormData.isDefault,
+      isDefault: form.isDefault,
     };
   };
 
@@ -777,7 +824,22 @@ const SavedRequestsPanel: React.FC = () => {
     const name = envFormData.name.trim();
     if (!name) return;
 
-    const payload = buildEnvPayload();
+    // Flush any pending variable/header row that the user typed but didn't click "+ Add"
+    const flushedFormData = { ...envFormData };
+    if (variableKey.trim()) {
+      flushedFormData.variables = {
+        ...flushedFormData.variables,
+        [variableKey.trim()]: variableValue,
+      };
+    }
+    if (headerKey.trim()) {
+      flushedFormData.headers = {
+        ...flushedFormData.headers,
+        [headerKey.trim()]: headerValue,
+      };
+    }
+
+    const payload = buildEnvPayload(flushedFormData);
 
     if (environmentModalMode === "edit" && editingEnvironmentId) {
       const variableEntries = payload.variables
@@ -853,31 +915,51 @@ const SavedRequestsPanel: React.FC = () => {
         });
       }
     } else {
-      const now = new Date();
-      const variableEntries = payload.variables
-        ? Object.entries(payload.variables).map(([key, value], index) => ({
-            id: `env-var-${Date.now()}-${index}`,
-            key,
-            value: value ?? "",
-            enabled: true,
-          }))
-        : [];
-
-      const created: Environment = {
-        id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name,
-        baseUrl: payload.baseUrl,
-        variables: variableEntries,
-        headers: payload.headers || undefined,
-        authConfig: payload.authConfig,
-        isDefault: payload.isDefault,
-        isActive: false,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      addEnvironment(created);
-      if (!selectedProjectId) {
+      if (selectedProjectId) {
+        // Call BE directly using the sidebar's selectedProjectId
+        const newEnv = await environmentService.createEnvironment(
+          selectedProjectId,
+          {
+            name: payload.name,
+            baseUrl: payload.baseUrl,
+            variables: payload.variables,
+            headers: payload.headers,
+            authConfig: payload.authConfig,
+            isDefault: payload.isDefault,
+          },
+        );
+        const mapped = mapBEEnvToContext(newEnv, selectedProjectId);
+        setEnvironments([
+          ...(newEnv.isDefault
+            ? environments.map((e) => ({ ...e, isDefault: false }))
+            : environments),
+          mapped,
+        ]);
+        setActiveEnvironment(mapped);
+      } else {
+        // No project selected – local only (no API)
+        const now = new Date();
+        const variableEntries = payload.variables
+          ? Object.entries(payload.variables).map(([key, value], index) => ({
+              id: `env-var-${Date.now()}-${index}`,
+              key,
+              value: value ?? "",
+              enabled: true,
+            }))
+          : [];
+        const created: Environment = {
+          id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name,
+          baseUrl: payload.baseUrl,
+          variables: variableEntries,
+          headers: payload.headers || undefined,
+          authConfig: payload.authConfig,
+          isDefault: payload.isDefault,
+          isActive: false,
+          createdAt: now,
+          updatedAt: now,
+        };
+        addEnvironment(created);
         setActiveEnvironment(created);
       }
     }
