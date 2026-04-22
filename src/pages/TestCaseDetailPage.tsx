@@ -460,7 +460,7 @@ export default function TestCaseDetailPage() {
                   )}
                   {t("testCaseStudio.saveButton")}
                 </button>
-                <button
+                {/* <button
                   onClick={handleRun}
                   disabled={running || !testCase}
                   className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -471,7 +471,7 @@ export default function TestCaseDetailPage() {
                     <Play className="w-4 h-4" />
                   )}
                   {t("testCaseStudio.runButton")}
-                </button>
+                </button> */}
               </>
             ) : (
               <div className="px-3 py-1.5 rounded-md bg-amber-100 text-amber-800 text-sm font-semibold">

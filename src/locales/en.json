@@ -25,6 +25,8 @@
     "clone": "Clone",
     "delete": "Delete",
     "create": "Create",
+    "generate": "Generate",
+    "generating": "Generating...",
     "save": "Save",
     "cancel": "Cancel"
   },
@@ -681,6 +683,7 @@
     "title": "Analytics & Reports",
     "subtitle": "Deep insights into your API testing performance and reliability trends.",
     "exportPdf": "Export PDF",
+    "generating": "Generating report...",
     "metrics": {
       "passRate": "Overall Pass Rate",
       "responseTime": "Avg. Response Time",
