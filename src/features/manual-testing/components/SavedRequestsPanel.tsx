@@ -7,6 +7,7 @@ import { Environment } from "../types";
 import { HttpMethod, KeyValuePair, RequestConfig } from "../types";
 import Modal from "../../../components/ui/Modal";
 import apiService from "../../../services/apiService";
+import environmentService from "../../../services/environmentService";
 import {
   Project,
   filterProjectsByWorkspaceMode,
@@ -244,10 +245,10 @@ const SavedRequestsPanel: React.FC = () => {
 
     const targetProjectId =
       preferredProjectId &&
-        items.some((project) => project.id === preferredProjectId)
+      items.some((project) => project.id === preferredProjectId)
         ? preferredProjectId
         : selectedProjectId &&
-          items.some((project) => project.id === selectedProjectId)
+            items.some((project) => project.id === selectedProjectId)
           ? selectedProjectId
           : items[0]?.id || "";
 
@@ -307,7 +308,7 @@ const SavedRequestsPanel: React.FC = () => {
     const selectedId =
       preferredTestCaseId ||
       (activeTestCaseId &&
-        items.some((testCase) => testCase.id === activeTestCaseId)
+      items.some((testCase) => testCase.id === activeTestCaseId)
         ? activeTestCaseId
         : null);
 
@@ -658,11 +659,17 @@ const SavedRequestsPanel: React.FC = () => {
     const vars: Record<string, string> = {};
     targetEnvironment.variables
       .filter((v) => v.key.trim() && v.key.trim() !== "baseUrl")
-      .forEach((v) => { vars[v.key.trim()] = v.value ?? ""; });
+      .forEach((v) => {
+        vars[v.key.trim()] = v.value ?? "";
+      });
 
     setEnvFormData({
       name: targetEnvironment.name,
-      baseUrl: targetEnvironment.baseUrl || targetEnvironment.variables.find((v) => v.key.trim() === "baseUrl")?.value || "",
+      baseUrl:
+        targetEnvironment.baseUrl ||
+        targetEnvironment.variables.find((v) => v.key.trim() === "baseUrl")
+          ?.value ||
+        "",
       variables: vars,
       headers: targetEnvironment.headers || {},
       authConfig: targetEnvironment.authConfig || createDefaultAuthConfig(),
@@ -670,8 +677,16 @@ const SavedRequestsPanel: React.FC = () => {
     });
 
     if (Object.keys(vars).length > 0) setShowVariablesSection(true);
-    if (targetEnvironment.headers && Object.keys(targetEnvironment.headers).length > 0) setShowHeadersSection(true);
-    if (targetEnvironment.authConfig && targetEnvironment.authConfig.authType !== "None") setShowAuthSection(true);
+    if (
+      targetEnvironment.headers &&
+      Object.keys(targetEnvironment.headers).length > 0
+    )
+      setShowHeadersSection(true);
+    if (
+      targetEnvironment.authConfig &&
+      targetEnvironment.authConfig.authType !== "None"
+    )
+      setShowAuthSection(true);
 
     setIsEnvironmentModalOpen(true);
   };
@@ -685,7 +700,10 @@ const SavedRequestsPanel: React.FC = () => {
 
   const parseScopes = (raw: string) => {
     if (!raw.trim()) return [] as string[];
-    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   };
 
   const addVariable = () => {
@@ -725,8 +743,12 @@ const SavedRequestsPanel: React.FC = () => {
   };
 
   const buildEnvPayload = () => {
-    const vars = Object.keys(envFormData.variables).length > 0 ? envFormData.variables : null;
-    const hdrs = Object.keys(envFormData.headers).length > 0 ? envFormData.headers : null;
+    const vars =
+      Object.keys(envFormData.variables).length > 0
+        ? envFormData.variables
+        : null;
+    const hdrs =
+      Object.keys(envFormData.headers).length > 0 ? envFormData.headers : null;
     const auth = envFormData.authConfig;
     return {
       name: envFormData.name,
@@ -751,7 +773,7 @@ const SavedRequestsPanel: React.FC = () => {
     };
   };
 
-  const handleSaveEnvironment = () => {
+  const handleSaveEnvironment = async () => {
     const name = envFormData.name.trim();
     if (!name) return;
 
@@ -760,14 +782,54 @@ const SavedRequestsPanel: React.FC = () => {
     if (environmentModalMode === "edit" && editingEnvironmentId) {
       const variableEntries = payload.variables
         ? Object.entries(payload.variables).map(([key, value], index) => ({
-          id: `env-kv-${Date.now()}-${index}`,
-          key,
-          value: value ?? "",
-          enabled: true,
-        }))
+            id: `env-kv-${Date.now()}-${index}`,
+            key,
+            value: value ?? "",
+            enabled: true,
+          }))
         : [];
 
-      updateEnvironment(editingEnvironmentId, {
+      // Get current environment and rowVersion
+      let currentEnv = environments.find((e) => e.id === editingEnvironmentId);
+      let rowVersion = currentEnv?.rowVersion;
+
+      console.log("[SavedRequestsPanel] Before fetch:", {
+        editingEnvironmentId,
+        "currentEnv?.rowVersion": currentEnv?.rowVersion,
+        rowVersion,
+        selectedProjectId,
+      });
+
+      // If rowVersion is missing and we have a projectId, fetch latest from backend
+      if (!rowVersion && selectedProjectId) {
+        try {
+          const latest = await environmentService.getEnvironmentById(
+            selectedProjectId,
+            editingEnvironmentId,
+          );
+          rowVersion = latest?.rowVersion;
+          console.log("[SavedRequestsPanel] After fetch:", {
+            "latest.rowVersion": latest?.rowVersion,
+            rowVersion,
+          });
+        } catch (fetchErr) {
+          console.error(
+            "Failed to fetch latest environment before update:",
+            fetchErr,
+          );
+        }
+      }
+
+      console.log("[SavedRequestsPanel] Calling updateEnvironment with:", {
+        editingEnvironmentId,
+        rowVersion,
+        name,
+        baseUrl: payload.baseUrl,
+      });
+
+      // Update via context (which will call the backend)
+      await updateEnvironment(editingEnvironmentId, {
+        rowVersion,
         name,
         baseUrl: payload.baseUrl,
         variables: variableEntries,
@@ -776,6 +838,7 @@ const SavedRequestsPanel: React.FC = () => {
         isDefault: payload.isDefault,
       });
 
+      // Update activeEnvironment if it's the one being edited
       if (activeEnvironment?.id === editingEnvironmentId) {
         setActiveEnvironment({
           ...activeEnvironment,
@@ -785,6 +848,7 @@ const SavedRequestsPanel: React.FC = () => {
           headers: payload.headers || undefined,
           authConfig: payload.authConfig,
           isDefault: payload.isDefault,
+          rowVersion: rowVersion ?? activeEnvironment.rowVersion,
           updatedAt: new Date(),
         });
       }
@@ -792,11 +856,11 @@ const SavedRequestsPanel: React.FC = () => {
       const now = new Date();
       const variableEntries = payload.variables
         ? Object.entries(payload.variables).map(([key, value], index) => ({
-          id: `env-var-${Date.now()}-${index}`,
-          key,
-          value: value ?? "",
-          enabled: true,
-        }))
+            id: `env-var-${Date.now()}-${index}`,
+            key,
+            value: value ?? "",
+            enabled: true,
+          }))
         : [];
 
       const created: Environment = {
@@ -926,10 +990,11 @@ const SavedRequestsPanel: React.FC = () => {
                 <div
                   key={testCase.id}
                   onClick={() => applyTestCaseToBuilder(testCase)}
-                  className={`px-2 py-2 rounded cursor-pointer transition-colors ${testCase.id === activeTestCaseId
+                  className={`px-2 py-2 rounded cursor-pointer transition-colors ${
+                    testCase.id === activeTestCaseId
                       ? "bg-indigo-100/60 dark:bg-indigo-950/40 border-l-2 border-indigo-600"
                       : "hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
-                    }`}
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div
@@ -1238,35 +1303,81 @@ const SavedRequestsPanel: React.FC = () => {
                 {showVariablesSection && (
                   <div className="mt-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
-                      {"You can define variables with any key and use them in URL/Header/Body via syntax {{variableName}}."}
+                      {
+                        "You can define variables with any key and use them in URL/Header/Body via syntax {{variableName}}."
+                      }
                     </p>
                     <div className="space-y-2">
-                      {Object.entries(envFormData.variables).map(([key, value]) => (
-                        <div key={key} className="flex items-center gap-2">
-                          <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                          <input type="text" value={key} readOnly className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm" />
-                          <input
-                            type="text"
-                            value={value}
-                            onChange={(e) => {
-                              setEnvFormData((prev) => ({
-                                ...prev,
-                                variables: { ...prev.variables, [key]: e.target.value },
-                              }));
-                            }}
-                            placeholder="Variable value"
-                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <button onClick={() => removeVariable(key)} className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer">Remove</button>
-                        </div>
-                      ))}
+                      {Object.entries(envFormData.variables).map(
+                        ([key, value]) => (
+                          <div key={key} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked
+                              readOnly
+                              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <input
+                              type="text"
+                              value={key}
+                              readOnly
+                              className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) => {
+                                setEnvFormData((prev) => ({
+                                  ...prev,
+                                  variables: {
+                                    ...prev.variables,
+                                    [key]: e.target.value,
+                                  },
+                                }));
+                              }}
+                              placeholder="Variable value"
+                              className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <button
+                              onClick={() => removeVariable(key)}
+                              className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ),
+                      )}
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                        <input type="text" value={variableKey} onChange={(e) => setVariableKey(e.target.value)} placeholder="Key" className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="text" value={variableValue} onChange={(e) => setVariableValue(e.target.value)} placeholder="Variable value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                        <input
+                          type="checkbox"
+                          checked
+                          readOnly
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={variableKey}
+                          onChange={(e) => setVariableKey(e.target.value)}
+                          placeholder="Key"
+                          className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={variableValue}
+                          onChange={(e) => setVariableValue(e.target.value)}
+                          placeholder="Variable value"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-medium px-2 py-1 invisible">
+                          Remove
+                        </span>
                       </div>
-                      <button onClick={addVariable} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer">+ Add</button>
+                      <button
+                        onClick={addVariable}
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer"
+                      >
+                        + Add
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1297,32 +1408,76 @@ const SavedRequestsPanel: React.FC = () => {
                       Custom headers sent with every request.
                     </p>
                     <div className="space-y-2">
-                      {Object.entries(envFormData.headers).map(([key, value]) => (
-                        <div key={key} className="flex items-center gap-2">
-                          <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                          <input type="text" value={key} readOnly className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm" />
-                          <input
-                            type="text"
-                            value={value}
-                            onChange={(e) => {
-                              setEnvFormData((prev) => ({
-                                ...prev,
-                                headers: { ...prev.headers, [key]: e.target.value },
-                              }));
-                            }}
-                            placeholder="Header value"
-                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <button onClick={() => removeHeader(key)} className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer">Remove</button>
-                        </div>
-                      ))}
+                      {Object.entries(envFormData.headers).map(
+                        ([key, value]) => (
+                          <div key={key} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked
+                              readOnly
+                              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <input
+                              type="text"
+                              value={key}
+                              readOnly
+                              className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) => {
+                                setEnvFormData((prev) => ({
+                                  ...prev,
+                                  headers: {
+                                    ...prev.headers,
+                                    [key]: e.target.value,
+                                  },
+                                }));
+                              }}
+                              placeholder="Header value"
+                              className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <button
+                              onClick={() => removeHeader(key)}
+                              className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ),
+                      )}
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                        <input type="text" value={headerKey} onChange={(e) => setHeaderKey(e.target.value)} placeholder="Header name" className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="text" value={headerValue} onChange={(e) => setHeaderValue(e.target.value)} placeholder="Header value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                        <input
+                          type="checkbox"
+                          checked
+                          readOnly
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={headerKey}
+                          onChange={(e) => setHeaderKey(e.target.value)}
+                          placeholder="Header name"
+                          className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={headerValue}
+                          onChange={(e) => setHeaderValue(e.target.value)}
+                          placeholder="Header value"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-medium px-2 py-1 invisible">
+                          Remove
+                        </span>
                       </div>
-                      <button onClick={addHeader} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer">+ Add</button>
+                      <button
+                        onClick={addHeader}
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer"
+                      >
+                        + Add
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1344,14 +1499,19 @@ const SavedRequestsPanel: React.FC = () => {
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     Authentication
                   </span>
-                  <span className="text-xs text-slate-400">({envFormData.authConfig.authType})</span>
+                  <span className="text-xs text-slate-400">
+                    ({envFormData.authConfig.authType})
+                  </span>
                 </button>
                 {showAuthSection && (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3 mt-2">
                     <select
                       value={envFormData.authConfig.authType}
                       onChange={(e) =>
-                        updateAuthConfig({ authType: e.target.value as ExecutionAuthConfig["authType"] })
+                        updateAuthConfig({
+                          authType: e.target
+                            .value as ExecutionAuthConfig["authType"],
+                        })
                       }
                       className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
@@ -1359,44 +1519,158 @@ const SavedRequestsPanel: React.FC = () => {
                       <option value="BearerToken">Bearer Token</option>
                       <option value="Basic">Basic</option>
                       <option value="ApiKey">API Key</option>
-                      <option value="OAuth2ClientCredentials">OAuth2 Client Credentials</option>
+                      <option value="OAuth2ClientCredentials">
+                        OAuth2 Client Credentials
+                      </option>
                     </select>
 
                     {envFormData.authConfig.authType === "BearerToken" && (
                       <div className="space-y-3">
-                        <input type="text" value={envFormData.authConfig.headerName || ""} onChange={(e) => updateAuthConfig({ headerName: e.target.value || null })} placeholder="Header Name (default: Authorization)" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="password" value={envFormData.authConfig.token || ""} onChange={(e) => updateAuthConfig({ token: e.target.value || null })} placeholder="Token" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="text"
+                          value={envFormData.authConfig.headerName || ""}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              headerName: e.target.value || null,
+                            })
+                          }
+                          placeholder="Header Name (default: Authorization)"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="password"
+                          value={envFormData.authConfig.token || ""}
+                          onChange={(e) =>
+                            updateAuthConfig({ token: e.target.value || null })
+                          }
+                          placeholder="Token"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
                     )}
 
                     {envFormData.authConfig.authType === "Basic" && (
                       <div className="grid grid-cols-2 gap-3">
-                        <input type="text" value={envFormData.authConfig.username || ""} onChange={(e) => updateAuthConfig({ username: e.target.value || null })} placeholder="Username" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="password" value={envFormData.authConfig.password || ""} onChange={(e) => updateAuthConfig({ password: e.target.value || null })} placeholder="Password" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="text"
+                          value={envFormData.authConfig.username || ""}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              username: e.target.value || null,
+                            })
+                          }
+                          placeholder="Username"
+                          className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="password"
+                          value={envFormData.authConfig.password || ""}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              password: e.target.value || null,
+                            })
+                          }
+                          placeholder="Password"
+                          className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
                     )}
 
                     {envFormData.authConfig.authType === "ApiKey" && (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
-                          <input type="text" value={envFormData.authConfig.apiKeyName || ""} onChange={(e) => updateAuthConfig({ apiKeyName: e.target.value || null })} placeholder="API Key Name (e.g. x-api-key)" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                          <input type="password" value={envFormData.authConfig.apiKeyValue || ""} onChange={(e) => updateAuthConfig({ apiKeyValue: e.target.value || null })} placeholder="API Key Value" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <input
+                            type="text"
+                            value={envFormData.authConfig.apiKeyName || ""}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                apiKeyName: e.target.value || null,
+                              })
+                            }
+                            placeholder="API Key Name (e.g. x-api-key)"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="password"
+                            value={envFormData.authConfig.apiKeyValue || ""}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                apiKeyValue: e.target.value || null,
+                              })
+                            }
+                            placeholder="API Key Value"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
                         </div>
-                        <select value={envFormData.authConfig.apiKeyLocation || "Header"} onChange={(e) => updateAuthConfig({ apiKeyLocation: e.target.value as ExecutionAuthConfig["apiKeyLocation"] })} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select
+                          value={
+                            envFormData.authConfig.apiKeyLocation || "Header"
+                          }
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              apiKeyLocation: e.target
+                                .value as ExecutionAuthConfig["apiKeyLocation"],
+                            })
+                          }
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
                           <option value="Header">Header</option>
                           <option value="Query">Query</option>
                         </select>
                       </div>
                     )}
 
-                    {envFormData.authConfig.authType === "OAuth2ClientCredentials" && (
+                    {envFormData.authConfig.authType ===
+                      "OAuth2ClientCredentials" && (
                       <div className="space-y-3">
-                        <input type="url" value={envFormData.authConfig.tokenUrl || ""} onChange={(e) => updateAuthConfig({ tokenUrl: e.target.value || null })} placeholder="Token URL" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="url"
+                          value={envFormData.authConfig.tokenUrl || ""}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              tokenUrl: e.target.value || null,
+                            })
+                          }
+                          placeholder="Token URL"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                         <div className="grid grid-cols-2 gap-3">
-                          <input type="text" value={envFormData.authConfig.clientId || ""} onChange={(e) => updateAuthConfig({ clientId: e.target.value || null })} placeholder="Client ID" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                          <input type="password" value={envFormData.authConfig.clientSecret || ""} onChange={(e) => updateAuthConfig({ clientSecret: e.target.value || null })} placeholder="Client Secret" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <input
+                            type="text"
+                            value={envFormData.authConfig.clientId || ""}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                clientId: e.target.value || null,
+                              })
+                            }
+                            placeholder="Client ID"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="password"
+                            value={envFormData.authConfig.clientSecret || ""}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                clientSecret: e.target.value || null,
+                              })
+                            }
+                            placeholder="Client Secret"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
                         </div>
-                        <input type="text" value={(envFormData.authConfig.scopes || []).join(", ")} onChange={(e) => updateAuthConfig({ scopes: parseScopes(e.target.value) })} placeholder="Scopes (comma separated)" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="text"
+                          value={(envFormData.authConfig.scopes || []).join(
+                            ", ",
+                          )}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              scopes: parseScopes(e.target.value),
+                            })
+                          }
+                          placeholder="Scopes (comma separated)"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
                     )}
                   </div>
@@ -1410,11 +1684,17 @@ const SavedRequestsPanel: React.FC = () => {
                   id="envIsDefault"
                   checked={envFormData.isDefault}
                   onChange={(e) =>
-                    setEnvFormData({ ...envFormData, isDefault: e.target.checked })
+                    setEnvFormData({
+                      ...envFormData,
+                      isDefault: e.target.checked,
+                    })
                   }
                   className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <label htmlFor="envIsDefault" className="text-sm text-slate-700 dark:text-slate-300">
+                <label
+                  htmlFor="envIsDefault"
+                  className="text-sm text-slate-700 dark:text-slate-300"
+                >
                   Set as default environment
                 </label>
               </div>

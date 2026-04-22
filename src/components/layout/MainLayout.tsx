@@ -32,7 +32,7 @@ export default function MainLayout({ children, title, breadcrumbs }: MainLayoutP
             onToggleSidebar={toggleSidebar}
             breadcrumbs={breadcrumbs}
           />
-          <div className="p-8 pb-24">
+          <div className="p-8 pb-8 pt-6">
             <div className="max-w-7xl mx-auto">
               {children}
             </div>

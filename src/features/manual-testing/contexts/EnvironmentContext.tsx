@@ -125,9 +125,14 @@ export const EnvironmentProvider: React.FC<EnvironmentProviderProps> = ({
     const run = async () => {
       try {
         const response = await environmentService.getEnvironments(projectId);
+        console.log(
+          "[EnvironmentContext] Loaded environments from backend:",
+          response,
+        );
         const mapped = response.map((item) =>
           mapApiEnvironmentToContext(projectId, item),
         );
+        console.log("[EnvironmentContext] Mapped environments:", mapped);
         setEnvironmentsState(mapped);
 
         const activeKey = getActiveEnvStorageKey(projectId);
@@ -137,6 +142,7 @@ export const EnvironmentProvider: React.FC<EnvironmentProviderProps> = ({
           mapped.find((env) => env.isDefault) ||
           mapped[0] ||
           null;
+        console.log("[EnvironmentContext] Active environment:", active);
         setActiveEnvironmentState(active);
       } catch (error) {
         console.error("Failed to load environments from backend:", error);
@@ -206,9 +212,10 @@ export const EnvironmentProvider: React.FC<EnvironmentProviderProps> = ({
           name: environment.name,
           baseUrl,
           variables: Object.keys(vars).length > 0 ? vars : null,
-          headers: environment.headers && Object.keys(environment.headers).length > 0
-            ? environment.headers
-            : null,
+          headers:
+            environment.headers && Object.keys(environment.headers).length > 0
+              ? environment.headers
+              : null,
           authConfig: environment.authConfig ?? null,
           isDefault: environment.isDefault || false,
         })
@@ -253,16 +260,38 @@ export const EnvironmentProvider: React.FC<EnvironmentProviderProps> = ({
       const merged = { ...current, ...updates };
       const baseUrl =
         merged.baseUrl ||
-        merged.variables.find((item) => item.key.trim() === "baseUrl")
-          ?.value ||
+        merged.variables.find((item) => item.key.trim() === "baseUrl")?.value ||
         "";
+
+      // Use rowVersion from updates if provided, otherwise use current.rowVersion
+      const rowVersionToUse = updates.rowVersion || current.rowVersion;
+
+      console.log("[EnvironmentContext] updateEnvironment:", {
+        id,
+        "updates.rowVersion": updates.rowVersion,
+        "current.rowVersion": current.rowVersion,
+        rowVersionToUse,
+        projectId,
+      });
+
+      if (!rowVersionToUse) {
+        console.error(
+          "[EnvironmentContext] Missing rowVersion! Cannot update.",
+        );
+        return;
+      }
 
       void environmentService
         .updateEnvironment(projectId, id, {
-          rowVersion: current.rowVersion,
+          rowVersion: rowVersionToUse,
           name: merged.name,
           baseUrl,
           variables: toVariableRecord(merged.variables),
+          headers:
+            merged.headers && Object.keys(merged.headers).length > 0
+              ? merged.headers
+              : null,
+          authConfig: merged.authConfig ?? null,
           isDefault: merged.isDefault || false,
         })
         .then((updated) => {

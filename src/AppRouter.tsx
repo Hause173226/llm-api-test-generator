@@ -19,7 +19,8 @@ import TestSuiteDetailPage from "./pages/TestSuiteDetailPage";
 import GeneratingTestCasesPage from "./pages/GeneratingTestCasesPage";
 import GenerationRunExecutePage from "./pages/GenerationRunExecutePage";
 import TestCasesHubPage from "./pages/TestCasesHubPage";
-import TestCaseStudioPage from "./pages/TestCaseStudioPage";
+
+import TestCaseDetailPage from "./pages/TestCaseDetailPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
 import EnvironmentsPage from "./pages/EnvironmentsPage";
 import TestRunsPage from "./pages/TestRunsPage";
@@ -124,10 +125,11 @@ export default function AppRouter() {
           path="/test-suites/:suiteId/test-cases/:testCaseId"
           element={
             <ProtectedRoute>
-              <TestCaseStudioPage />
+              <TestCaseDetailPage />
             </ProtectedRoute>
           }
         />
+      
         <Route
           path="/studio"
           element={

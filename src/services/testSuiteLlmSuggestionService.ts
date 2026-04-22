@@ -36,6 +36,9 @@ export interface SuiteSuggestionModel {
   appliedTestCaseId?: string;
   llmModel?: string;
   tokensUsed?: number;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedById?: string;
   createdDateTime?: string;
   updatedDateTime?: string;
   rowVersion?: string;
@@ -170,6 +173,25 @@ const testSuiteLlmSuggestionService = {
   ): Promise<any> {
     return await apiService.post<any>(
       `/test-suites/${suiteId}/llm-suggestions/bulk-review`,
+      payload,
+    );
+  },
+
+  async bulkRestore(
+    suiteId: string,
+    payload: { suggestionIds: string[] },
+  ): Promise<any> {
+    return await apiService.post<any>(
+      `/test-suites/${suiteId}/llm-suggestions/bulk-restore`,
+      payload,
+    );
+  },
+  async bulkApprove(
+    suiteId: string,
+    payload: { suggestionIds: string[] },
+  ): Promise<any> {
+    return await apiService.post<any>(
+      `/test-suites/${suiteId}/llm-suggestions/bulk-approve`,
       payload,
     );
   },

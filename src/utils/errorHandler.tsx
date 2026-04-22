@@ -84,6 +84,7 @@ export const showInfoToast = (message: string): void => {
 export const handleError = (
   error: any,
   navigate?: (path: string) => void,
+  suppressToast = false,
 ): string => {
   console.log("🔴 handleError called with:", error);
   console.log("🔴 navigate function:", navigate ? "provided" : "NOT provided");
@@ -188,7 +189,9 @@ export const handleError = (
     }
   }
 
-  showErrorToast(errorMessage);
+  if (!suppressToast) {
+    showErrorToast(errorMessage);
+  }
 
   // Navigate to billing if subscription error detected
   if (shouldNavigateToBilling && navigate) {
