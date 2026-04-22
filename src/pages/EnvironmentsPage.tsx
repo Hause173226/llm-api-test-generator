@@ -26,7 +26,7 @@ import { useEnvironments } from "../hooks/useEnvironments";
 import { useProject } from "../contexts/ProjectContext";
 import type { ExecutionAuthConfig } from "../services/environmentService";
 import NoProjectSelected from "../components/common/NoProjectSelected";
-import toast from "react-hot-toast";
+import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 import Skeleton from "../components/ui/Skeleton";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
@@ -163,14 +163,14 @@ export default function EnvironmentsPage() {
 
   const handleCreate = async () => {
     if (!formData.name || !formData.baseUrl) {
-      toast.error(t("environments.errors.missingFields"));
+      showErrorToast(t("environments.errors.missingFields"));
       return;
     }
 
     const success = await createEnvironment(buildPayload());
 
     if (success) {
-      toast.success(t("environments.success.created"));
+      showSuccessToast(t("environments.success.created"));
       setShowCreateModal(false);
       resetForm();
     }
@@ -181,7 +181,7 @@ export default function EnvironmentsPage() {
 
     const success = await updateEnvironment(selectedEnvId, buildPayload());
     if (success) {
-      toast.success(t("environments.success.updated"));
+      showSuccessToast(t("environments.success.updated"));
       setShowEditModal(false);
       setSelectedEnvId(null);
       resetForm();
@@ -193,14 +193,14 @@ export default function EnvironmentsPage() {
 
     const success = await deleteEnvironment(envId);
     if (success) {
-      toast.success(t("environments.success.deleted"));
+      showSuccessToast(t("environments.success.deleted"));
     }
   };
 
   const handleSetDefault = async (envId: string) => {
     const success = await setDefaultEnvironment(envId);
     if (success) {
-      toast.success(t("environments.success.setDefault"));
+      showSuccessToast(t("environments.success.setDefault"));
     }
   };
 
@@ -210,7 +210,7 @@ export default function EnvironmentsPage() {
 
     const success = await cloneEnvironment(envId, newName);
     if (success) {
-      toast.success(t("environments.success.cloned"));
+      showSuccessToast(t("environments.success.cloned"));
     }
   };
 
@@ -220,15 +220,15 @@ export default function EnvironmentsPage() {
     setTesting(null);
 
     if (result) {
-      toast.success(t("environments.success.testPassed"));
+      showSuccessToast(t("environments.success.testPassed"));
     } else {
-      toast.error(t("environments.errors.testFailed"));
+      showErrorToast(t("environments.errors.testFailed"));
     }
   };
 
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
-    toast.success(t("environments.success.urlCopied"));
+    showSuccessToast(t("environments.success.urlCopied"));
   };
 
   const openEditModal = (env: any) => {
@@ -310,7 +310,7 @@ export default function EnvironmentsPage() {
       authConfig: formData.authConfig,
     });
     if (success) {
-      toast.success(t("environments.success.variablesSaved"));
+      showSuccessToast(t("environments.success.variablesSaved"));
       setShowVariablesModal(false);
       setSelectedEnvId(null);
       resetForm();

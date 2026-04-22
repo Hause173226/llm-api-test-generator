@@ -25,7 +25,7 @@ import testSuiteLlmSuggestionService, {
   SuiteSuggestionModel,
 } from "../services/testSuiteLlmSuggestionService";
 import { cn } from "../lib/utils";
-import toast from "react-hot-toast";
+import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 
 interface Assertion {
   id: string;
@@ -193,7 +193,7 @@ export default function TestCaseDetailPage() {
     if (!testSuiteId) {
       if (hasShownMissingSuiteToastRef.current) return;
       hasShownMissingSuiteToastRef.current = true;
-      toast.error("Test Suite ID is required");
+      showErrorToast("Test Suite ID is required");
       navigate("/test-suites");
     }
   }, [testSuiteId, navigate]);
@@ -272,7 +272,7 @@ export default function TestCaseDetailPage() {
 
   const handleSave = async () => {
     if (!testCase) {
-      toast.error("Cannot save: Not a persistent test case");
+      showErrorToast("Cannot save: Not a persistent test case");
       return;
     }
 
@@ -290,7 +290,7 @@ export default function TestCaseDetailPage() {
           JSON.parse(trimmed);
         }
       } catch {
-        toast.error("Invalid JSON in request body");
+        showErrorToast("Invalid JSON in request body");
         return;
       }
 
@@ -344,7 +344,7 @@ export default function TestCaseDetailPage() {
       const success = await updateTestCase(payload as any);
 
       if (success) {
-        toast.success("Test case saved successfully");
+        showSuccessToast("Test case saved successfully");
         refetch();
       }
     } catch (error) {
@@ -356,7 +356,7 @@ export default function TestCaseDetailPage() {
 
   const handleRun = async () => {
     if (!testCase) {
-      toast.error("Cannot run: Not a persistent test case");
+      showErrorToast("Cannot run: Not a persistent test case");
       return;
     }
 
@@ -384,9 +384,9 @@ export default function TestCaseDetailPage() {
       addConsoleLog("Test execution complete", "info");
 
       if (runResult.success) {
-        toast.success("Test passed successfully!");
+        showSuccessToast("Test passed successfully!");
       } else {
-        toast.error("Test failed. Check console for details.");
+        showErrorToast("Test failed. Check console for details.");
       }
     }
   };

@@ -29,8 +29,7 @@ type ProposalApiResponse = {
 };
 import { testSuiteService } from "../services/testSuiteService";
 import endpointService from "../services/endpointService";
-import { handleError } from "../utils/errorHandler";
-import toast from "react-hot-toast";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
 import Skeleton from "../components/ui/Skeleton";
 import NoProjectSelected from "../components/common/NoProjectSelected";
 
@@ -186,7 +185,7 @@ export default function TestOrderGatePage() {
       );
       setSuiteDetail(refreshed);
 
-      toast.success(t("testOrderGate.success.saved"));
+      showSuccessToast(t("testOrderGate.success.saved"));
     } catch (err) {
       handleError(err);
     }

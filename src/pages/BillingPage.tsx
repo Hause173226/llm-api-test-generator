@@ -11,7 +11,7 @@ import { cn } from "../lib/utils";
 import { useTranslation } from "react-i18next";
 import { useSubscription } from "../hooks/useSubscription";
 import Skeleton from "../components/ui/Skeleton";
-import toast from "react-hot-toast";
+import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 
 export default function BillingPage() {
   const { t } = useTranslation();
@@ -54,13 +54,13 @@ export default function BillingPage() {
       console.log("Payment data received:", paymentData);
 
       if (!paymentData) {
-        toast.error("Failed to create payment. Please try again.");
+        showErrorToast("Failed to create payment. Please try again.");
         return;
       }
 
       // Check if subscription was created directly (free plan)
       if ((paymentData as any).subscription) {
-        toast.success("Successfully subscribed to plan!");
+        showSuccessToast("Successfully subscribed to plan!");
         await refetch();
         return;
       }
@@ -80,16 +80,16 @@ export default function BillingPage() {
         paymentDataAny.paymentIntentId
       ) {
         // Payment intent created – redirect via payos/create if available
-        toast.error(
+        showErrorToast(
           `Payment intent created. Redirecting is not yet implemented. Intent: ${paymentDataAny.paymentIntentId}`,
         );
       } else {
         console.error("No payment URL found in response:", paymentData);
-        toast.error("Payment URL not found. Please contact support.");
+        showErrorToast("Payment URL not found. Please contact support.");
       }
     } catch (error) {
       console.error("Subscribe error:", error);
-      toast.error("Failed to subscribe. Please try again.");
+      showErrorToast("Failed to subscribe. Please try again.");
     }
   };
 

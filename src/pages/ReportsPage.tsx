@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Download, FileText, Plus, Loader2 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { useReports } from "../hooks/useReports";
-import toast from "react-hot-toast";
+import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 import Skeleton from "../components/ui/Skeleton";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 import { useProject } from "../contexts/ProjectContext";
@@ -106,7 +106,7 @@ export default function ReportsPage() {
 
   const handleGenerate = async () => {
     if (!selectedSuiteId || !selectedRunId) {
-      toast.error(
+      showErrorToast(
         t(
           "reports.errors.selectRunFirst",
           "Please select a test suite and run first",
@@ -123,7 +123,7 @@ export default function ReportsPage() {
     });
 
     if (success) {
-      toast.success(t("reports.success.generated"));
+      showSuccessToast(t("reports.success.generated"));
       setShowGenerateModal(false);
       setFormData({ reportType: "Summary", format: "PDF" });
     }
@@ -133,7 +133,7 @@ export default function ReportsPage() {
     setDownloadingId(reportId);
     const success = await downloadReport(reportId);
     setDownloadingId(null);
-    if (success) toast.success(t("reports.success.exported"));
+    if (success) showSuccessToast(t("reports.success.exported"));
   };
 
   if (loading && selectedRunId) {
