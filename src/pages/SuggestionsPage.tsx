@@ -24,9 +24,18 @@ interface FailureExplanationModel {
   testSuiteId: string;
   testRunId: string;
   testCaseId: string;
+  endpointId?: string | null;
   summaryVi?: string;
   possibleCauses?: string[];
   suggestedNextActions?: string[];
+  confidence?: string;
+  source?: string;
+  provider?: string;
+  model?: string;
+  tokensUsed?: number;
+  latencyMs?: number;
+  generatedAt?: string;
+  failureCodes?: string[];
 }
 
 export default function SuggestionsPage() {

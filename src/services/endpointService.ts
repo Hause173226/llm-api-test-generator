@@ -3,14 +3,18 @@ import apiService from "./apiService";
 export interface Endpoint {
   id: string;
   projectId: string;
+  apiSpecId?: string;
   path: string;
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   httpMethod?: string; // API contract field name
+  operationId?: string;
+  summary?: string;
   description?: string;
   parameters?: any[];
   requestBody?: any;
   responses?: any;
   tags?: string[];
+  isDeprecated?: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

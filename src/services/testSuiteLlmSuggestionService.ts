@@ -4,6 +4,7 @@ export interface SuiteSuggestionQuery {
   reviewStatus?: string;
   testType?: string;
   endpointId?: string;
+  includeDeleted?: boolean;
 }
 
 export interface SuiteSuggestionModel {
@@ -36,6 +37,9 @@ export interface SuiteSuggestionModel {
   appliedTestCaseId?: string;
   llmModel?: string;
   tokensUsed?: number;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+  deletedById?: string | null;
   createdDateTime?: string;
   updatedDateTime?: string;
   rowVersion?: string;
@@ -96,6 +100,7 @@ const buildQueryString = (query?: SuiteSuggestionQuery) => {
   if (query.reviewStatus) params.set("reviewStatus", query.reviewStatus);
   if (query.testType) params.set("testType", query.testType);
   if (query.endpointId) params.set("endpointId", query.endpointId);
+  if (query.includeDeleted !== undefined) params.set("includeDeleted", String(query.includeDeleted));
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
