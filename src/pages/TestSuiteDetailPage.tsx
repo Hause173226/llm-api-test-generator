@@ -58,6 +58,7 @@ type SuiteTab = "testcases" | "details" | "suggestions";
 type LocalGenerationRun = {
   id: string;
   generatedAt: string;
+  suggestionIds?: string[];
 };
 
 type GenerationItem = {
@@ -103,6 +104,8 @@ export default function TestSuiteDetailPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
+  const [pendingGeneration, setPendingGeneration] = useState<{ id: string; label: string } | null>(null);
+  const [forceOpenSuggestions, setForceOpenSuggestions] = useState(false);
   const [isBulkReviewingSuggestions, setIsBulkReviewingSuggestions] =
     useState(false);
   const [isBulkRestoringSuggestions, setIsBulkRestoringSuggestions] =
@@ -191,8 +194,16 @@ export default function TestSuiteDetailPage() {
     setGenerationRuns(nextRuns);
   };
 
-  const appendGenerationRun = (generatedAt: string) => {
+  const updateGenerationRun = (runId: string, patch: Partial<LocalGenerationRun>) => {
     if (!suiteId) return;
+    const nextRuns = (generationRuns || []).map((r) =>
+      r.id === runId ? { ...r, ...patch } : r,
+    );
+    persistGenerationRuns(nextRuns);
+  };
+
+  const appendGenerationRun = (generatedAt: string): LocalGenerationRun | undefined => {
+    if (!suiteId) return undefined;
 
     const run: LocalGenerationRun = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -204,6 +215,13 @@ export default function TestSuiteDetailPage() {
         new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime(),
     );
 
+    persistGenerationRuns(nextRuns);
+    return run;
+  };
+
+  const removeGenerationRun = (runId: string) => {
+    if (!suiteId) return;
+    const nextRuns = (generationRuns || []).filter((r) => r.id !== runId);
     persistGenerationRuns(nextRuns);
   };
 
@@ -247,7 +265,7 @@ export default function TestSuiteDetailPage() {
       tabFromQuery === "details" ||
       tabFromQuery === "suggestions"
     ) {
-      if (tabFromQuery === "suggestions" && !isStep1Completed) {
+      if (tabFromQuery === "suggestions" && !isStep1Completed && !forceOpenSuggestions) {
         setActiveTab("details");
         const params = new URLSearchParams(searchParams);
         params.set("tab", "details");
@@ -264,7 +282,7 @@ export default function TestSuiteDetailPage() {
         setActiveTab(tabFromQuery as SuiteTab);
       }
     }
-  }, [tabFromQuery, hasAnyTestCases, isStep1Completed, isLoading]);
+  }, [tabFromQuery, hasAnyTestCases, isStep1Completed, isLoading, forceOpenSuggestions]);
 
   const changeTab = (tab: SuiteTab) => {
     const nextTab = tab === "testcases" && !hasAnyTestCases ? "details" : tab;
@@ -652,36 +670,72 @@ export default function TestSuiteDetailPage() {
           setHasApprovedOrderOnce(true);
           showSuccessToast("Order approved successfully");
 
-          try {
-            await testSuiteLlmSuggestionService.generate(suite.id, {
-              specificationId: suite.apiSpecId,
-              forceRefresh: true,
-            });
-            appendGenerationRun(new Date().toISOString());
-            showSuccessToast("AI preview regenerated after approval.");
-          } catch (suggestionErr: any) {
-            const statusCode =
-              suggestionErr?.status ?? suggestionErr?.response?.status;
-            const message = String(
-              suggestionErr?.message ||
-                suggestionErr?.response?.data?.message ||
-                "",
-            );
-            const alreadyHasPendingSuggestions =
-              statusCode === 400 &&
-              (message.includes("ForceRefresh=true") ||
-                message.includes("suggestion preview"));
+          // Launch generation in background so the form submit spinner can clear
+          const launchGeneration = async () => {
+            const nextIndex = (generationRuns?.length || 0) + 1;
+            let run: LocalGenerationRun | undefined;
+            try {
+              setForceOpenSuggestions(true);
+              setActiveTab("suggestions");
+              const params = new URLSearchParams(searchParams);
+              params.set("tab", "suggestions");
+              setSearchParams(params, { replace: true });
 
-            if (!alreadyHasPendingSuggestions) {
-              console.error(
-                "Failed to auto-generate LLM suggestions after approval:",
-                suggestionErr,
-              );
-              showErrorToast(
-                "Order approved but AI preview generation failed.",
-              );
+              // create a run marker before generation so suggestions can be grouped
+              run = appendGenerationRun(new Date().toISOString());
+              const runId = run?.id ?? `pending-${Date.now()}`;
+              setPendingGeneration({ id: runId, label: `Generate #${nextIndex}` });
+              setExpandedGenerationItemId(runId);
+              setIsGeneratingSuggestions(true);
+
+              try {
+                await testSuiteLlmSuggestionService.generate(suite.id, {
+                  specificationId: suite.apiSpecId,
+                  forceRefresh: true,
+                });
+
+                await refreshSuggestions();
+                await refreshAllSuggestions();
+                showSuccessToast("AI preview regenerated after approval.");
+              } catch (suggestionErr: any) {
+                const statusCode =
+                  suggestionErr?.status ?? suggestionErr?.response?.status;
+                const message = String(
+                  suggestionErr?.message || suggestionErr?.response?.data?.message || "",
+                );
+                const alreadyHasPendingSuggestions =
+                  statusCode === 400 &&
+                  (message.includes("ForceRefresh=true") ||
+                    message.includes("suggestion preview"));
+
+                // Remove run marker when generation did not actually produce a new run
+                if (run && run.id) removeGenerationRun(run.id);
+
+                if (alreadyHasPendingSuggestions) {
+                  // fetch existing suggestions so UI reflects current state
+                  await refreshSuggestions();
+                  await refreshAllSuggestions();
+                } else {
+                  console.error(
+                    "Failed to auto-generate LLM suggestions after approval:",
+                    suggestionErr,
+                  );
+                  showErrorToast("Order approved but AI preview generation failed.");
+                }
+              }
+            } finally {
+              setIsGeneratingSuggestions(false);
+              setPendingGeneration(null);
+              setForceOpenSuggestions(false);
             }
-          }
+          };
+
+          // Fire-and-forget so that isSubmitting can clear
+          setTimeout(() => {
+            launchGeneration().catch((e) =>
+              console.error("Background generation failed", e),
+            );
+          }, 0);
         }
       } catch (approveErr) {
         // If auto-approve fails, show a warning but don't fail the whole operation
@@ -785,7 +839,21 @@ export default function TestSuiteDetailPage() {
       return;
     }
 
+    const nextIndex = (generationRuns?.length || 0) + 1;
+    let run: LocalGenerationRun | undefined;
+
     try {
+      setForceOpenSuggestions(true);
+      setActiveTab("suggestions");
+      const params = new URLSearchParams(searchParams);
+      params.set("tab", "suggestions");
+      setSearchParams(params, { replace: true });
+
+      // create run marker before starting generation so suggestions can be grouped
+      run = appendGenerationRun(new Date().toISOString());
+      const runId = run?.id ?? `pending-${Date.now()}`;
+      setPendingGeneration({ id: runId, label: `Generate #${nextIndex}` });
+      setExpandedGenerationItemId(runId);
       setIsGeneratingSuggestions(true);
 
       // H-01: Check order gate status before generation/suggestion
@@ -796,7 +864,8 @@ export default function TestSuiteDetailPage() {
             gateStatus.message ||
               "Order gate not passed. Please approve the API order proposal first.",
           );
-          setIsGeneratingSuggestions(false);
+          // remove the provisional run because generation did not start
+          if (run && run.id) removeGenerationRun(run.id);
           return;
         }
       } catch (gateErr: any) {
@@ -805,10 +874,26 @@ export default function TestSuiteDetailPage() {
       }
 
       try {
-        await testSuiteLlmSuggestionService.generate(suiteId, {
+        const resp = await testSuiteLlmSuggestionService.generate(suiteId, {
           specificationId: suite.apiSpecId,
           forceRefresh,
         });
+
+        const generatedSuggestionIds = (resp?.suggestions || []).map(
+          (s) => s.id,
+        );
+
+        if (run && run.id && generatedSuggestionIds.length > 0) {
+          updateGenerationRun(run.id, { suggestionIds: generatedSuggestionIds });
+        }
+
+        await refreshSuggestions();
+        await refreshAllSuggestions();
+        showSuccessToast(
+          forceRefresh
+            ? "LLM suggestions regenerated successfully."
+            : "LLM suggestions are ready.",
+        );
       } catch (err: any) {
         const statusCode = err?.status ?? err?.response?.status;
         const message = String(
@@ -819,23 +904,23 @@ export default function TestSuiteDetailPage() {
           (message.includes("ForceRefresh=true") ||
             message.includes("suggestion preview"));
 
-        if (!alreadyHasPendingSuggestions) {
+        // remove provisional run because no new run was produced
+        if (run && run.id) removeGenerationRun(run.id);
+
+        if (alreadyHasPendingSuggestions) {
+          await refreshSuggestions();
+          await refreshAllSuggestions();
+          showSuccessToast("LLM suggestions are ready.");
+        } else {
           throw err;
         }
       }
-
-      await refreshSuggestions();
-      await refreshAllSuggestions();
-      appendGenerationRun(new Date().toISOString());
-      showSuccessToast(
-        forceRefresh
-          ? "LLM suggestions regenerated successfully."
-          : "LLM suggestions are ready.",
-      );
     } catch (err) {
       handleError(err);
     } finally {
       setIsGeneratingSuggestions(false);
+      setPendingGeneration(null);
+      setForceOpenSuggestions(false);
     }
   };
 
@@ -1067,6 +1152,91 @@ export default function TestSuiteDetailPage() {
     }
   };
 
+  const handleBulkReject = async (suggestionIds: string[], reviewNotes: string) => {
+    if (!suiteId) return;
+    if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
+      showInfoToast("No suggestions selected for reject.");
+      return;
+    }
+
+    try {
+      setIsBulkReviewingSuggestions(true);
+
+      // If selection equals all pending suggestions under current filters, prefer server bulk-review
+      const currentPendingIds = displayedSuggestions
+        .filter((s) => String(s.reviewStatus || "").toLowerCase() === "pending")
+        .map((s) => s.id);
+
+      const isAllPendingSelected =
+        currentPendingIds.length > 0 &&
+        suggestionIds.length === currentPendingIds.length &&
+        suggestionIds.every((id) => currentPendingIds.includes(id));
+
+      if (isAllPendingSelected) {
+        try {
+          const payload: any = {
+            action: "Reject",
+            reviewNotes: reviewNotes || undefined,
+            filterByTestType: suggestionTestTypeFilter || undefined,
+            filterByEndpointId: suggestionEndpointFilter || undefined,
+          };
+
+          const result = await testSuiteLlmSuggestionService.bulkReview(suiteId, payload);
+          showSuccessToast(
+            `Reject processed. Rejected ${result?.processedCount ?? 0} suggestion(s).`,
+          );
+
+          const [nextSuggestions, , nextTestCases] = await Promise.all([
+            refreshSuggestions(),
+            refreshAllSuggestions(),
+            refreshTestCases(),
+          ]);
+          maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+          return;
+        } catch (err) {
+          console.warn("bulk-review reject failed, falling back to per-item reject", err);
+        }
+      }
+
+      // Fallback: reject items individually
+      let processed = 0;
+      for (const id of suggestionIds) {
+        try {
+          const suggestion = allSuggestions.find((s) => s.id === id);
+          const latest = suggestion?.rowVersion
+            ? suggestion
+            : suggestion
+            ? await getLatestSuggestion(suggestion)
+            : null;
+          if (!latest || !latest.rowVersion) continue;
+
+          const ok = await handleRejectSuggestion(latest, reviewNotes);
+          if (ok) processed++;
+        } catch (e) {
+          console.warn("single reject failed", e);
+        }
+      }
+
+      const [nextSuggestions, , nextTestCases] = await Promise.all([
+        refreshSuggestions(),
+        refreshAllSuggestions(),
+        refreshTestCases(),
+      ]);
+
+      if (processed > 0) {
+        showSuccessToast(`Reject processed. Rejected ${processed} suggestion(s).`);
+      } else {
+        showErrorToast("No suggestions were rejected. Check for errors and try again.");
+      }
+
+      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsBulkReviewingSuggestions(false);
+    }
+  };
+
   const handleBulkApprove = async (suggestionIds: string[]) => {
     if (!suiteId) return;
     if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
@@ -1076,19 +1246,82 @@ export default function TestSuiteDetailPage() {
 
     try {
       setIsBulkApprovingSuggestions(true);
-      const result = await testSuiteLlmSuggestionService.bulkApprove(suiteId, {
-        suggestionIds,
+      // If the selection corresponds exactly to "all pending suggestions" under current filters,
+      // prefer the server-side bulk-review API (atomic) to avoid rowVersion conflicts.
+      const currentPendingIds = displayedSuggestions
+        .filter((s) => String(s.reviewStatus || "").toLowerCase() === "pending")
+        .map((s) => s.id);
+
+      const isAllPendingSelected =
+        currentPendingIds.length > 0 &&
+        suggestionIds.length === currentPendingIds.length &&
+        suggestionIds.every((id) => currentPendingIds.includes(id));
+
+      if (isAllPendingSelected) {
+        // Build payload using current FE filters so server applies the same scope
+        const payload: any = { action: "Approve" };
+        if (suggestionTestTypeFilter) payload.filterByTestType = suggestionTestTypeFilter;
+        if (suggestionEndpointFilter) payload.filterByEndpointId = suggestionEndpointFilter;
+        // Note: FilterBySuggestionType not exposed in UI currently
+
+        try {
+          const result = await testSuiteLlmSuggestionService.bulkReview(suiteId, payload);
+          showSuccessToast(
+            `Approve processed. Approved ${result?.processedCount ?? 0} suggestion(s).`,
+          );
+
+          const [nextSuggestions, , nextTestCases] = await Promise.all([
+            refreshSuggestions(),
+            refreshAllSuggestions(),
+            refreshTestCases(),
+          ]);
+
+          maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+          return;
+        } catch (err) {
+          // If bulk-review fails for any reason, fall back to per-item approves below
+          console.warn("bulk-review failed, falling back to per-item review", err);
+        }
+      }
+
+      // Fallback: approve items individually (parallel) and show one summary toast
+      const approvePromises = suggestionIds.map(async (id) => {
+        try {
+          const suggestion = allSuggestions.find((s) => s.id === id);
+          const latest = suggestion?.rowVersion
+            ? suggestion
+            : suggestion
+            ? await getLatestSuggestion(suggestion)
+            : null;
+          if (!latest || !latest.rowVersion) {
+            return { id, ok: false, reason: "missing-rowVersion" } as const;
+          }
+
+          await testSuiteLlmSuggestionService.review(suiteId, id, {
+            action: "Approve",
+            rowVersion: latest.rowVersion,
+          });
+
+          return { id, ok: true } as const;
+        } catch (e) {
+          return { id, ok: false, reason: e } as const;
+        }
       });
 
-      showSuccessToast(
-        `Approve processed. Approved ${result?.processedCount || suggestionIds.length} suggestion(s).`,
-      );
+      const results = await Promise.all(approvePromises);
+      const processed = results.filter((r) => r.ok).length;
 
       const [nextSuggestions, , nextTestCases] = await Promise.all([
         refreshSuggestions(),
         refreshAllSuggestions(),
         refreshTestCases(),
       ]);
+
+      if (processed > 0) {
+        showSuccessToast(`Approve processed. Approved ${processed} suggestion(s).`);
+      } else {
+        showErrorToast("No suggestions were approved. Check for errors and try again.");
+      }
 
       maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
     } catch (err) {
@@ -1335,6 +1568,10 @@ export default function TestSuiteDetailPage() {
           testCaseIds: Array.from(
             new Set(
               items
+                .filter((item) => {
+                  const status = String(item.reviewStatus || "").toLowerCase();
+                  return status === "approved" || status === "modifiedandapproved";
+                })
                 .map((item) => item.appliedTestCaseId)
                 .filter((id): id is string => Boolean(id)),
             ),
@@ -1406,7 +1643,15 @@ export default function TestSuiteDetailPage() {
 
     return sortedRuns
       .map((run, index) => {
-        const items = groups.get(run.id) || [];
+        let items: SuiteSuggestionModel[] = [];
+
+        if (run.suggestionIds && run.suggestionIds.length > 0) {
+          items = run.suggestionIds
+            .map((id) => combinedForTimeline.find((s) => s.id === id))
+            .filter((s): s is SuiteSuggestionModel => Boolean(s));
+        } else {
+          items = groups.get(run.id) || [];
+        }
 
         const pendingSuggestions = items.filter(
           (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
@@ -1436,6 +1681,10 @@ export default function TestSuiteDetailPage() {
           testCaseIds: Array.from(
             new Set(
               items
+                .filter((item) => {
+                  const status = String(item.reviewStatus || "").toLowerCase();
+                  return status === "approved" || status === "modifiedandapproved";
+                })
                 .map((item) => item.appliedTestCaseId)
                 .filter((id): id is string => Boolean(id)),
             ),
@@ -1992,12 +2241,31 @@ export default function TestSuiteDetailPage() {
                   </p>
                 </div>
 
-                {generationItems.length === 0 ? (
+                {generationItems.length === 0 && !pendingGeneration ? (
                   <div className="text-sm text-on-surface-variant">
                     No generation run detected yet.
                   </div>
                 ) : (
                   <div className="space-y-2">
+                    {pendingGeneration && (
+                      <div
+                        key={pendingGeneration.id}
+                        className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-on-surface">
+                              {pendingGeneration.label}
+                            </p>
+                            <p className="text-xs text-on-surface-variant">Generating…</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-xs text-on-surface-variant font-semibold uppercase">Latest</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {generationItems.map((item, index) => {
                       // Highlight if all suggestions are superseded
                       const isSupersededBatch =
@@ -2123,6 +2391,7 @@ export default function TestSuiteDetailPage() {
                   isBulkRestoringSuggestions={isBulkRestoringSuggestions}
                   onBulkApprove={handleBulkApprove}
                   isBulkApprovingSuggestions={isBulkApprovingSuggestions}
+                  onBulkReject={handleBulkReject}
                 />
               ) : (
                 <div className="text-sm text-on-surface-variant text-center py-8">

@@ -71,7 +71,7 @@ export default function AccountSettingsPage() {
     setIsSaving(true);
     try {
       const success = await changePassword(securityData);
-        if (success) {
+      if (success) {
         showSuccessToast(t("settings.security.passwordChanged"));
         setSecurityData({
           currentPassword: "",
@@ -109,7 +109,7 @@ export default function AccountSettingsPage() {
     }
 
     const success = await uploadAvatar(file);
-      if (success) {
+    if (success) {
       showSuccessToast(t("settings.profile.avatarUploaded"));
     }
   };

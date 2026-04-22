@@ -44,6 +44,9 @@ export interface SuggestionReviewPanelProps {
   ) => Promise<boolean>;
   onBulkRestore?: (suggestionIds: string[]) => Promise<void>;
   isBulkRestoringSuggestions?: boolean;
+  onBulkApprove?: (suggestionIds: string[]) => Promise<void>;
+  onBulkReject?: (suggestionIds: string[], reviewNotes: string) => Promise<void>;
+  isBulkApprovingSuggestions?: boolean;
   isHistoricalView?: boolean;
   currentGenerationNumber?: number;
   viewingGenerationNumber?: number;
@@ -69,6 +72,8 @@ export default function SuggestionReviewPanel({
   onReject,
   onBulkRestore,
   isBulkRestoringSuggestions = false,
+  onBulkApprove,
+  isBulkApprovingSuggestions = false,
   isHistoricalView = false,
   currentGenerationNumber,
   viewingGenerationNumber,
@@ -297,14 +302,22 @@ export default function SuggestionReviewPanel({
   };
 
   const handleBulkApproveSelected = async () => {
-    for (const suggestion of selectedPendingSuggestions) {
-      await onApprove(suggestion, draftEdits[suggestion.id]);
-      setDraftEdits((prev) => {
-        const next = { ...prev };
-        delete next[suggestion.id];
-        return next;
-      });
+    const ids = selectedPendingSuggestions.map((s) => s.id);
+    if (ids.length === 0) return;
+
+    if (onBulkApprove) {
+      await onBulkApprove(ids);
+    } else {
+      for (const suggestion of selectedPendingSuggestions) {
+        await onApprove(suggestion, draftEdits[suggestion.id]);
+        setDraftEdits((prev) => {
+          const next = { ...prev };
+          delete next[suggestion.id];
+          return next;
+        });
+      }
     }
+
     setSelectedSuggestionIds([]);
   };
 
@@ -312,8 +325,14 @@ export default function SuggestionReviewPanel({
     const note = bulkRejectNotes.trim();
     if (!note) return;
 
-    for (const suggestion of selectedPendingSuggestions) {
-      await onReject(suggestion, note);
+    const ids = selectedPendingSuggestions.map((s) => s.id);
+
+    if (onBulkReject) {
+      await onBulkReject(ids, note);
+    } else {
+      for (const suggestion of selectedPendingSuggestions) {
+        await onReject(suggestion, note);
+      }
     }
 
     setSelectedSuggestionIds([]);
@@ -443,9 +462,14 @@ export default function SuggestionReviewPanel({
                 <button
                   type="button"
                   onClick={handleBulkApproveSelected}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                  disabled={isBulkApprovingSuggestions}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm disabled:opacity-50"
                 >
-                  <Check className="w-3.5 h-3.5" />
+                  {isBulkApprovingSuggestions ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
                   Approve all
                 </button>
               </>

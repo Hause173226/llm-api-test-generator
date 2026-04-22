@@ -135,8 +135,10 @@ export default function EnvironmentsPage() {
   };
 
   const buildPayload = () => {
-    const vars = Object.keys(formData.variables).length > 0 ? formData.variables : null;
-    const hdrs = Object.keys(formData.headers).length > 0 ? formData.headers : null;
+    const vars =
+      Object.keys(formData.variables).length > 0 ? formData.variables : null;
+    const hdrs =
+      Object.keys(formData.headers).length > 0 ? formData.headers : null;
     const auth = formData.authConfig;
     return {
       name: formData.name,
@@ -246,7 +248,9 @@ export default function EnvironmentsPage() {
     });
     setShowVariablesSection(Object.keys(env.variables || {}).length > 0);
     setShowHeadersSection(Object.keys(env.headers || {}).length > 0);
-    setShowAuthSection(env.authConfig?.authType && env.authConfig.authType !== "None");
+    setShowAuthSection(
+      env.authConfig?.authType && env.authConfig.authType !== "None",
+    );
     setShowEditModal(true);
   };
 
@@ -583,48 +587,57 @@ export default function EnvironmentsPage() {
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     {t("environments.variables.envVars")}
                   </span>
-                  <span className="text-xs text-slate-400">({Object.keys(formData.variables).length})</span>
+                  <span className="text-xs text-slate-400">
+                    ({Object.keys(formData.variables).length})
+                  </span>
                 </button>
                 {showVariablesSection && (
                   <div className="mt-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
-                      {"You can define variables with any key and use them in URL/Header/Body via syntax {{variableName}}."}
+                      {
+                        "You can define variables with any key and use them in URL/Header/Body via syntax {{variableName}}."
+                      }
                     </p>
                     <div className="space-y-2">
-                      {Object.entries(formData.variables).map(([key, value]) => (
-                        <div key={key} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked
-                            readOnly
-                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <input
-                            type="text"
-                            value={key}
-                            readOnly
-                            className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm"
-                          />
-                          <input
-                            type="text"
-                            value={value}
-                            onChange={(e) => {
-                              setFormData((prev) => ({
-                                ...prev,
-                                variables: { ...prev.variables, [key]: e.target.value },
-                              }));
-                            }}
-                            placeholder="Variable value"
-                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <button
-                            onClick={() => removeVariable(key)}
-                            className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
+                      {Object.entries(formData.variables).map(
+                        ([key, value]) => (
+                          <div key={key} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked
+                              readOnly
+                              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <input
+                              type="text"
+                              value={key}
+                              readOnly
+                              className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variables: {
+                                    ...prev.variables,
+                                    [key]: e.target.value,
+                                  },
+                                }));
+                              }}
+                              placeholder="Variable value"
+                              className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <button
+                              onClick={() => removeVariable(key)}
+                              className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ),
+                      )}
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -646,7 +659,9 @@ export default function EnvironmentsPage() {
                           placeholder="Variable value"
                           className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                        <span className="text-sm font-medium px-2 py-1 invisible">
+                          Remove
+                        </span>
                       </div>
                       <button
                         onClick={addVariable}
@@ -674,7 +689,9 @@ export default function EnvironmentsPage() {
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     {t("environments.variables.headers")}
                   </span>
-                  <span className="text-xs text-slate-400">({Object.keys(formData.headers).length})</span>
+                  <span className="text-xs text-slate-400">
+                    ({Object.keys(formData.headers).length})
+                  </span>
                 </button>
                 {showHeadersSection && (
                   <div className="mt-2">
@@ -702,7 +719,10 @@ export default function EnvironmentsPage() {
                             onChange={(e) => {
                               setFormData((prev) => ({
                                 ...prev,
-                                headers: { ...prev.headers, [key]: e.target.value },
+                                headers: {
+                                  ...prev.headers,
+                                  [key]: e.target.value,
+                                },
                               }));
                             }}
                             placeholder="Header value"
@@ -737,7 +757,9 @@ export default function EnvironmentsPage() {
                           placeholder="Header value"
                           className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                        <span className="text-sm font-medium px-2 py-1 invisible">
+                          Remove
+                        </span>
                       </div>
                       <button
                         onClick={addHeader}
@@ -766,7 +788,9 @@ export default function EnvironmentsPage() {
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     Authentication
                   </span>
-                  <span className="text-xs text-slate-400">({formData.authConfig.authType})</span>
+                  <span className="text-xs text-slate-400">
+                    ({formData.authConfig.authType})
+                  </span>
                 </button>
                 {showAuthSection && (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3 mt-2">
@@ -774,7 +798,8 @@ export default function EnvironmentsPage() {
                       value={formData.authConfig.authType}
                       onChange={(e) =>
                         updateAuthConfig({
-                          authType: e.target.value as ExecutionAuthConfig["authType"],
+                          authType: e.target
+                            .value as ExecutionAuthConfig["authType"],
                         })
                       }
                       className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -783,7 +808,9 @@ export default function EnvironmentsPage() {
                       <option value="BearerToken">Bearer Token</option>
                       <option value="Basic">Basic</option>
                       <option value="ApiKey">API Key</option>
-                      <option value="OAuth2ClientCredentials">OAuth2 Client Credentials</option>
+                      <option value="OAuth2ClientCredentials">
+                        OAuth2 Client Credentials
+                      </option>
                     </select>
 
                     {formData.authConfig.authType === "BearerToken" && (
@@ -791,14 +818,20 @@ export default function EnvironmentsPage() {
                         <input
                           type="text"
                           value={formData.authConfig.headerName || ""}
-                          onChange={(e) => updateAuthConfig({ headerName: e.target.value || null })}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              headerName: e.target.value || null,
+                            })
+                          }
                           placeholder="Header Name (default: Authorization)"
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
                           type="password"
                           value={formData.authConfig.token || ""}
-                          onChange={(e) => updateAuthConfig({ token: e.target.value || null })}
+                          onChange={(e) =>
+                            updateAuthConfig({ token: e.target.value || null })
+                          }
                           placeholder="Token"
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
@@ -810,14 +843,22 @@ export default function EnvironmentsPage() {
                         <input
                           type="text"
                           value={formData.authConfig.username || ""}
-                          onChange={(e) => updateAuthConfig({ username: e.target.value || null })}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              username: e.target.value || null,
+                            })
+                          }
                           placeholder="Username"
                           className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
                           type="password"
                           value={formData.authConfig.password || ""}
-                          onChange={(e) => updateAuthConfig({ password: e.target.value || null })}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              password: e.target.value || null,
+                            })
+                          }
                           placeholder="Password"
                           className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
@@ -830,14 +871,22 @@ export default function EnvironmentsPage() {
                           <input
                             type="text"
                             value={formData.authConfig.apiKeyName || ""}
-                            onChange={(e) => updateAuthConfig({ apiKeyName: e.target.value || null })}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                apiKeyName: e.target.value || null,
+                              })
+                            }
                             placeholder="API Key Name (e.g. x-api-key)"
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <input
                             type="password"
                             value={formData.authConfig.apiKeyValue || ""}
-                            onChange={(e) => updateAuthConfig({ apiKeyValue: e.target.value || null })}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                apiKeyValue: e.target.value || null,
+                              })
+                            }
                             placeholder="API Key Value"
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
@@ -846,7 +895,8 @@ export default function EnvironmentsPage() {
                           value={formData.authConfig.apiKeyLocation || "Header"}
                           onChange={(e) =>
                             updateAuthConfig({
-                              apiKeyLocation: e.target.value as ExecutionAuthConfig["apiKeyLocation"],
+                              apiKeyLocation: e.target
+                                .value as ExecutionAuthConfig["apiKeyLocation"],
                             })
                           }
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -857,12 +907,17 @@ export default function EnvironmentsPage() {
                       </div>
                     )}
 
-                    {formData.authConfig.authType === "OAuth2ClientCredentials" && (
+                    {formData.authConfig.authType ===
+                      "OAuth2ClientCredentials" && (
                       <div className="space-y-3">
                         <input
                           type="url"
                           value={formData.authConfig.tokenUrl || ""}
-                          onChange={(e) => updateAuthConfig({ tokenUrl: e.target.value || null })}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              tokenUrl: e.target.value || null,
+                            })
+                          }
                           placeholder="Token URL"
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
@@ -870,14 +925,22 @@ export default function EnvironmentsPage() {
                           <input
                             type="text"
                             value={formData.authConfig.clientId || ""}
-                            onChange={(e) => updateAuthConfig({ clientId: e.target.value || null })}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                clientId: e.target.value || null,
+                              })
+                            }
                             placeholder="Client ID"
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <input
                             type="password"
                             value={formData.authConfig.clientSecret || ""}
-                            onChange={(e) => updateAuthConfig({ clientSecret: e.target.value || null })}
+                            onChange={(e) =>
+                              updateAuthConfig({
+                                clientSecret: e.target.value || null,
+                              })
+                            }
                             placeholder="Client Secret"
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
@@ -885,7 +948,11 @@ export default function EnvironmentsPage() {
                         <input
                           type="text"
                           value={(formData.authConfig.scopes || []).join(", ")}
-                          onChange={(e) => updateAuthConfig({ scopes: parseScopes(e.target.value) })}
+                          onChange={(e) =>
+                            updateAuthConfig({
+                              scopes: parseScopes(e.target.value),
+                            })
+                          }
                           placeholder="Scopes (comma separated)"
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
