@@ -104,7 +104,10 @@ export default function TestSuiteDetailPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
-  const [pendingGeneration, setPendingGeneration] = useState<{ id: string; label: string } | null>(null);
+  const [pendingGeneration, setPendingGeneration] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
   const [forceOpenSuggestions, setForceOpenSuggestions] = useState(false);
   const [isBulkReviewingSuggestions, setIsBulkReviewingSuggestions] =
     useState(false);
@@ -136,6 +139,8 @@ export default function TestSuiteDetailPage() {
   const [testCaseSearchTerm, setTestCaseSearchTerm] = useState("");
   const [testCaseFilterMethod, setTestCaseFilterMethod] = useState("");
   const [activeTab, setActiveTab] = useState<SuiteTab>("details");
+  const [isTabPinned, setIsTabPinned] = useState<boolean>(false);
+  const [hasRestoredUiState, setHasRestoredUiState] = useState<boolean>(false);
   const [suggestionReviewStatusFilter, setSuggestionReviewStatusFilter] =
     useState("");
   const [suggestionTestTypeFilter, setSuggestionTestTypeFilter] = useState("");
@@ -158,6 +163,10 @@ export default function TestSuiteDetailPage() {
     ? `suite-generation-runs:${suiteId}`
     : "suite-generation-runs:unknown";
 
+  const uiStateStorageKey = suiteId
+    ? `suite-ui-state:${suiteId}`
+    : "suite-ui-state:unknown";
+
   useEffect(() => {
     if (!suiteId) {
       setGenerationRuns([]);
@@ -167,7 +176,7 @@ export default function TestSuiteDetailPage() {
     try {
       const raw = localStorage.getItem(generationStorageKey);
       const parsed = raw ? JSON.parse(raw) : [];
-      const items = Array.isArray(parsed)
+      const items: LocalGenerationRun[] = Array.isArray(parsed)
         ? parsed.filter(
             (item) =>
               item &&
@@ -176,17 +185,121 @@ export default function TestSuiteDetailPage() {
           )
         : [];
 
-      setGenerationRuns(
-        items.sort(
-          (a: LocalGenerationRun, b: LocalGenerationRun) =>
-            new Date(a.generatedAt).getTime() -
-            new Date(b.generatedAt).getTime(),
-        ),
+      // Cleanup strategy:
+      // - If there exist any completed runs (have suggestionIds), drop
+      //   runs without suggestionIds because they are superseded.
+      // - Otherwise keep pending runs only if they are recent (avoid
+      //   showing very old "Generating..." markers). This prevents the
+      //   timeline from being stuck on an old pending run.
+      const PENDING_CLEANUP_MS = 30 * 60 * 1000; // 30 minutes
+      const now = Date.now();
+
+      const hasCompletedRun = items.some(
+        (r) =>
+          Array.isArray((r as any).suggestionIds) &&
+          (r as any).suggestionIds.length > 0,
       );
+
+      let cleaned: LocalGenerationRun[];
+      if (hasCompletedRun) {
+        cleaned = items.filter(
+          (r) =>
+            Array.isArray((r as any).suggestionIds) &&
+            (r as any).suggestionIds.length > 0,
+        );
+      } else {
+        cleaned = items.filter((r) => {
+          const isPending = !(
+            Array.isArray((r as any).suggestionIds) &&
+            (r as any).suggestionIds.length > 0
+          );
+          if (!isPending) return true;
+          const age = now - new Date(r.generatedAt).getTime();
+          return age <= PENDING_CLEANUP_MS;
+        });
+      }
+
+      const sorted = cleaned.sort(
+        (a: LocalGenerationRun, b: LocalGenerationRun) =>
+          new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime(),
+      );
+
+      setGenerationRuns(sorted);
     } catch {
       setGenerationRuns([]);
     }
   }, [suiteId, generationStorageKey]);
+
+  // Restore UI state (active tab, expanded generation item, pinned flag)
+  // from localStorage. If the URL does not specify a `tab`, restore the
+  // saved tab; also set activeTab directly when restoring so the page
+  // immediately reflects the user's last sub-screen.
+  useEffect(() => {
+    if (!suiteId) return;
+
+    try {
+      const raw = localStorage.getItem(uiStateStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw || "{}");
+
+      const storedTab = parsed?.activeTab;
+      const storedExpanded = parsed?.expandedGenerationItemId;
+      const storedPinned = Boolean(parsed?.isTabPinned);
+
+      setIsTabPinned(storedPinned);
+
+      // If URL already specifies a tab, honor it. Otherwise restore.
+      if (!searchParams.get("tab") && storedTab) {
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", storedTab);
+        setSearchParams(params, { replace: true });
+      }
+
+      if (storedTab) {
+        setActiveTab(storedTab as SuiteTab);
+        setHasRestoredUiState(true);
+      } else {
+        setHasRestoredUiState(false);
+      }
+
+      if (storedExpanded) {
+        setExpandedGenerationItemId(storedExpanded);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [suiteId]);
+
+  // Remember the last visited test suite so sidebar can reopen it
+  useEffect(() => {
+    if (!suiteId) return;
+    try {
+      localStorage.setItem("lastVisitedTestSuite", suiteId);
+    } catch (e) {
+      // ignore
+    }
+  }, [suiteId]);
+
+  // Persist UI state when active tab or expanded generation item changes
+  useEffect(() => {
+    if (!suiteId) return;
+    try {
+      const payload = {
+        activeTab,
+        expandedGenerationItemId,
+        isTabPinned,
+      };
+      localStorage.setItem(uiStateStorageKey, JSON.stringify(payload));
+    } catch (e) {
+      // ignore
+    }
+  }, [suiteId, activeTab, expandedGenerationItemId, isTabPinned]);
+
+  // Clear the "restored" flag when suiteId changes so subsequent navigation
+  // can re-evaluate auto-tab behavior for the new suite.
+  useEffect(() => {
+    setHasRestoredUiState(false);
+  }, [suiteId]);
 
   const persistGenerationRuns = (nextRuns: LocalGenerationRun[]) => {
     if (!suiteId) return;
@@ -194,7 +307,10 @@ export default function TestSuiteDetailPage() {
     setGenerationRuns(nextRuns);
   };
 
-  const updateGenerationRun = (runId: string, patch: Partial<LocalGenerationRun>) => {
+  const updateGenerationRun = (
+    runId: string,
+    patch: Partial<LocalGenerationRun>,
+  ) => {
     if (!suiteId) return;
     const nextRuns = (generationRuns || []).map((r) =>
       r.id === runId ? { ...r, ...patch } : r,
@@ -202,7 +318,9 @@ export default function TestSuiteDetailPage() {
     persistGenerationRuns(nextRuns);
   };
 
-  const appendGenerationRun = (generatedAt: string): LocalGenerationRun | undefined => {
+  const appendGenerationRun = (
+    generatedAt: string,
+  ): LocalGenerationRun | undefined => {
     if (!suiteId) return undefined;
 
     const run: LocalGenerationRun = {
@@ -210,7 +328,15 @@ export default function TestSuiteDetailPage() {
       generatedAt,
     };
 
-    const nextRuns = [...generationRuns, run].sort(
+    // Remove older runs that are still pending (no suggestionIds) because
+    // a newly started generation supersedes them. Keeping old pending
+    // runs causes confusing "Generating..." entries for earlier runs.
+    const retainedRuns = (generationRuns || []).filter(
+      (r) =>
+        Array.isArray(r.suggestionIds) && (r.suggestionIds || []).length > 0,
+    );
+
+    const nextRuns = [...retainedRuns, run].sort(
       (a, b) =>
         new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime(),
     );
@@ -259,13 +385,22 @@ export default function TestSuiteDetailPage() {
     if (isLoading) {
       return;
     }
+    // If the user has pinned a tab, or we just restored the UI state from
+    // localStorage, avoid automatic tab changes.
+    if (isTabPinned || hasRestoredUiState) return;
 
     if (
       tabFromQuery === "testcases" ||
       tabFromQuery === "details" ||
       tabFromQuery === "suggestions"
     ) {
-      if (tabFromQuery === "suggestions" && !isStep1Completed && !forceOpenSuggestions) {
+      // Allow staying on Suggestions tab if there's an active pending generation.
+      if (
+        tabFromQuery === "suggestions" &&
+        !isStep1Completed &&
+        !forceOpenSuggestions &&
+        !pendingGeneration
+      ) {
         setActiveTab("details");
         const params = new URLSearchParams(searchParams);
         params.set("tab", "details");
@@ -282,7 +417,14 @@ export default function TestSuiteDetailPage() {
         setActiveTab(tabFromQuery as SuiteTab);
       }
     }
-  }, [tabFromQuery, hasAnyTestCases, isStep1Completed, isLoading, forceOpenSuggestions]);
+  }, [
+    tabFromQuery,
+    hasAnyTestCases,
+    isStep1Completed,
+    isLoading,
+    forceOpenSuggestions,
+    pendingGeneration,
+  ]);
 
   const changeTab = (tab: SuiteTab) => {
     const nextTab = tab === "testcases" && !hasAnyTestCases ? "details" : tab;
@@ -293,6 +435,8 @@ export default function TestSuiteDetailPage() {
       );
     }
 
+    // User-initiated tab change: pin this tab so auto-navigation won't override it.
+    setIsTabPinned(true);
     setActiveTab(nextTab);
     const params = new URLSearchParams(searchParams);
     params.set("tab", nextTab);
@@ -312,6 +456,34 @@ export default function TestSuiteDetailPage() {
   useEffect(() => {
     fetchData();
   }, [suiteId, projectId]);
+
+  // Keep pending generation visible based on persisted generation runs.
+  // This ensures the "Generating…" card remains visible across tab changes
+  // or other UI interactions until the server produces suggestionIds for the run.
+  useEffect(() => {
+    if (!generationRuns || generationRuns.length === 0) {
+      setPendingGeneration(null);
+      return;
+    }
+
+    const sorted = [...generationRuns].sort(
+      (a, b) =>
+        new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime(),
+    );
+
+    // Prefer the latest run that does not yet have suggestionIds attached
+    const pendingRun = [...sorted]
+      .reverse()
+      .find((r) => !r.suggestionIds || r.suggestionIds.length === 0);
+
+    if (!pendingRun) {
+      setPendingGeneration(null);
+      return;
+    }
+
+    const idx = sorted.findIndex((r) => r.id === pendingRun.id);
+    setPendingGeneration({ id: pendingRun.id, label: `Generate #${idx + 1}` });
+  }, [generationRuns]);
 
   const availableSpecEndpoints = allSpecEndpoints.filter(
     (endpoint) => !endpoints.some((selected) => selected.id === endpoint.id),
@@ -684,15 +856,30 @@ export default function TestSuiteDetailPage() {
               // create a run marker before generation so suggestions can be grouped
               run = appendGenerationRun(new Date().toISOString());
               const runId = run?.id ?? `pending-${Date.now()}`;
-              setPendingGeneration({ id: runId, label: `Generate #${nextIndex}` });
+              setPendingGeneration({
+                id: runId,
+                label: `Generate #${nextIndex}`,
+              });
               setExpandedGenerationItemId(runId);
               setIsGeneratingSuggestions(true);
 
               try {
-                await testSuiteLlmSuggestionService.generate(suite.id, {
-                  specificationId: suite.apiSpecId,
-                  forceRefresh: true,
-                });
+                const resp = await testSuiteLlmSuggestionService.generate(
+                  suite.id,
+                  {
+                    specificationId: suite.apiSpecId,
+                    forceRefresh: true,
+                  },
+                );
+
+                const generatedSuggestionIds = (resp?.suggestions || []).map(
+                  (s) => s.id,
+                );
+                if (run && run.id && generatedSuggestionIds.length > 0) {
+                  updateGenerationRun(run.id, {
+                    suggestionIds: generatedSuggestionIds,
+                  });
+                }
 
                 await refreshSuggestions();
                 await refreshAllSuggestions();
@@ -701,7 +888,9 @@ export default function TestSuiteDetailPage() {
                 const statusCode =
                   suggestionErr?.status ?? suggestionErr?.response?.status;
                 const message = String(
-                  suggestionErr?.message || suggestionErr?.response?.data?.message || "",
+                  suggestionErr?.message ||
+                    suggestionErr?.response?.data?.message ||
+                    "",
                 );
                 const alreadyHasPendingSuggestions =
                   statusCode === 400 &&
@@ -720,12 +909,13 @@ export default function TestSuiteDetailPage() {
                     "Failed to auto-generate LLM suggestions after approval:",
                     suggestionErr,
                   );
-                  showErrorToast("Order approved but AI preview generation failed.");
+                  showErrorToast(
+                    "Order approved but AI preview generation failed.",
+                  );
                 }
               }
             } finally {
               setIsGeneratingSuggestions(false);
-              setPendingGeneration(null);
               setForceOpenSuggestions(false);
             }
           };
@@ -884,7 +1074,9 @@ export default function TestSuiteDetailPage() {
         );
 
         if (run && run.id && generatedSuggestionIds.length > 0) {
-          updateGenerationRun(run.id, { suggestionIds: generatedSuggestionIds });
+          updateGenerationRun(run.id, {
+            suggestionIds: generatedSuggestionIds,
+          });
         }
 
         await refreshSuggestions();
@@ -919,7 +1111,6 @@ export default function TestSuiteDetailPage() {
       handleError(err);
     } finally {
       setIsGeneratingSuggestions(false);
-      setPendingGeneration(null);
       setForceOpenSuggestions(false);
     }
   };
@@ -960,6 +1151,8 @@ export default function TestSuiteDetailPage() {
     nextTestCases: TestCase[],
   ) => {
     if (activeTab !== "suggestions") return;
+    // If the user pinned a tab, do not auto-navigate away from it.
+    if (isTabPinned) return;
 
     const hasPending = nextSuggestions.some(
       (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
@@ -1152,7 +1345,10 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  const handleBulkReject = async (suggestionIds: string[], reviewNotes: string) => {
+  const handleBulkReject = async (
+    suggestionIds: string[],
+    reviewNotes: string,
+  ) => {
     if (!suiteId) return;
     if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
       showInfoToast("No suggestions selected for reject.");
@@ -1181,7 +1377,10 @@ export default function TestSuiteDetailPage() {
             filterByEndpointId: suggestionEndpointFilter || undefined,
           };
 
-          const result = await testSuiteLlmSuggestionService.bulkReview(suiteId, payload);
+          const result = await testSuiteLlmSuggestionService.bulkReview(
+            suiteId,
+            payload,
+          );
           showSuccessToast(
             `Reject processed. Rejected ${result?.processedCount ?? 0} suggestion(s).`,
           );
@@ -1194,7 +1393,10 @@ export default function TestSuiteDetailPage() {
           maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
           return;
         } catch (err) {
-          console.warn("bulk-review reject failed, falling back to per-item reject", err);
+          console.warn(
+            "bulk-review reject failed, falling back to per-item reject",
+            err,
+          );
         }
       }
 
@@ -1206,8 +1408,8 @@ export default function TestSuiteDetailPage() {
           const latest = suggestion?.rowVersion
             ? suggestion
             : suggestion
-            ? await getLatestSuggestion(suggestion)
-            : null;
+              ? await getLatestSuggestion(suggestion)
+              : null;
           if (!latest || !latest.rowVersion) continue;
 
           const ok = await handleRejectSuggestion(latest, reviewNotes);
@@ -1224,9 +1426,13 @@ export default function TestSuiteDetailPage() {
       ]);
 
       if (processed > 0) {
-        showSuccessToast(`Reject processed. Rejected ${processed} suggestion(s).`);
+        showSuccessToast(
+          `Reject processed. Rejected ${processed} suggestion(s).`,
+        );
       } else {
-        showErrorToast("No suggestions were rejected. Check for errors and try again.");
+        showErrorToast(
+          "No suggestions were rejected. Check for errors and try again.",
+        );
       }
 
       maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
@@ -1260,12 +1466,17 @@ export default function TestSuiteDetailPage() {
       if (isAllPendingSelected) {
         // Build payload using current FE filters so server applies the same scope
         const payload: any = { action: "Approve" };
-        if (suggestionTestTypeFilter) payload.filterByTestType = suggestionTestTypeFilter;
-        if (suggestionEndpointFilter) payload.filterByEndpointId = suggestionEndpointFilter;
+        if (suggestionTestTypeFilter)
+          payload.filterByTestType = suggestionTestTypeFilter;
+        if (suggestionEndpointFilter)
+          payload.filterByEndpointId = suggestionEndpointFilter;
         // Note: FilterBySuggestionType not exposed in UI currently
 
         try {
-          const result = await testSuiteLlmSuggestionService.bulkReview(suiteId, payload);
+          const result = await testSuiteLlmSuggestionService.bulkReview(
+            suiteId,
+            payload,
+          );
           showSuccessToast(
             `Approve processed. Approved ${result?.processedCount ?? 0} suggestion(s).`,
           );
@@ -1280,7 +1491,10 @@ export default function TestSuiteDetailPage() {
           return;
         } catch (err) {
           // If bulk-review fails for any reason, fall back to per-item approves below
-          console.warn("bulk-review failed, falling back to per-item review", err);
+          console.warn(
+            "bulk-review failed, falling back to per-item review",
+            err,
+          );
         }
       }
 
@@ -1291,8 +1505,8 @@ export default function TestSuiteDetailPage() {
           const latest = suggestion?.rowVersion
             ? suggestion
             : suggestion
-            ? await getLatestSuggestion(suggestion)
-            : null;
+              ? await getLatestSuggestion(suggestion)
+              : null;
           if (!latest || !latest.rowVersion) {
             return { id, ok: false, reason: "missing-rowVersion" } as const;
           }
@@ -1318,9 +1532,13 @@ export default function TestSuiteDetailPage() {
       ]);
 
       if (processed > 0) {
-        showSuccessToast(`Approve processed. Approved ${processed} suggestion(s).`);
+        showSuccessToast(
+          `Approve processed. Approved ${processed} suggestion(s).`,
+        );
       } else {
-        showErrorToast("No suggestions were approved. Check for errors and try again.");
+        showErrorToast(
+          "No suggestions were approved. Check for errors and try again.",
+        );
       }
 
       maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
@@ -1570,7 +1788,9 @@ export default function TestSuiteDetailPage() {
               items
                 .filter((item) => {
                   const status = String(item.reviewStatus || "").toLowerCase();
-                  return status === "approved" || status === "modifiedandapproved";
+                  return (
+                    status === "approved" || status === "modifiedandapproved"
+                  );
                 })
                 .map((item) => item.appliedTestCaseId)
                 .filter((id): id is string => Boolean(id)),
@@ -1683,7 +1903,9 @@ export default function TestSuiteDetailPage() {
               items
                 .filter((item) => {
                   const status = String(item.reviewStatus || "").toLowerCase();
-                  return status === "approved" || status === "modifiedandapproved";
+                  return (
+                    status === "approved" || status === "modifiedandapproved"
+                  );
                 })
                 .map((item) => item.appliedTestCaseId)
                 .filter((id): id is string => Boolean(id)),
@@ -2257,11 +2479,15 @@ export default function TestSuiteDetailPage() {
                             <p className="text-sm font-semibold text-on-surface">
                               {pendingGeneration.label}
                             </p>
-                            <p className="text-xs text-on-surface-variant">Generating…</p>
+                            <p className="text-xs text-on-surface-variant">
+                              Generating…
+                            </p>
                           </div>
                           <div className="flex items-center gap-3">
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-xs text-on-surface-variant font-semibold uppercase">Latest</span>
+                            <span className="text-xs text-on-surface-variant font-semibold uppercase">
+                              Latest
+                            </span>
                           </div>
                         </div>
                       </div>

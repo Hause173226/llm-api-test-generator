@@ -392,10 +392,22 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar font-sans text-sm font-medium tracking-tight">
         {navItems.map((item) => {
           const isActive = isPathActive(item.path);
+          // If this is the Test Suites nav item, prefer navigating to the last
+          // visited suite (if any) so the user returns to the same screen.
+          let linkTo = item.path;
+          if (item.path === "/test-suites") {
+            try {
+              const last = localStorage.getItem("lastVisitedTestSuite");
+              if (last) linkTo = `/test-suites/${last}`;
+            } catch (e) {
+              linkTo = item.path;
+            }
+          }
+
           return (
             <Link
               key={item.path}
-              to={item.path}
+              to={linkTo}
               className={cn(
                 "flex items-center px-4 py-3 rounded-lg transition-all duration-200",
                 isCollapsed ? "justify-center" : "justify-start gap-3",
