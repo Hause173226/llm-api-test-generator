@@ -187,7 +187,7 @@ describe("EnvironmentContext", () => {
       expect(result.current.activeEnvironment).toBeNull();
     });
 
-    it("should persist environments to localStorage", () => {
+    it("should NOT persist environments to localStorage (environments are BE-only)", () => {
       const { result } = renderHook(() => useEnvironment(), { wrapper });
 
       const newEnv: Environment = {
@@ -203,10 +203,7 @@ describe("EnvironmentContext", () => {
       });
 
       const stored = localStorageMock.getItem("manual-testing-environments");
-      expect(stored).toBeTruthy();
-      const parsed = JSON.parse(stored!);
-      expect(parsed).toHaveLength(1);
-      expect(parsed[0].id).toBe("env-1");
+      expect(stored).toBeNull();
     });
 
     it("should persist active environment to localStorage", () => {

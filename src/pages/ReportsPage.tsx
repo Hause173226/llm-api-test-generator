@@ -8,6 +8,7 @@ import Skeleton from "../components/ui/Skeleton";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 import { useProject } from "../contexts/ProjectContext";
 import apiService from "../services/apiService";
+import GlobalSpinner from "../components/ui/GlobalSpinner";
 
 interface SuiteSummary {
   id: string;
@@ -149,6 +150,11 @@ export default function ReportsPage() {
 
   return (
     <MainLayout title={t("reports.title")} breadcrumbs={breadcrumbs}>
+      {generating && (
+        <GlobalSpinner
+          label={t("reports.generating", "Generating report...")}
+        />
+      )}
       <div className="space-y-10">
         {/* Header + selectors */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -298,8 +304,8 @@ export default function ReportsPage() {
                   }
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 >
-                  <option value="Summary">Summary</option>
-                  <option value="Detailed">Detailed</option>
+                  {/* <option value="Summary">Summary</option>
+                  <option value="Detailed">Detailed</option> */}
                   <option value="Coverage">Coverage</option>
                 </select>
               </div>
@@ -315,7 +321,7 @@ export default function ReportsPage() {
                   }
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 >
-                  <option value="PDF">PDF</option>
+                  {/* <option value="PDF">PDF</option> */}
                   <option value="JSON">JSON</option>
                   <option value="HTML">HTML</option>
                 </select>

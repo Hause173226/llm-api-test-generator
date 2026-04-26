@@ -203,17 +203,23 @@ const RequestBuilder: React.FC = () => {
 
     const selectionStart = inputEl.selectionStart ?? currentUrl.length;
     const selectionEnd = inputEl.selectionEnd ?? selectionStart;
+
+    // Strip any leading `{` or `{{` the user already typed before the cursor
+    const prefix = currentUrl.slice(0, selectionStart);
+    let stripCount = 0;
+    if (prefix.endsWith("{{")) stripCount = 2;
+    else if (prefix.endsWith("{")) stripCount = 1;
+
+    const insertAt = selectionStart - stripCount;
     const nextUrl =
-      currentUrl.slice(0, selectionStart) +
-      token +
-      currentUrl.slice(selectionEnd);
+      currentUrl.slice(0, insertAt) + token + currentUrl.slice(selectionEnd);
 
     updateRequestConfig({ url: nextUrl });
     setIsVariableMenuOpen(false);
 
     requestAnimationFrame(() => {
       inputEl.focus();
-      const nextCursor = selectionStart + token.length;
+      const nextCursor = insertAt + token.length;
       inputEl.setSelectionRange(nextCursor, nextCursor);
     });
   };

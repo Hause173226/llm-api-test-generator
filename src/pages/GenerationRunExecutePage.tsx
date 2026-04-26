@@ -1,7 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, CheckSquare, ChevronDown, ChevronRight, Filter, Loader2, Play, Plus, Search, ShieldCheck, Square, X } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckSquare,
+  ChevronDown,
+  ChevronRight,
+  Filter,
+  Loader2,
+  Play,
+  Plus,
+  Search,
+  ShieldCheck,
+  Square,
+  X,
+} from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import Modal from "../components/ui/Modal";
@@ -130,7 +143,9 @@ export default function GenerationRunExecutePage() {
   const uniqueMethods = useMemo(() => {
     const methods = new Set<string>();
     for (const tc of testCases) {
-      const m = String(tc.method || endpointById[tc.endpointId]?.method || "GET").toUpperCase();
+      const m = String(
+        tc.method || endpointById[tc.endpointId]?.method || "GET",
+      ).toUpperCase();
       methods.add(m);
     }
     return Array.from(methods).sort();
@@ -168,13 +183,17 @@ export default function GenerationRunExecutePage() {
 
     if (filterMethod) {
       result = result.filter((tc) => {
-        const m = String(tc.method || endpointById[tc.endpointId]?.method || "GET").toUpperCase();
+        const m = String(
+          tc.method || endpointById[tc.endpointId]?.method || "GET",
+        ).toUpperCase();
         return m === filterMethod;
       });
     }
 
     if (filterEndpoint) {
-      result = result.filter((tc) => toEndpointKey(tc, endpointById) === filterEndpoint);
+      result = result.filter(
+        (tc) => toEndpointKey(tc, endpointById) === filterEndpoint,
+      );
     }
 
     if (filterTestType) {
@@ -182,7 +201,14 @@ export default function GenerationRunExecutePage() {
     }
 
     return result;
-  }, [testCases, searchQuery, filterMethod, filterEndpoint, filterTestType, endpointById]);
+  }, [
+    testCases,
+    searchQuery,
+    filterMethod,
+    filterEndpoint,
+    filterTestType,
+    endpointById,
+  ]);
 
   const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
     if (items.length === 0) return "";
@@ -198,44 +224,70 @@ export default function GenerationRunExecutePage() {
       variables: {},
       headers: {},
       authConfig: {
-        authType: "None", headerName: null, token: null, username: null,
-        password: null, apiKeyName: null, apiKeyValue: null, apiKeyLocation: "Header",
-        tokenUrl: null, clientId: null, clientSecret: null, scopes: [],
+        authType: "None",
+        headerName: null,
+        token: null,
+        username: null,
+        password: null,
+        apiKeyName: null,
+        apiKeyValue: null,
+        apiKeyLocation: "Header",
+        tokenUrl: null,
+        clientId: null,
+        clientSecret: null,
+        scopes: [],
       },
       isDefault: false,
     });
-    setEnvVarKey(""); setEnvVarValue("");
-    setEnvHeaderKey(""); setEnvHeaderValue("");
+    setEnvVarKey("");
+    setEnvVarValue("");
+    setEnvHeaderKey("");
+    setEnvHeaderValue("");
     setShowEnvVarsSection(false);
     setShowEnvHeadersSection(false);
     setShowEnvAuthSection(false);
   };
 
   const updateEnvAuth = (partial: Partial<ExecutionAuthConfig>) => {
-    setEnvForm((prev) => ({ ...prev, authConfig: { ...prev.authConfig, ...partial } }));
+    setEnvForm((prev) => ({
+      ...prev,
+      authConfig: { ...prev.authConfig, ...partial },
+    }));
   };
 
   const addEnvVar = () => {
     if (!envVarKey) return;
-    setEnvForm((prev) => ({ ...prev, variables: { ...prev.variables, [envVarKey]: envVarValue } }));
-    setEnvVarKey(""); setEnvVarValue("");
+    setEnvForm((prev) => ({
+      ...prev,
+      variables: { ...prev.variables, [envVarKey]: envVarValue },
+    }));
+    setEnvVarKey("");
+    setEnvVarValue("");
   };
 
   const removeEnvVar = (key: string) => {
     setEnvForm((prev) => {
-      const v = { ...prev.variables }; delete v[key]; return { ...prev, variables: v };
+      const v = { ...prev.variables };
+      delete v[key];
+      return { ...prev, variables: v };
     });
   };
 
   const addEnvHeader = () => {
     if (!envHeaderKey) return;
-    setEnvForm((prev) => ({ ...prev, headers: { ...prev.headers, [envHeaderKey]: envHeaderValue } }));
-    setEnvHeaderKey(""); setEnvHeaderValue("");
+    setEnvForm((prev) => ({
+      ...prev,
+      headers: { ...prev.headers, [envHeaderKey]: envHeaderValue },
+    }));
+    setEnvHeaderKey("");
+    setEnvHeaderValue("");
   };
 
   const removeEnvHeader = (key: string) => {
     setEnvForm((prev) => {
-      const h = { ...prev.headers }; delete h[key]; return { ...prev, headers: h };
+      const h = { ...prev.headers };
+      delete h[key];
+      return { ...prev, headers: h };
     });
   };
 
@@ -247,8 +299,10 @@ export default function GenerationRunExecutePage() {
       const payload = {
         name: envForm.name.trim(),
         baseUrl: envForm.baseUrl.trim(),
-        variables: Object.keys(envForm.variables).length > 0 ? envForm.variables : null,
-        headers: Object.keys(envForm.headers).length > 0 ? envForm.headers : null,
+        variables:
+          Object.keys(envForm.variables).length > 0 ? envForm.variables : null,
+        headers:
+          Object.keys(envForm.headers).length > 0 ? envForm.headers : null,
         authConfig: {
           authType: auth.authType,
           headerName: auth.headerName || null,
@@ -265,7 +319,10 @@ export default function GenerationRunExecutePage() {
         } as ExecutionAuthConfig,
         isDefault: envForm.isDefault,
       };
-      const created = await environmentService.createEnvironment(projectId, payload);
+      const created = await environmentService.createEnvironment(
+        projectId,
+        payload,
+      );
       setEnvironments((prev) => {
         const updated = created.isDefault
           ? prev.map((env) => ({ ...env, isDefault: false }))
@@ -319,7 +376,9 @@ export default function GenerationRunExecutePage() {
 
   const openManualTestCaseModal = () => {
     const fallbackEndpoint = Object.values(endpointById)[0];
-    const defaultMethod = String(fallbackEndpoint?.method || "GET").toUpperCase();
+    const defaultMethod = String(
+      fallbackEndpoint?.method || "GET",
+    ).toUpperCase();
     const defaultUrl = String(fallbackEndpoint?.path || "").trim();
 
     setManualTestCaseForm({
@@ -344,7 +403,9 @@ export default function GenerationRunExecutePage() {
     try {
       setIsCreatingManualTestCase(true);
 
-      const methodText = String(manualTestCaseForm.method || "GET").toUpperCase();
+      const methodText = String(
+        manualTestCaseForm.method || "GET",
+      ).toUpperCase();
       const methodToEnum: Record<string, number> = {
         GET: 0,
         POST: 1,
@@ -362,7 +423,8 @@ export default function GenerationRunExecutePage() {
           manualTestCaseForm.name.trim() ||
           `Manual Test Case ${new Date().toLocaleString()}`,
         description:
-          manualTestCaseForm.description.trim() || "Created manually from run page",
+          manualTestCaseForm.description.trim() ||
+          "Created manually from run page",
         testType: 0,
         priority: 2,
         isEnabled: true,
@@ -378,7 +440,9 @@ export default function GenerationRunExecutePage() {
           timeout: 30000,
         },
         expectation: {
-          expectedStatus: String(Number(manualTestCaseForm.expectedStatus || "200") || 200),
+          expectedStatus: String(
+            Number(manualTestCaseForm.expectedStatus || "200") || 200,
+          ),
           responseSchema: null,
           headerChecks: null,
           bodyContains: null,
@@ -396,7 +460,10 @@ export default function GenerationRunExecutePage() {
 
       const createdId = created?.id || created?.Id;
       if (createdId) {
-        const createdTestCase = await testCaseService.getTestCaseById(suiteId, createdId);
+        const createdTestCase = await testCaseService.getTestCaseById(
+          suiteId,
+          createdId,
+        );
         setTestCases((prev) => [createdTestCase, ...prev]);
         setSelectedTestCaseIds((prev) => [createdId, ...prev]);
       }
@@ -475,12 +542,12 @@ export default function GenerationRunExecutePage() {
             apiSpecId
               ? endpointService.getEndpoints(projectId, apiSpecId, 1, 1000)
               : Promise.resolve({
-                items: [] as Endpoint[],
-                totalCount: 0,
-                pageNumber: 1,
-                pageSize: 0,
-                totalPages: 1,
-              }),
+                  items: [] as Endpoint[],
+                  totalCount: 0,
+                  pageNumber: 1,
+                  pageSize: 0,
+                  totalPages: 1,
+                }),
           ],
         );
 
@@ -500,7 +567,9 @@ export default function GenerationRunExecutePage() {
         const idSet = new Set(batchTestCaseIds);
         const filtered =
           idSet.size > 0
-            ? (suiteCasesResponse.items || []).filter((item) => idSet.has(item.id))
+            ? (suiteCasesResponse.items || []).filter((item) =>
+                idSet.has(item.id),
+              )
             : suiteCasesResponse.items || [];
 
         // Fallback: nếu filter ra rỗng nhưng có IDs trong URL,
@@ -513,8 +582,10 @@ export default function GenerationRunExecutePage() {
         setTestCases(finalTestCases);
         setSelectedTestCaseIds(
           idSet.size > 0
-            ? finalTestCases.filter((item) => idSet.has(item.id)).map((item) => item.id)
-            : finalTestCases.map((item) => item.id)
+            ? finalTestCases
+                .filter((item) => idSet.has(item.id))
+                .map((item) => item.id)
+            : finalTestCases.map((item) => item.id),
         );
       } catch (err) {
         handleError(err);
@@ -536,7 +607,7 @@ export default function GenerationRunExecutePage() {
           }
         }}
         title="Add Manual Test Case"
-        footer={(
+        footer={
           <>
             <button
               type="button"
@@ -560,7 +631,7 @@ export default function GenerationRunExecutePage() {
               Add Test Case
             </button>
           </>
-        )}
+        }
       >
         <div className="space-y-4">
           <div>
@@ -570,7 +641,10 @@ export default function GenerationRunExecutePage() {
             <input
               value={manualTestCaseForm.name}
               onChange={(e) =>
-                setManualTestCaseForm((prev) => ({ ...prev, name: e.target.value }))
+                setManualTestCaseForm((prev) => ({
+                  ...prev,
+                  name: e.target.value,
+                }))
               }
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
             />
@@ -584,7 +658,10 @@ export default function GenerationRunExecutePage() {
               <select
                 value={manualTestCaseForm.method}
                 onChange={(e) =>
-                  setManualTestCaseForm((prev) => ({ ...prev, method: e.target.value }))
+                  setManualTestCaseForm((prev) => ({
+                    ...prev,
+                    method: e.target.value,
+                  }))
                 }
                 className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               >
@@ -607,7 +684,10 @@ export default function GenerationRunExecutePage() {
                 max={599}
                 value={manualTestCaseForm.expectedStatus}
                 onChange={(e) =>
-                  setManualTestCaseForm((prev) => ({ ...prev, expectedStatus: e.target.value }))
+                  setManualTestCaseForm((prev) => ({
+                    ...prev,
+                    expectedStatus: e.target.value,
+                  }))
                 }
                 className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               />
@@ -621,7 +701,10 @@ export default function GenerationRunExecutePage() {
             <input
               value={manualTestCaseForm.endpointUrl}
               onChange={(e) =>
-                setManualTestCaseForm((prev) => ({ ...prev, endpointUrl: e.target.value }))
+                setManualTestCaseForm((prev) => ({
+                  ...prev,
+                  endpointUrl: e.target.value,
+                }))
               }
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               placeholder="/api/products"
@@ -636,7 +719,10 @@ export default function GenerationRunExecutePage() {
               rows={3}
               value={manualTestCaseForm.description}
               onChange={(e) =>
-                setManualTestCaseForm((prev) => ({ ...prev, description: e.target.value }))
+                setManualTestCaseForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
               }
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               placeholder="Optional description"
@@ -816,7 +902,10 @@ export default function GenerationRunExecutePage() {
                   <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
                     Test Case Filters
                   </span>
-                  {(searchQuery || filterMethod || filterEndpoint || filterTestType) && (
+                  {(searchQuery ||
+                    filterMethod ||
+                    filterEndpoint ||
+                    filterTestType) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -851,7 +940,9 @@ export default function GenerationRunExecutePage() {
                   >
                     <option value="">All methods</option>
                     {uniqueMethods.map((m) => (
-                      <option key={m} value={m}>{m}</option>
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
                     ))}
                   </select>
 
@@ -862,7 +953,9 @@ export default function GenerationRunExecutePage() {
                   >
                     <option value="">All test types</option>
                     {uniqueTestTypes.map((tt) => (
-                      <option key={tt} value={tt}>{tt}</option>
+                      <option key={tt} value={tt}>
+                        {tt}
+                      </option>
                     ))}
                   </select>
 
@@ -873,32 +966,93 @@ export default function GenerationRunExecutePage() {
                   >
                     <option value="">All endpoints</option>
                     {uniqueEndpoints.map((ep) => (
-                      <option key={ep} value={ep}>{ep}</option>
+                      <option key={ep} value={ep}>
+                        {ep}
+                      </option>
                     ))}
                   </select>
                 </div>
 
-                {(searchQuery || filterMethod || filterEndpoint || filterTestType) && (
+                {(searchQuery ||
+                  filterMethod ||
+                  filterEndpoint ||
+                  filterTestType) && (
                   <p className="text-xs text-on-surface-variant mt-2">
-                    Showing {filteredTestCases.length} of {testCases.length} test cases
+                    Showing {filteredTestCases.length} of {testCases.length}{" "}
+                    test cases
                   </p>
                 )}
               </div>
 
               <div className="flex items-center gap-2">
-                {selectedTestCaseIds.length === filteredTestCases.length && filteredTestCases.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTestCaseIds([])}
-                    className="text-xs font-semibold text-on-surface-variant hover:underline flex items-center gap-1"
-                  >
-                    <Square className="w-3.5 h-3.5" />
-                    Clear
-                  </button>
+                {selectedTestCaseIds.length === filteredTestCases.length &&
+                filteredTestCases.length > 0 ? (
+                  <div className="flex justify-between w-full">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTestCaseIds([])}
+                      className="text-xs font-semibold text-on-surface-variant hover:underline flex items-center gap-1"
+                    >
+                      <Square className="w-3.5 h-3.5" />
+                      Clear
+                    </button>
+                    <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
+                      {environments.length === 0 && !isLoading && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
+                          No execution environment found.{" "}
+                          <button
+                            type="button"
+                            className="underline font-semibold"
+                            onClick={() => setIsEnvModalOpen(true)}
+                          >
+                            Create one
+                          </button>{" "}
+                          to run tests.
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleExecute("selected")}
+                        disabled={
+                          isSubmitting ||
+                          environments.length === 0 ||
+                          selectedTestCaseIds.length === 0 ||
+                          testCases.length === 0
+                        }
+                        className="px-5 py-2.5 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isSubmitting && (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        )}
+                        <Play className="w-4 h-4" />
+                        Execute Selected ({selectedTestCaseIds.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExecute("all")}
+                        disabled={
+                          isSubmitting ||
+                          environments.length === 0 ||
+                          testCases.length === 0
+                        }
+                        className="px-5 py-2.5 rounded-lg bg-surface-container-high dark:bg-slate-700 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isSubmitting && (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        )}
+                        <Play className="w-4 h-4" />
+                        Execute All ({testCases.length})
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setSelectedTestCaseIds(filteredTestCases.map((item) => item.id))}
+                    onClick={() =>
+                      setSelectedTestCaseIds(
+                        filteredTestCases.map((item) => item.id),
+                      )
+                    }
                     className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
                     <CheckSquare className="w-3.5 h-3.5" />
@@ -1024,7 +1178,10 @@ export default function GenerationRunExecutePage() {
                 New Environment
               </h3>
               <button
-                onClick={() => { setIsEnvModalOpen(false); resetEnvForm(); }}
+                onClick={() => {
+                  setIsEnvModalOpen(false);
+                  resetEnvForm();
+                }}
                 className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5 text-slate-500" />
@@ -1036,7 +1193,9 @@ export default function GenerationRunExecutePage() {
               <input
                 type="text"
                 value={envForm.name}
-                onChange={(e) => setEnvForm({ ...envForm, name: e.target.value })}
+                onChange={(e) =>
+                  setEnvForm({ ...envForm, name: e.target.value })
+                }
                 placeholder="Environment name"
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
@@ -1045,39 +1204,108 @@ export default function GenerationRunExecutePage() {
               <input
                 type="url"
                 value={envForm.baseUrl}
-                onChange={(e) => setEnvForm({ ...envForm, baseUrl: e.target.value })}
+                onChange={(e) =>
+                  setEnvForm({ ...envForm, baseUrl: e.target.value })
+                }
                 placeholder="Base URL (e.g. https://api.example.com)"
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
 
               {/* Variables */}
               <div>
-                <button type="button" onClick={() => setShowEnvVarsSection(!showEnvVarsSection)} className="flex items-center gap-2 w-full text-left cursor-pointer">
-                  {showEnvVarsSection ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Variables</span>
-                  <span className="text-xs text-slate-400">({Object.keys(envForm.variables).length})</span>
+                <button
+                  type="button"
+                  onClick={() => setShowEnvVarsSection(!showEnvVarsSection)}
+                  className="flex items-center gap-2 w-full text-left cursor-pointer"
+                >
+                  {showEnvVarsSection ? (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  )}
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    Variables
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    ({Object.keys(envForm.variables).length})
+                  </span>
                 </button>
                 {showEnvVarsSection && (
                   <div className="mt-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
-                      {"Define variables and use them via {{variableName}} syntax."}
+                      {
+                        "Define variables and use them via {{variableName}} syntax."
+                      }
                     </p>
                     <div className="space-y-2">
                       {Object.entries(envForm.variables).map(([key, value]) => (
                         <div key={key} className="flex items-center gap-2">
-                          <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
-                          <input type="text" value={key} readOnly className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" />
-                          <input type="text" value={value} onChange={(e) => setEnvForm((p) => ({ ...p, variables: { ...p.variables, [key]: e.target.value } }))} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                          <button onClick={() => removeEnvVar(key)} className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer">Remove</button>
+                          <input
+                            type="checkbox"
+                            checked
+                            readOnly
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600"
+                          />
+                          <input
+                            type="text"
+                            value={key}
+                            readOnly
+                            className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                          />
+                          <input
+                            type="text"
+                            value={value}
+                            onChange={(e) =>
+                              setEnvForm((p) => ({
+                                ...p,
+                                variables: {
+                                  ...p.variables,
+                                  [key]: e.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="Value"
+                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => removeEnvVar(key)}
+                            className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
+                          >
+                            Remove
+                          </button>
                         </div>
                       ))}
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
-                        <input type="text" value={envVarKey} onChange={(e) => setEnvVarKey(e.target.value)} placeholder="Key" className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="text" value={envVarValue} onChange={(e) => setEnvVarValue(e.target.value)} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                        <input
+                          type="checkbox"
+                          checked
+                          readOnly
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600"
+                        />
+                        <input
+                          type="text"
+                          value={envVarKey}
+                          onChange={(e) => setEnvVarKey(e.target.value)}
+                          placeholder="Key"
+                          className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={envVarValue}
+                          onChange={(e) => setEnvVarValue(e.target.value)}
+                          placeholder="Value"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-medium px-2 py-1 invisible">
+                          Remove
+                        </span>
                       </div>
-                      <button onClick={addEnvVar} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer">+ Add</button>
+                      <button
+                        onClick={addEnvVar}
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer"
+                      >
+                        + Add
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1085,30 +1313,99 @@ export default function GenerationRunExecutePage() {
 
               {/* Headers */}
               <div>
-                <button type="button" onClick={() => setShowEnvHeadersSection(!showEnvHeadersSection)} className="flex items-center gap-2 w-full text-left cursor-pointer">
-                  {showEnvHeadersSection ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Headers</span>
-                  <span className="text-xs text-slate-400">({Object.keys(envForm.headers).length})</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowEnvHeadersSection(!showEnvHeadersSection)
+                  }
+                  className="flex items-center gap-2 w-full text-left cursor-pointer"
+                >
+                  {showEnvHeadersSection ? (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  )}
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    Headers
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    ({Object.keys(envForm.headers).length})
+                  </span>
                 </button>
                 {showEnvHeadersSection && (
                   <div className="mt-2">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">Custom headers sent with every request.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
+                      Custom headers sent with every request.
+                    </p>
                     <div className="space-y-2">
                       {Object.entries(envForm.headers).map(([key, value]) => (
                         <div key={key} className="flex items-center gap-2">
-                          <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
-                          <input type="text" value={key} readOnly className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" />
-                          <input type="text" value={value} onChange={(e) => setEnvForm((p) => ({ ...p, headers: { ...p.headers, [key]: e.target.value } }))} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                          <button onClick={() => removeEnvHeader(key)} className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer">Remove</button>
+                          <input
+                            type="checkbox"
+                            checked
+                            readOnly
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600"
+                          />
+                          <input
+                            type="text"
+                            value={key}
+                            readOnly
+                            className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                          />
+                          <input
+                            type="text"
+                            value={value}
+                            onChange={(e) =>
+                              setEnvForm((p) => ({
+                                ...p,
+                                headers: {
+                                  ...p.headers,
+                                  [key]: e.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="Value"
+                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => removeEnvHeader(key)}
+                            className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
+                          >
+                            Remove
+                          </button>
                         </div>
                       ))}
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" checked readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />
-                        <input type="text" value={envHeaderKey} onChange={(e) => setEnvHeaderKey(e.target.value)} placeholder="Header name" className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="text" value={envHeaderValue} onChange={(e) => setEnvHeaderValue(e.target.value)} placeholder="Value" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <span className="text-sm font-medium px-2 py-1 invisible">Remove</span>
+                        <input
+                          type="checkbox"
+                          checked
+                          readOnly
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600"
+                        />
+                        <input
+                          type="text"
+                          value={envHeaderKey}
+                          onChange={(e) => setEnvHeaderKey(e.target.value)}
+                          placeholder="Header name"
+                          className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={envHeaderValue}
+                          onChange={(e) => setEnvHeaderValue(e.target.value)}
+                          placeholder="Value"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-medium px-2 py-1 invisible">
+                          Remove
+                        </span>
                       </div>
-                      <button onClick={addEnvHeader} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer">+ Add</button>
+                      <button
+                        onClick={addEnvHeader}
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer"
+                      >
+                        + Add
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1116,61 +1413,187 @@ export default function GenerationRunExecutePage() {
 
               {/* Authentication */}
               <div>
-                <button type="button" onClick={() => setShowEnvAuthSection(!showEnvAuthSection)} className="flex items-center gap-2 w-full text-left cursor-pointer">
-                  {showEnvAuthSection ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                <button
+                  type="button"
+                  onClick={() => setShowEnvAuthSection(!showEnvAuthSection)}
+                  className="flex items-center gap-2 w-full text-left cursor-pointer"
+                >
+                  {showEnvAuthSection ? (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  )}
                   <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Authentication</span>
-                  <span className="text-xs text-slate-400">({envForm.authConfig.authType})</span>
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    Authentication
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    ({envForm.authConfig.authType})
+                  </span>
                 </button>
                 {showEnvAuthSection && (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3 mt-2">
                     <select
                       value={envForm.authConfig.authType}
-                      onChange={(e) => updateEnvAuth({ authType: e.target.value as ExecutionAuthConfig["authType"] })}
+                      onChange={(e) =>
+                        updateEnvAuth({
+                          authType: e.target
+                            .value as ExecutionAuthConfig["authType"],
+                        })
+                      }
                       className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="None">None</option>
                       <option value="BearerToken">Bearer Token</option>
                       <option value="Basic">Basic</option>
                       <option value="ApiKey">API Key</option>
-                      <option value="OAuth2ClientCredentials">OAuth2 Client Credentials</option>
+                      <option value="OAuth2ClientCredentials">
+                        OAuth2 Client Credentials
+                      </option>
                     </select>
 
                     {envForm.authConfig.authType === "BearerToken" && (
                       <div className="space-y-3">
-                        <input type="text" value={envForm.authConfig.headerName || ""} onChange={(e) => updateEnvAuth({ headerName: e.target.value || null })} placeholder="Header Name (default: Authorization)" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="password" value={envForm.authConfig.token || ""} onChange={(e) => updateEnvAuth({ token: e.target.value || null })} placeholder="Token" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="text"
+                          value={envForm.authConfig.headerName || ""}
+                          onChange={(e) =>
+                            updateEnvAuth({
+                              headerName: e.target.value || null,
+                            })
+                          }
+                          placeholder="Header Name (default: Authorization)"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="password"
+                          value={envForm.authConfig.token || ""}
+                          onChange={(e) =>
+                            updateEnvAuth({ token: e.target.value || null })
+                          }
+                          placeholder="Token"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
                     )}
 
                     {envForm.authConfig.authType === "Basic" && (
                       <div className="grid grid-cols-2 gap-3">
-                        <input type="text" value={envForm.authConfig.username || ""} onChange={(e) => updateEnvAuth({ username: e.target.value || null })} placeholder="Username" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="password" value={envForm.authConfig.password || ""} onChange={(e) => updateEnvAuth({ password: e.target.value || null })} placeholder="Password" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="text"
+                          value={envForm.authConfig.username || ""}
+                          onChange={(e) =>
+                            updateEnvAuth({ username: e.target.value || null })
+                          }
+                          placeholder="Username"
+                          className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="password"
+                          value={envForm.authConfig.password || ""}
+                          onChange={(e) =>
+                            updateEnvAuth({ password: e.target.value || null })
+                          }
+                          placeholder="Password"
+                          className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
                     )}
 
                     {envForm.authConfig.authType === "ApiKey" && (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
-                          <input type="text" value={envForm.authConfig.apiKeyName || ""} onChange={(e) => updateEnvAuth({ apiKeyName: e.target.value || null })} placeholder="API Key Name" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                          <input type="password" value={envForm.authConfig.apiKeyValue || ""} onChange={(e) => updateEnvAuth({ apiKeyValue: e.target.value || null })} placeholder="API Key Value" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <input
+                            type="text"
+                            value={envForm.authConfig.apiKeyName || ""}
+                            onChange={(e) =>
+                              updateEnvAuth({
+                                apiKeyName: e.target.value || null,
+                              })
+                            }
+                            placeholder="API Key Name"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="password"
+                            value={envForm.authConfig.apiKeyValue || ""}
+                            onChange={(e) =>
+                              updateEnvAuth({
+                                apiKeyValue: e.target.value || null,
+                              })
+                            }
+                            placeholder="API Key Value"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
                         </div>
-                        <select value={envForm.authConfig.apiKeyLocation || "Header"} onChange={(e) => updateEnvAuth({ apiKeyLocation: e.target.value as ExecutionAuthConfig["apiKeyLocation"] })} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select
+                          value={envForm.authConfig.apiKeyLocation || "Header"}
+                          onChange={(e) =>
+                            updateEnvAuth({
+                              apiKeyLocation: e.target
+                                .value as ExecutionAuthConfig["apiKeyLocation"],
+                            })
+                          }
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
                           <option value="Header">Header</option>
                           <option value="Query">Query</option>
                         </select>
                       </div>
                     )}
 
-                    {envForm.authConfig.authType === "OAuth2ClientCredentials" && (
+                    {envForm.authConfig.authType ===
+                      "OAuth2ClientCredentials" && (
                       <div className="space-y-3">
-                        <input type="url" value={envForm.authConfig.tokenUrl || ""} onChange={(e) => updateEnvAuth({ tokenUrl: e.target.value || null })} placeholder="Token URL" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="url"
+                          value={envForm.authConfig.tokenUrl || ""}
+                          onChange={(e) =>
+                            updateEnvAuth({ tokenUrl: e.target.value || null })
+                          }
+                          placeholder="Token URL"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                         <div className="grid grid-cols-2 gap-3">
-                          <input type="text" value={envForm.authConfig.clientId || ""} onChange={(e) => updateEnvAuth({ clientId: e.target.value || null })} placeholder="Client ID" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                          <input type="password" value={envForm.authConfig.clientSecret || ""} onChange={(e) => updateEnvAuth({ clientSecret: e.target.value || null })} placeholder="Client Secret" className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <input
+                            type="text"
+                            value={envForm.authConfig.clientId || ""}
+                            onChange={(e) =>
+                              updateEnvAuth({
+                                clientId: e.target.value || null,
+                              })
+                            }
+                            placeholder="Client ID"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="password"
+                            value={envForm.authConfig.clientSecret || ""}
+                            onChange={(e) =>
+                              updateEnvAuth({
+                                clientSecret: e.target.value || null,
+                              })
+                            }
+                            placeholder="Client Secret"
+                            className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
                         </div>
-                        <input type="text" value={(envForm.authConfig.scopes || []).join(", ")} onChange={(e) => updateEnvAuth({ scopes: e.target.value.trim() ? e.target.value.split(",").map((s) => s.trim()).filter(Boolean) : [] })} placeholder="Scopes (comma separated)" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input
+                          type="text"
+                          value={(envForm.authConfig.scopes || []).join(", ")}
+                          onChange={(e) =>
+                            updateEnvAuth({
+                              scopes: e.target.value.trim()
+                                ? e.target.value
+                                    .split(",")
+                                    .map((s) => s.trim())
+                                    .filter(Boolean)
+                                : [],
+                            })
+                          }
+                          placeholder="Scopes (comma separated)"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
                     )}
                   </div>
@@ -1179,14 +1602,30 @@ export default function GenerationRunExecutePage() {
 
               {/* Default checkbox */}
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="envDefaultCheck" checked={envForm.isDefault} onChange={(e) => setEnvForm({ ...envForm, isDefault: e.target.checked })} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                <label htmlFor="envDefaultCheck" className="text-sm text-slate-700 dark:text-slate-300">Set as default environment</label>
+                <input
+                  type="checkbox"
+                  id="envDefaultCheck"
+                  checked={envForm.isDefault}
+                  onChange={(e) =>
+                    setEnvForm({ ...envForm, isDefault: e.target.checked })
+                  }
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label
+                  htmlFor="envDefaultCheck"
+                  className="text-sm text-slate-700 dark:text-slate-300"
+                >
+                  Set as default environment
+                </label>
               </div>
 
               {/* Actions */}
               <div className="flex justify-end gap-3 pt-2">
                 <button
-                  onClick={() => { setIsEnvModalOpen(false); resetEnvForm(); }}
+                  onClick={() => {
+                    setIsEnvModalOpen(false);
+                    resetEnvForm();
+                  }}
                   className="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Cancel
@@ -1196,7 +1635,9 @@ export default function GenerationRunExecutePage() {
                   disabled={isCreatingEnv || !envForm.name.trim()}
                   className="px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-2"
                 >
-                  {isCreatingEnv && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isCreatingEnv && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
                   Create
                 </button>
               </div>
@@ -1204,7 +1645,6 @@ export default function GenerationRunExecutePage() {
           </div>
         </div>
       )}
-
     </MainLayout>
   );
 }
