@@ -441,16 +441,6 @@ const testRunService = {
     return mapBackendRun(response);
   },
 
-  // Cancel a running test run (suite-level)
-  cancelTestRun: async (
-    testSuiteId: string,
-    testRunId: string,
-  ): Promise<void> => {
-    await apiService.post(
-      `/test-suites/${testSuiteId}/test-runs/${testRunId}/cancel`,
-    );
-  },
-
   // ===== LEGACY / FALLBACK (kept until backend confirms removal) =====
 
   /** @deprecated Use getTestRunsByTestSuite instead. Legacy project-level route. */
@@ -478,13 +468,6 @@ const testRunService = {
     return await apiService.get(`/projects/${projectId}/test-runs/stats`, {
       params: { days },
     });
-  },
-
-  /** @deprecated Legacy retry route. */
-  retryFailedTests: async (testRunId: string): Promise<TestRun> => {
-    return await apiService.post<TestRun>(
-      `/test-runs/${testRunId}/retry-failed`,
-    );
   },
 
   /** @deprecated Legacy export route. */

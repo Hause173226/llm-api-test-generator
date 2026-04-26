@@ -79,12 +79,12 @@ export const useReports = (suiteId: string, runId: string) => {
   const downloadReport = async (reportId: string): Promise<boolean> => {
     if (!suiteId || !runId) return false;
     try {
-      const blob = await reportService.downloadReport(suiteId, runId, reportId);
+      const { blob, filename } = await reportService.downloadReport(suiteId, runId, reportId);
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `report-${reportId}`;
+      a.download = filename || `report-${reportId}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

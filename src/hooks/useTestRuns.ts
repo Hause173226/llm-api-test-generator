@@ -63,29 +63,6 @@ export function useTestRuns(
     }
   };
 
-  const cancelTestRun = async (testRunId: string) => {
-    try {
-      await testRunService.cancelTestRun(testSuiteId, testRunId);
-      await fetchTestRuns(); // Refresh list
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  /** @deprecated Backend route does not exist. Will 404. */
-  const retryFailedTests = async (testRunId: string) => {
-    console.warn(
-      "[useTestRuns] retryFailedTests is deprecated — backend route does not exist",
-    );
-    try {
-      const newRun = await testRunService.retryFailedTests(testRunId);
-      await fetchTestRuns(); // Refresh list
-      return newRun;
-    } catch (err) {
-      throw err;
-    }
-  };
-
   /** @deprecated Backend route does not exist. Use FE-10 report download instead. */
   const exportResults = async (
     testRunId: string,
@@ -109,8 +86,6 @@ export function useTestRuns(
     error,
     refetch: fetchTestRuns,
     startTestRun,
-    cancelTestRun,
-    retryFailedTests,
     exportResults,
   };
 }

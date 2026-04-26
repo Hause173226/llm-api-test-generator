@@ -308,6 +308,49 @@ class ApiService {
       throw new ApiError(500, "File download failed");
     }
   }
+
+  /** Download a file and extract the server-provided filename from Content-Disposition. */
+  async downloadFileWithMeta(endpoint: string): Promise<{ blob: Blob; filename?: string }> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const token = getAuthToken();
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 && token) {
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+          throw new ApiError(401, "Session expired. Please login again.");
+        }
+        throw new ApiError(response.status, "File download failed");
+      }
+
+      // Extract filename from Content-Disposition: attachment; filename="..."
+      let filename: string | undefined;
+      const disposition = response.headers.get("content-disposition");
+      if (disposition) {
+        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match?.[1]) {
+          filename = match[1].replace(/['"]/g, "");
+        }
+      }
+
+      const blob = await response.blob();
+      return { blob, filename };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "File download failed");
+    }
+  }
 }
 
 export const apiService = new ApiService();

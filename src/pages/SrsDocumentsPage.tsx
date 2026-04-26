@@ -726,9 +726,7 @@ export default function SrsDocumentsPage() {
                     <h2 className="text-2xl font-black text-on-surface">
                       {selectedDocument.title}
                     </h2>
-                    <p className="mt-2 text-sm text-on-surface-variant">
-                      Document ID: {selectedDocument.id}
-                    </p>
+              
                     <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
                       <span
                         className={cn(

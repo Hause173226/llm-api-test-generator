@@ -18,8 +18,6 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
-  RotateCcw,
-  StopCircle,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
@@ -89,6 +87,9 @@ export default function TestRunsPage() {
   const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
   const [strictValidation, setStrictValidation] = useState(false);
+  const [maxRetryAttempts, setMaxRetryAttempts] = useState(0);
+  const [retryFailedDependencies, setRetryFailedDependencies] = useState(true);
+  const [rerunSkippedCases, setRerunSkippedCases] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pageSize = 20;
 
@@ -100,8 +101,6 @@ export default function TestRunsPage() {
     error,
     refetch,
     startTestRun,
-    cancelTestRun,
-    retryFailedTests,
     exportResults,
   } = useTestRuns(activeSuiteId || "", currentPage, pageSize, statusFilter);
 
@@ -290,6 +289,9 @@ export default function TestRunsPage() {
     setSelectedTestSuiteId("");
     setSelectedTestCaseIds([]);
     setSuiteTestCases([]);
+    setMaxRetryAttempts(0);
+    setRetryFailedDependencies(true);
+    setRerunSkippedCases(true);
   };
 
   const handleStartTestRun = async () => {
@@ -316,6 +318,11 @@ export default function TestRunsPage() {
         selectedTestCaseIds:
           selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
         strictValidation,
+        retryPolicy: {
+          maxRetryAttempts,
+          retryFailedDependencies,
+          rerunSkippedCases,
+        },
       });
 
       // Post-run LLM analysis (suggestions + failure explanations) is handled
@@ -329,29 +336,14 @@ export default function TestRunsPage() {
       showSuccessToast(t("testRuns.toast.started"));
       closeStartModal();
       setStrictValidation(false);
+      setMaxRetryAttempts(0);
+      setRetryFailedDependencies(true);
+      setRerunSkippedCases(true);
       setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
     } catch (err) {
       handleError(err);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleCancel = async (testRunId: string) => {
-    try {
-      await cancelTestRun(testRunId);
-      showSuccessToast(t("testRuns.toast.cancelled"));
-    } catch (err) {
-      handleError(err);
-    }
-  };
-
-  const handleRetry = async (testRunId: string) => {
-    try {
-      await retryFailedTests(testRunId);
-      showSuccessToast(t("testRuns.toast.retrying"));
-    } catch (err) {
-      handleError(err);
     }
   };
 
@@ -810,25 +802,6 @@ export default function TestRunsPage() {
                         </td>
                         <td className="px-8 py-6 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {run.status === "running" && (
-                              <button
-                                onClick={() => handleCancel(run.id)}
-                                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-error cursor-pointer"
-                                title={t("testRuns.cancelTitle")}
-                              >
-                                <StopCircle className="w-4 h-4" />
-                              </button>
-                            )}
-                            {run.status === "completed" &&
-                              run.failedTests > 0 && (
-                                <button
-                                  onClick={() => handleRetry(run.id)}
-                                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-amber-500 cursor-pointer"
-                                  title={t("testRuns.retryTitle")}
-                                >
-                                  <RotateCcw className="w-4 h-4" />
-                                </button>
-                              )}
                             <button
                               onClick={() => {
                                 const status = run.status.toLowerCase();
@@ -935,23 +908,61 @@ export default function TestRunsPage() {
                                             expandedCaseByRunId[run.id] ===
                                             testCase.testCaseId;
 
+                                          // BC-1/BC-2: retry badge logic
+                                          const attempt = testCase.executionAttempt ?? 1;
+                                          const statusLower = (testCase.status || "").toLowerCase();
+                                          let statusLabel = testCase.status;
+                                          let statusColor = "text-on-surface-variant";
+                                          if (statusLower === "passed") {
+                                            statusColor = "text-emerald-600 dark:text-emerald-400";
+                                            statusLabel = attempt > 1 ? `Passed (Retried ×${attempt - 1})` : "Passed";
+                                          } else if (statusLower === "failed") {
+                                            statusColor = "text-rose-600 dark:text-rose-400";
+                                            statusLabel = attempt > 1 ? `Failed (after ${attempt - 1} retr${attempt - 1 > 1 ? "ies" : "y"})` : "Failed";
+                                          } else if (statusLower === "skipped") {
+                                            statusColor = "text-amber-500 dark:text-amber-400";
+                                            statusLabel = "Skipped";
+                                          }
+
                                           return (
                                             <div
                                               key={testCase.testCaseId}
                                               className="rounded-lg border border-outline-variant/10 dark:border-slate-700 bg-surface-container-low/40 dark:bg-slate-800/40"
                                             >
                                               <div className="p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                                                <div className="min-w-0">
-                                                  <p className="text-sm font-semibold text-on-surface truncate">
-                                                    {testCase.name}
-                                                  </p>
-                                                  <p className="text-xs text-on-surface-variant">
-                                                    {t("testRuns.detail.caseStatus")} {testCase.status} •
-                                                    {t("testRuns.detail.caseDuration")}{" "}
-                                                    {formatDuration(
-                                                      testCase.durationMs,
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <p className="text-sm font-semibold text-on-surface truncate">
+                                                      {testCase.name}
+                                                    </p>
+                                                    {/* Retry / Replay badge */}
+                                                    {attempt > 1 && (
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 shrink-0">
+                                                        ↩ ×{attempt - 1}
+                                                      </span>
                                                     )}
+                                                    {testCase.hasWarnings && (
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 shrink-0">
+                                                        ⚠ warn
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className="text-xs mt-0.5">
+                                                    <span className={`font-semibold ${statusColor}`}>{statusLabel}</span>
+                                                    <span className="text-on-surface-variant">
+                                                      {" "}• {t("testRuns.detail.caseDuration")}{" "}
+                                                      {formatDuration(testCase.durationMs)}
+                                                    </span>
                                                   </p>
+                                                  {/* BC-1: skipped dependency info */}
+                                                  {statusLower === "skipped" && testCase.skippedBecauseDependencyIds?.length > 0 && (
+                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                                      Depends on: {testCase.skippedBecauseDependencyIds.map((depId) => {
+                                                        const depCase = runDetailsById[run.id]?.cases?.find((c) => c.testCaseId === depId);
+                                                        return depCase ? depCase.name : depId.slice(0, 8) + "…";
+                                                      }).join(", ")}
+                                                    </p>
+                                                  )}
                                                 </div>
                                                 <button
                                                   type="button"
@@ -970,10 +981,10 @@ export default function TestRunsPage() {
                                               </div>
 
                                               {isExpanded && (
-                                                <div className="px-3 pb-3 space-y-2 text-xs text-on-surface-variant">
+                                                <div className="px-3 pb-3 space-y-2 text-xs text-on-surface-variant border-t border-outline-variant/10 dark:border-slate-700 pt-2">
                                                   <p>
                                                     {t("testRuns.detail.url")}{" "}
-                                                    <span className="text-on-surface">
+                                                    <span className="text-on-surface break-all">
                                                       {testCase.resolvedUrl ||
                                                         t("testRuns.na")}
                                                     </span>
@@ -984,29 +995,103 @@ export default function TestRunsPage() {
                                                       {testCase.httpStatusCode ??
                                                         t("testRuns.na")}
                                                     </span>
-                                                  </p>
-                                                  {testCase.failureReasons
-                                                    ?.length > 0 && (
-                                                      <div>
-                                                        <p className="font-semibold text-rose-600 dark:text-rose-400">
-                                                          {t("testRuns.detail.failureReasons")}
-                                                        </p>
-                                                        {testCase.failureReasons.map(
-                                                          (reason, index) => (
-                                                            <p
-                                                              key={`${testCase.testCaseId}-${index}`}
-                                                            >
-                                                              -{" "}
-                                                              {(reason.code ||
-                                                                "") +
-                                                                (reason.message
-                                                                  ? `: ${reason.message}`
-                                                                  : "")}
-                                                            </p>
-                                                          ),
-                                                        )}
-                                                      </div>
+                                                    {testCase.expectedStatus && (
+                                                      <span className="text-on-surface-variant">
+                                                        {" "}(expected: {testCase.expectedStatus})
+                                                      </span>
                                                     )}
+                                                  </p>
+                                                  {/* Check results row */}
+                                                  {(testCase.checksPerformed != null || testCase.checksSkipped != null) && (
+                                                    <p>
+                                                      Checks:{" "}
+                                                      <span className="text-on-surface">
+                                                        {testCase.checksPerformed ?? 0} performed
+                                                        {(testCase.checksSkipped ?? 0) > 0 && `, ${testCase.checksSkipped} skipped`}
+                                                      </span>
+                                                    </p>
+                                                  )}
+                                                  {/* Individual check results */}
+                                                  {[
+                                                    { label: "Status code", value: testCase.statusCodeMatched },
+                                                    { label: "Schema", value: testCase.schemaMatched },
+                                                    { label: "Headers", value: testCase.headerChecksPassed },
+                                                    { label: "Body contains", value: testCase.bodyContainsPassed },
+                                                    { label: "Body not contains", value: testCase.bodyNotContainsPassed },
+                                                    { label: "JSON path", value: testCase.jsonPathChecksPassed },
+                                                    { label: "Response time", value: testCase.responseTimePassed },
+                                                  ].filter((c) => c.value != null).length > 0 && (
+                                                    <div className="flex flex-wrap gap-1">
+                                                      {[
+                                                        { label: "Status code", value: testCase.statusCodeMatched },
+                                                        { label: "Schema", value: testCase.schemaMatched },
+                                                        { label: "Headers", value: testCase.headerChecksPassed },
+                                                        { label: "Body contains", value: testCase.bodyContainsPassed },
+                                                        { label: "Body not contains", value: testCase.bodyNotContainsPassed },
+                                                        { label: "JSON path", value: testCase.jsonPathChecksPassed },
+                                                        { label: "Response time", value: testCase.responseTimePassed },
+                                                      ].filter((c) => c.value != null).map((c) => (
+                                                        <span
+                                                          key={c.label}
+                                                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${c.value ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                                        >
+                                                          {c.value ? "✓" : "✗"} {c.label}
+                                                        </span>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {/* Failure reasons */}
+                                                  {testCase.failureReasons?.length > 0 && (
+                                                    <div>
+                                                      <p className="font-semibold text-rose-600 dark:text-rose-400 mb-1">
+                                                        {t("testRuns.detail.failureReasons")}
+                                                      </p>
+                                                      {testCase.failureReasons.map(
+                                                        (reason, index) => (
+                                                          <p
+                                                            key={`${testCase.testCaseId}-f${index}`}
+                                                            className="ml-2"
+                                                          >
+                                                            <span className="font-mono text-rose-500 dark:text-rose-400">{reason.code}</span>
+                                                            {reason.message ? `: ${reason.message}` : ""}
+                                                            {reason.expected && (
+                                                              <span className="text-on-surface-variant"> (expected: <span className="text-on-surface">{reason.expected}</span>, got: <span className="text-on-surface">{reason.actual}</span>)</span>
+                                                            )}
+                                                          </p>
+                                                        ),
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                  {/* Warnings */}
+                                                  {testCase.warnings && testCase.warnings.length > 0 && (
+                                                    <div>
+                                                      <p className="font-semibold text-yellow-600 dark:text-yellow-400 mb-1">
+                                                        Warnings
+                                                      </p>
+                                                      {testCase.warnings.map((w, index) => (
+                                                        <p key={`${testCase.testCaseId}-w${index}`} className="ml-2">
+                                                          <span className="font-mono text-yellow-500">{w.code}</span>
+                                                          {w.message ? `: ${w.message}` : ""}
+                                                        </p>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {/* Extracted variables */}
+                                                  {Object.keys(testCase.extractedVariables || {}).length > 0 && (
+                                                    <div>
+                                                      <p className="font-semibold text-on-surface mb-1">
+                                                        Extracted Variables
+                                                      </p>
+                                                      {Object.entries(testCase.extractedVariables).map(([k, v]) => (
+                                                        <p key={k} className="ml-2 font-mono">
+                                                          <span className="text-indigo-500 dark:text-indigo-400">{k}</span>
+                                                          {" = "}
+                                                          <span className="text-on-surface">{v}</span>
+                                                        </p>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {/* Response body preview */}
                                                   {testCase.responseBodyPreview && (
                                                     <div>
                                                       <p className="font-semibold text-on-surface">
@@ -1048,6 +1133,72 @@ export default function TestRunsPage() {
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Attempt Timeline (BC-2/BC-3) */}
+                                {runDetailsById[run.id]?.attempts && runDetailsById[run.id].attempts!.length > 0 && (() => {
+                                  const attempts = runDetailsById[run.id].attempts!;
+                                  const childrenMap = runDetailsById[run.id].attemptChildrenMap || {};
+                                  // Group attempts by testCaseId, show only cases with >1 attempt or retries
+                                  const byCase = attempts.reduce<Record<string, typeof attempts>>((acc, a) => {
+                                    if (!acc[a.testCaseId]) acc[a.testCaseId] = [];
+                                    acc[a.testCaseId].push(a);
+                                    return acc;
+                                  }, {});
+                                  const casesWithRetries = Object.entries(byCase).filter(([, atts]) => atts.length > 1 || atts.some((a) => a.retryReason));
+                                  if (casesWithRetries.length === 0) return null;
+                                  return (
+                                    <div className="mt-4 pt-4 border-t border-outline-variant/10 dark:border-slate-700">
+                                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">
+                                        Retry / Attempt Timeline
+                                      </p>
+                                      <div className="space-y-3">
+                                        {casesWithRetries.map(([caseId, atts]) => {
+                                          const caseInfo = runDetailsById[run.id].cases?.find((c) => c.testCaseId === caseId);
+                                          const sorted = [...atts].sort((a, b) => a.attemptNumber - b.attemptNumber);
+                                          return (
+                                            <div key={caseId} className="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3">
+                                              <p className="text-xs font-semibold text-on-surface mb-2">
+                                                {caseInfo?.name || caseId.slice(0, 8) + "…"}
+                                              </p>
+                                              <div className="flex flex-wrap gap-2">
+                                                {sorted.map((att, i) => {
+                                                  const attStatusLower = att.status.toLowerCase();
+                                                  const dotColor = attStatusLower === "passed"
+                                                    ? "bg-emerald-500"
+                                                    : attStatusLower === "failed"
+                                                      ? "bg-rose-500"
+                                                      : "bg-amber-400";
+                                                  return (
+                                                    <div key={att.executionAttemptId} className="flex items-center gap-1">
+                                                      {i > 0 && <span className="text-on-surface-variant text-xs">→</span>}
+                                                      <div className="flex flex-col items-center">
+                                                        <div className={`w-2.5 h-2.5 rounded-full ${dotColor}`} title={att.status} />
+                                                        <span className="text-[9px] text-on-surface-variant mt-0.5">#{att.attemptNumber}</span>
+                                                        {att.isReplay && (
+                                                          <span className="text-[9px] text-indigo-500 font-bold">↺</span>
+                                                        )}
+                                                      </div>
+                                                      <div className="text-[10px] text-on-surface-variant max-w-[120px]">
+                                                        <span className={`font-semibold ${attStatusLower === "passed" ? "text-emerald-600 dark:text-emerald-400" : attStatusLower === "failed" ? "text-rose-600 dark:text-rose-400" : "text-amber-500"}`}>
+                                                          {att.status}
+                                                        </span>
+                                                        {att.retryReason && (
+                                                          <span className="block text-[9px] italic truncate" title={att.retryReason}>
+                                                            {att.retryReason}
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </>
                             )}
                           </td>
@@ -1302,6 +1453,87 @@ export default function TestRunsPage() {
                 )}
               />
             </button>
+          </div>
+
+          {/* Retry Policy */}
+          <div className="space-y-3 pt-1 border-t border-slate-200 dark:border-slate-700">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              Retry Policy
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Max Retry Attempts (0 = no retry, max 3)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={3}
+                value={maxRetryAttempts}
+                onChange={(e) =>
+                  setMaxRetryAttempts(
+                    Math.min(3, Math.max(0, parseInt(e.target.value) || 0)),
+                  )
+                }
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface text-sm"
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Retry Failed Dependencies
+                </label>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Retry test cases that failed due to a dependency failing.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRetryFailedDependencies((prev) => !prev)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer flex-shrink-0",
+                  retryFailedDependencies
+                    ? "bg-primary dark:bg-indigo-500"
+                    : "bg-slate-300 dark:bg-slate-600",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    retryFailedDependencies ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Rerun Skipped Cases
+                </label>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Replay skipped cases after their dependency is recovered.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRerunSkippedCases((prev) => !prev)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer flex-shrink-0",
+                  rerunSkippedCases
+                    ? "bg-primary dark:bg-indigo-500"
+                    : "bg-slate-300 dark:bg-slate-600",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    rerunSkippedCases ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              </button>
+            </div>
           </div>
 
           {!activeSuiteId && testSuites.length === 0 && (

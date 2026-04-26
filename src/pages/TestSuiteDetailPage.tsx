@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
@@ -16,6 +21,7 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { cn } from "../lib/utils";
@@ -2690,6 +2696,15 @@ export default function TestSuiteDetailPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {linkedSrsDocId && suiteId && (
+                    <Link
+                      to={`/traceability?suiteId=${suiteId}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors border border-emerald-200/60 dark:border-emerald-700/30"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Traceability
+                    </Link>
+                  )}
                   <select
                     value={linkedSrsDocId}
                     onChange={(e) => handleLinkSrsDoc(e.target.value)}
