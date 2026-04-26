@@ -2,6 +2,17 @@ import apiService from "./apiService";
 
 // ---------- Types aligned with FE-10 contract ----------
 
+export interface CoverageMetric {
+  testRunId?: string;
+  totalEndpoints: number;
+  testedEndpoints: number;
+  coveragePercent: number;
+  byMethod: Record<string, number>;
+  byTag: Record<string, number>;
+  uncoveredPaths: string[];
+  calculatedAt?: string;
+}
+
 export interface Report {
   id: string;
   testRunId?: string;
@@ -12,7 +23,7 @@ export interface Report {
   generatedAt: string;
   downloadUrl?: string;
   expiresAt?: string | null;
-  coverage?: Record<string, any> | null;
+  coverage?: CoverageMetric | null;
   recentHistoryLimit?: number;
   // Keep backward-compat display fields
   name?: string;
@@ -111,15 +122,15 @@ const reportService = {
   },
 
   /**
-   * Download a report.
+   * Download a report, returning the file blob and server-provided filename.
    * GET /test-suites/{suiteId}/test-runs/{runId}/reports/{reportId}/download
    */
   downloadReport: async (
     suiteId: string,
     runId: string,
     reportId: string,
-  ): Promise<Blob> => {
-    return await apiService.downloadFile(
+  ): Promise<{ blob: Blob; filename?: string }> => {
+    return await apiService.downloadFileWithMeta(
       `/test-suites/${suiteId}/test-runs/${runId}/reports/${reportId}/download`,
     );
   },

@@ -246,6 +246,13 @@ export default function ProjectDetailedViewPage() {
                     <FileText className="w-5 h-5" />
                     {t("projectDetail.dataSource.uploadSpec")}
                   </button>
+                  <button
+                    onClick={() => navigate(`/srs-documents`)}
+                    className="mt-3 px-6 py-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl flex items-center gap-2 mx-auto font-semibold cursor-pointer transition-colors"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Open SRS Workflow
+                  </button>
                 </div>
               ) : (
                 <>
@@ -379,6 +386,13 @@ export default function ProjectDetailedViewPage() {
                     <FileText className="w-5 h-5" />
                     {t("projectDetail.dataSource.viewSpecs")}
                   </button>
+                  <button
+                    onClick={() => navigate(`/srs-documents`)}
+                    className="mt-3 px-6 py-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl flex items-center gap-2 mx-auto font-semibold cursor-pointer transition-colors"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Open SRS Workflow
+                  </button>
                 </div>
               ) : isSpecParseFailed ? (
                 <div className="text-center py-12">
@@ -395,6 +409,13 @@ export default function ProjectDetailedViewPage() {
                   >
                     <FileText className="w-5 h-5" />
                     {t("projectDetail.dataSource.manageSpecs")}
+                  </button>
+                  <button
+                    onClick={() => navigate(`/srs-documents`)}
+                    className="mt-3 px-6 py-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl flex items-center gap-2 mx-auto font-semibold cursor-pointer transition-colors"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Open SRS Workflow
                   </button>
                 </div>
               ) : isSpecParsed && !hasEndpoints ? (

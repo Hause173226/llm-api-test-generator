@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, Plus, Loader2 } from "lucide-react";
+import { Download, FileText, Plus, Loader2, BarChart2, Clock } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { useReports } from "../hooks/useReports";
 import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
@@ -101,8 +101,9 @@ export default function ReportsPage() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    reportType: "Summary",
-    format: "PDF",
+    reportType: "Detailed",
+    format: "Excel",
+    recentHistoryLimit: 5,
   });
 
   const handleGenerate = async () => {
@@ -121,12 +122,13 @@ export default function ReportsPage() {
       runId: selectedRunId,
       reportType: formData.reportType,
       format: formData.format,
+      recentHistoryLimit: formData.recentHistoryLimit,
     });
 
     if (success) {
       showSuccessToast(t("reports.success.generated"));
       setShowGenerateModal(false);
-      setFormData({ reportType: "Summary", format: "PDF" });
+      setFormData({ reportType: "Detailed", format: "Excel", recentHistoryLimit: 5 });
     }
   };
 
@@ -245,39 +247,91 @@ export default function ReportsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {reports.map((report) => (
-                  <div
-                    key={report.id}
-                    className="p-6 bg-surface-container-low rounded-2xl flex items-center justify-between group hover:bg-surface-container transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-primary/10">
-                        <FileText className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-on-surface">
-                          {report.name || report.reportType}
-                        </h4>
-                        <p className="text-xs text-on-surface-variant mt-1">
-                          {report.format} •{" "}
-                          {new Date(report.generatedAt).toLocaleDateString()}
-                        </p>
+                {reports.map((report) => {
+                  const cov = report.coverage;
+                  const formatBadgeColor: Record<string, string> = {
+                    Excel: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                    PDF: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                    HTML: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+                    JSON: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                    CSV: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+                  };
+                  const badgeClass = formatBadgeColor[report.format] ?? "bg-surface-container text-on-surface-variant";
+
+                  return (
+                    <div
+                      key={report.id}
+                      className="p-6 bg-surface-container-low rounded-2xl group hover:bg-surface-container transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        {/* Left: icon + info */}
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          <div className="p-3 rounded-xl bg-primary/10 shrink-0">
+                            <FileText className="w-6 h-6 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-bold text-on-surface">
+                                {report.name || report.reportType}
+                              </h4>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${badgeClass}`}>
+                                {report.format}
+                              </span>
+                            </div>
+                            <p className="text-xs text-on-surface-variant mt-1">
+                              {new Date(report.generatedAt).toLocaleString()}
+                            </p>
+
+                            {/* Coverage row */}
+                            {cov != null && (
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                                <span className="flex items-center gap-1 text-xs font-semibold text-on-surface-variant">
+                                  <BarChart2 className="w-3.5 h-3.5" />
+                                  Coverage:&nbsp;
+                                  <span className="text-primary font-bold">
+                                    {typeof cov.coveragePercent === "number"
+                                      ? `${cov.coveragePercent.toFixed(1)}%`
+                                      : "–"}
+                                  </span>
+                                </span>
+                                <span className="text-xs text-on-surface-variant">
+                                  {cov.testedEndpoints ?? 0} / {cov.totalEndpoints ?? 0} endpoints
+                                </span>
+                                {(cov.uncoveredPaths?.length ?? 0) > 0 && (
+                                  <span className="text-xs text-red-500 dark:text-red-400 font-semibold">
+                                    {cov.uncoveredPaths.length} uncovered
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Expires row */}
+                            {report.expiresAt && (
+                              <p className="flex items-center gap-1 text-xs text-on-surface-variant mt-1">
+                                <Clock className="w-3 h-3" />
+                                Expires {new Date(report.expiresAt).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: download button */}
+                        <button
+                          onClick={() => handleDownload(report.id)}
+                          disabled={downloadingId === report.id}
+                          className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold text-sm hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shrink-0"
+                        >
+                          {downloadingId === report.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                          {t("reports.export")}
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDownload(report.id)}
-                      disabled={downloadingId === report.id}
-                      className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold text-sm hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      {downloadingId === report.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4" />
-                      )}
-                      {t("reports.export")}
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
@@ -304,8 +358,8 @@ export default function ReportsPage() {
                   }
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 >
-                  {/* <option value="Summary">Summary</option>
-                  <option value="Detailed">Detailed</option> */}
+                  <option value="Summary">Summary</option>
+                  <option value="Detailed">Detailed</option>
                   <option value="Coverage">Coverage</option>
                 </select>
               </div>
@@ -321,10 +375,28 @@ export default function ReportsPage() {
                   }
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 >
-                  {/* <option value="PDF">PDF</option> */}
-                  <option value="JSON">JSON</option>
+                  <option value="Excel">Excel (.xlsx)</option>
+                  <option value="PDF">PDF</option>
                   <option value="HTML">HTML</option>
+                  <option value="JSON">JSON</option>
+                  <option value="CSV">CSV</option>
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                  Recent History Limit
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={formData.recentHistoryLimit}
+                  onChange={(e) =>
+                    setFormData({ ...formData, recentHistoryLimit: Math.max(1, Number(e.target.value)) })
+                  }
+                  className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
+                />
               </div>
 
               <div className="flex gap-3 pt-4">

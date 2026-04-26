@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -209,6 +209,10 @@ export default function GenerationRunExecutePage() {
     filterTestType,
     endpointById,
   ]);
+
+  const allFilteredSelected =
+    filteredTestCases.length > 0 &&
+    filteredTestCases.every((item) => selectedTestCaseIds.includes(item.id));
 
   const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
     if (items.length === 0) return "";
@@ -985,8 +989,7 @@ export default function GenerationRunExecutePage() {
               </div>
 
               <div className="flex items-center gap-2">
-                {selectedTestCaseIds.length === filteredTestCases.length &&
-                filteredTestCases.length > 0 ? (
+                {allFilteredSelected ? (
                   <div className="flex justify-between w-full">
                     <button
                       type="button"
@@ -999,34 +1002,9 @@ export default function GenerationRunExecutePage() {
                     <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
                       {environments.length === 0 && !isLoading && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
-                          No execution environment found.{" "}
-                          <button
-                            type="button"
-                            className="underline font-semibold"
-                            onClick={() => setIsEnvModalOpen(true)}
-                          >
-                            Create one
-                          </button>{" "}
-                          to run tests.
+                          No execution environment found. <button type="button" className="underline font-semibold" onClick={() => setIsEnvModalOpen(true)}>Create one</button> to run tests.
                         </p>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleExecute("selected")}
-                        disabled={
-                          isSubmitting ||
-                          environments.length === 0 ||
-                          selectedTestCaseIds.length === 0 ||
-                          testCases.length === 0
-                        }
-                        className="px-5 py-2.5 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 disabled:opacity-50"
-                      >
-                        {isSubmitting && (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        )}
-                        <Play className="w-4 h-4" />
-                        Execute Selected ({selectedTestCaseIds.length})
-                      </button>
                       <button
                         type="button"
                         onClick={() => handleExecute("all")}

@@ -513,26 +513,7 @@ export default function AuthPage() {
               )}
             </div>
 
-            <div className="pt-8 border-t border-white/10">
-              <div className="flex items-center gap-4">
-                <div className="flex -space-x-3">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className="w-10 h-10 rounded-full border-2 border-slate-700 overflow-hidden"
-                    >
-                      <img
-                        src={`https://i.pravatar.cc/100?img=${i + 10}`}
-                        alt="User"
-                      />
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  {t("auth.joinedBy")}
-                </p>
-              </div>
-            </div>
+      
           </div>
         </div>
       </div>
