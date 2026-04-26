@@ -52,13 +52,15 @@ export interface TestCaseRunDetail {
   requestHeaders: Record<string, string>;
   responseHeaders: Record<string, string>;
   responseBodyPreview?: string;
-  warnings?: string[];
+  warnings?: ValidationWarningModel[];
+  hasWarnings?: boolean;
   checksPerformed?: number;
   checksSkipped?: number;
-  failureReasons: Array<{ code?: string; message?: string }>;
+  failureReasons: ValidationFailureModel[];
   extractedVariables: Record<string, string>;
   dependencyIds: string[];
   skippedBecauseDependencyIds: string[];
+  executionAttempt?: number;
   statusCodeMatched?: boolean;
   schemaMatched?: boolean;
   headerChecksPassed?: boolean;
@@ -74,6 +76,8 @@ export interface TestRunDetailResponse {
   executedAt?: string;
   resolvedEnvironmentName?: string;
   cases: TestCaseRunDetail[];
+  attempts?: TestCaseExecutionAttemptModel[];
+  attemptChildrenMap?: Record<string, string[]>;
 }
 
 export interface AssertionResult {
@@ -82,6 +86,46 @@ export interface AssertionResult {
   actual: any;
   passed: boolean;
   message?: string;
+}
+
+export interface ValidationFailureModel {
+  code?: string;
+  message: string;
+  target?: string;
+  expected?: string;
+  actual?: string;
+}
+
+export interface ValidationWarningModel {
+  code?: string;
+  message: string;
+  target?: string;
+}
+
+export interface TestRunRetryPolicyModel {
+  maxRetryAttempts: number;
+  retryFailedDependencies: boolean;
+  rerunSkippedCases: boolean;
+}
+
+export interface TestCaseExecutionAttemptModel {
+  executionAttemptId: string;
+  parentAttemptId: string | null;
+  testRunId: string;
+  testCaseId: string;
+  attemptNumber: number;
+  status: string;
+  retryReason: string | null;
+  skippedCause: string | null;
+  dependencyRootCause: string | null;
+  dependencyRootCauseIds: string[];
+  replayedSkippedCaseIds: string[];
+  isReplay: boolean;
+  startedAt: string;
+  completedAt?: string;
+  durationMs: number;
+  failureReasons: ValidationFailureModel[];
+  retryPolicy: TestRunRetryPolicyModel;
 }
 
 export interface TestRunsResponse {
@@ -143,13 +187,15 @@ interface BackendTestCaseRunDetail {
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
   responseBodyPreview?: string;
-  warnings?: string[];
+  warnings?: Array<{ code?: string; message?: string; target?: string }>;
+  hasWarnings?: boolean;
   checksPerformed?: number;
   checksSkipped?: number;
-  failureReasons?: Array<{ code?: string; message?: string }>;
+  failureReasons?: Array<{ code?: string; message?: string; target?: string; expected?: string; actual?: string }>;
   extractedVariables?: Record<string, string>;
   dependencyIds?: string[];
   skippedBecauseDependencyIds?: string[];
+  executionAttempt?: number;
   statusCodeMatched?: boolean;
   schemaMatched?: boolean;
   headerChecksPassed?: boolean;
@@ -165,6 +211,8 @@ interface BackendTestRunDetail {
   executedAt?: string;
   resolvedEnvironmentName?: string;
   cases?: BackendTestCaseRunDetail[];
+  attempts?: any[];
+  attemptChildrenMap?: Record<string, string[]>;
 }
 
 const normalizeStatus = (status?: string): TestRun["status"] => {
@@ -234,6 +282,10 @@ const mapBackendTestCaseRunDetail = (
   responseBodyPreview:
     (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,
   warnings: (detail as any).warnings || (detail as any).Warnings,
+  hasWarnings:
+    (detail as any).hasWarnings ??
+    (detail as any).HasWarnings ??
+    ((detail as any).warnings?.length > 0 || (detail as any).Warnings?.length > 0),
   checksPerformed: (detail as any).checksPerformed ?? (detail as any).ChecksPerformed,
   checksSkipped: (detail as any).checksSkipped ?? (detail as any).ChecksSkipped,
   failureReasons:
@@ -248,6 +300,8 @@ const mapBackendTestCaseRunDetail = (
     (detail as any).skippedBecauseDependencyIds ||
     (detail as any).SkippedBecauseDependencyIds ||
     [],
+  executionAttempt:
+    (detail as any).executionAttempt ?? (detail as any).ExecutionAttempt,
   statusCodeMatched:
     (detail as any).statusCodeMatched ?? (detail as any).StatusCodeMatched,
   schemaMatched: (detail as any).schemaMatched ?? (detail as any).SchemaMatched,
@@ -284,6 +338,11 @@ const mapBackendRunDetail = (
     : Array.isArray((response as any)?.Cases)
       ? (response as any).Cases.map(mapBackendTestCaseRunDetail)
       : [],
+  attempts: (response as any)?.attempts ?? (response as any)?.Attempts ?? [],
+  attemptChildrenMap:
+    (response as any)?.attemptChildrenMap ??
+    (response as any)?.AttemptChildrenMap ??
+    {},
 });
 
 const mapBackendPagedRuns = (
@@ -311,11 +370,18 @@ const mapBackendPagedRuns = (
   };
 };
 
+export interface RetryPolicyRequest {
+  maxRetryAttempts?: number;
+  retryFailedDependencies?: boolean;
+  rerunSkippedCases?: boolean;
+}
+
 export interface StartTestRunRequest {
   testSuiteId: string;
   environmentId?: string;
-  selectedTestCaseIds?: string[]; // Optional: run specific test cases only
-  strictValidation?: boolean; // Optional: defaults to false on BE
+  selectedTestCaseIds?: string[];
+  strictValidation?: boolean;
+  retryPolicy?: RetryPolicyRequest;
 }
 
 const testRunService = {
@@ -348,6 +414,7 @@ const testRunService = {
         environmentId: data.environmentId,
         selectedTestCaseIds: data.selectedTestCaseIds,
         strictValidation: data.strictValidation,
+        retryPolicy: data.retryPolicy ?? null,
       },
     );
   },

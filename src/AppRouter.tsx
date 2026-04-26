@@ -19,6 +19,8 @@ import TestSuiteDetailPage from "./pages/TestSuiteDetailPage";
 import GeneratingTestCasesPage from "./pages/GeneratingTestCasesPage";
 import GenerationRunExecutePage from "./pages/GenerationRunExecutePage";
 import TestCasesHubPage from "./pages/TestCasesHubPage";
+import SrsDocumentsPage from "./pages/SrsDocumentsPage";
+import TraceabilityPage from "./pages/TraceabilityPage";
 
 import TestCaseDetailPage from "./pages/TestCaseDetailPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
@@ -82,6 +84,14 @@ export default function AppRouter() {
           }
         />
         <Route
+          path="/srs-documents"
+          element={
+            <ProtectedRoute>
+              <SrsDocumentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/endpoints"
           element={
             <ProtectedRoute>
@@ -129,7 +139,7 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
-      
+
         <Route
           path="/studio"
           element={
@@ -203,12 +213,24 @@ export default function AppRouter() {
           }
         />
         <Route
+          path="/traceability"
+          element={
+            <ProtectedRoute>
+              <TraceabilityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/choose-testing"
           element={
             <ProtectedRoute>
               <ChooseTestingPage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/test-order-gate"
+          element={<Navigate to="/suggestions" replace />}
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />

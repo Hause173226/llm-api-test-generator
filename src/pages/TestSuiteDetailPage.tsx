@@ -29,6 +29,7 @@ import {
 import { testSuiteService } from "../services/testSuiteService";
 import endpointService from "../services/endpointService";
 import { apiService } from "../services/apiService";
+import srsService, { type SrsDocument } from "../services/srsService";
 import { useProject } from "../contexts/ProjectContext";
 import testCaseService, { TestCase } from "../services/testCaseService";
 import testSuiteLlmSuggestionService, {
@@ -133,7 +134,12 @@ export default function TestSuiteDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  // Track the last-saved endpoint order to detect real changes after drag-and-drop
+  const savedOrderRef = React.useRef<string[]>([]);
   const [hasApprovedOrderOnce, setHasApprovedOrderOnce] = useState(false);
+  const [srsDocuments, setSrsDocuments] = useState<SrsDocument[]>([]);
+  const [linkedSrsDocId, setLinkedSrsDocId] = useState<string>("");
+  const [isLinkingSrsDoc, setIsLinkingSrsDoc] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
   const [testCaseSearchTerm, setTestCaseSearchTerm] = useState("");
@@ -611,6 +617,16 @@ export default function TestSuiteDetailPage() {
 
       setSuite(suiteData);
 
+      // Load SRS documents for this project to allow linking
+      try {
+        const docs = await srsService.listDocuments(projectId);
+        setSrsDocuments(docs);
+        const linked = docs.find((d) => d.testSuiteId === suiteId);
+        setLinkedSrsDocId(linked?.id ?? "");
+      } catch {
+        // non-critical
+      }
+
       try {
         setIsLoadingTestCases(true);
         const testCaseResponse = await testCaseService.getTestCases(
@@ -715,6 +731,7 @@ export default function TestSuiteDetailPage() {
           .filter(Boolean);
 
         setEndpoints(orderedEndpoints);
+        savedOrderRef.current = orderedEndpoints.map((ep: any) => ep.id);
       } else {
         setAllSpecEndpoints([]);
         setEndpoints([]);
@@ -743,7 +760,13 @@ export default function TestSuiteDetailPage() {
 
     setEndpoints(newEndpoints);
     setDraggedIndex(index);
-    setHasChanges(true);
+    // Only mark dirty when the current order actually differs from the saved order
+    const newOrder = newEndpoints.map((ep: any) => ep.id);
+    const saved = savedOrderRef.current;
+    const isDifferent =
+      newOrder.length !== saved.length ||
+      newOrder.some((id, i) => id !== saved[i]);
+    setHasChanges(isDifferent);
   };
 
   const handleDragEnd = () => {
@@ -810,6 +833,8 @@ export default function TestSuiteDetailPage() {
       setSuite({ ...suite, ...updatedSuite });
       showSuccessToast("Suite configuration saved successfully");
       setHasChanges(false);
+      // Update savedOrder to reflect the newly committed order
+      savedOrderRef.current = endpoints.map((ep) => ep.id);
 
       // Create and approve the order proposal
       try {
@@ -950,6 +975,28 @@ export default function TestSuiteDetailPage() {
     const success = await handleSaveOrder();
     if (success) {
       changeTab("suggestions");
+    }
+  };
+
+  const handleLinkSrsDoc = async (newDocId: string) => {
+    if (!projectId) return;
+    setIsLinkingSrsDoc(true);
+    try {
+      // Unlink old document if switching
+      if (linkedSrsDocId && linkedSrsDocId !== newDocId) {
+        await srsService.linkTestSuite(projectId, linkedSrsDocId, null);
+      }
+      if (newDocId) {
+        await srsService.linkTestSuite(projectId, newDocId, suiteId!);
+      }
+      setLinkedSrsDocId(newDocId);
+      showSuccessToast(
+        newDocId ? "Đã liên kết tài liệu SRS." : "Đã hủy liên kết.",
+      );
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsLinkingSrsDoc(false);
     }
   };
 
@@ -2629,6 +2676,39 @@ export default function TestSuiteDetailPage() {
 
           {activeTab === "details" && (
             <>
+              {/* SRS Document Link */}
+              <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center gap-3 shadow-sm">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                    Tài liệu SRS liên kết
+                  </p>
+                  <p className="text-sm text-on-surface">
+                    {linkedSrsDocId
+                      ? (srsDocuments.find((d) => d.id === linkedSrsDocId)
+                          ?.title ?? linkedSrsDocId)
+                      : "Chưa liên kết"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    value={linkedSrsDocId}
+                    onChange={(e) => handleLinkSrsDoc(e.target.value)}
+                    disabled={isLinkingSrsDoc}
+                    className="px-3 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface disabled:opacity-60"
+                  >
+                    <option value="">— Bỏ liên kết —</option>
+                    {srsDocuments.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.title}
+                      </option>
+                    ))}
+                  </select>
+                  {isLinkingSrsDoc && (
+                    <Loader2 className="w-4 h-4 animate-spin text-on-surface-variant" />
+                  )}
+                </div>
+              </div>
+
               {/* Search & Filter Bar */}
               <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
                 <div className="relative flex-1 min-w-[300px]">
@@ -2666,18 +2746,6 @@ export default function TestSuiteDetailPage() {
                   )}
                 </div>
               </div>
-
-              {/* Info Banner */}
-              {!hasAnyTestCases && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
-                  <p className="text-sm text-amber-800 dark:text-amber-400">
-                    💡 No test cases yet. Continue to "AI Review" after saving
-                    this step, then approve suggestions to materialize test
-                    cases. You can reorder endpoints below to control the
-                    sequence first.
-                  </p>
-                </div>
-              )}
 
               {/* Endpoints List - Drag & Drop */}
               <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-xl border border-outline-variant/10 dark:border-slate-800 overflow-hidden">
@@ -2721,20 +2789,6 @@ export default function TestSuiteDetailPage() {
                         Add Manual
                       </button>
                     </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                      Global Business Rules
-                    </label>
-                    <textarea
-                      value={suite.globalBusinessRules || ""}
-                      onChange={(e) =>
-                        handleGlobalBusinessRulesChange(e.target.value)
-                      }
-                      placeholder="Optional rules for all endpoints, e.g. User must verify email before checkout"
-                      rows={3}
-                      className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
                   </div>
                 </div>
                 <div className="divide-y divide-outline-variant/10 dark:divide-slate-800">
@@ -2809,26 +2863,6 @@ export default function TestSuiteDetailPage() {
                                 )}
                               </div>
                             )}
-                        </div>
-
-                        <div className="mt-3 ml-12">
-                          <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                            Endpoint Business Context
-                          </label>
-                          <textarea
-                            value={
-                              getBusinessContextMap(suite)[endpoint.id] || ""
-                            }
-                            onChange={(e) =>
-                              handleEndpointContextChange(
-                                endpoint.id,
-                                e.target.value,
-                              )
-                            }
-                            placeholder="Optional rule for this endpoint, e.g. Only allow registration for users >= 17"
-                            rows={2}
-                            className="w-full px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 text-xs text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
                         </div>
                       </div>
                     ))
