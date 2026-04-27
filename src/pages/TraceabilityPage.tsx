@@ -37,6 +37,32 @@ const REQ_TYPE_COLORS = [
 
 type CoverageFilter = "all" | "covered" | "uncovered";
 
+const VALIDATION_STATUS_LABELS: Record<number, string> = {
+  0: "Uncovered",
+  1: "Unverified",
+  2: "Validated",
+  3: "Violated",
+  4: "Partial",
+  5: "Skipped Only",
+  6: "Inconclusive",
+};
+
+const VALIDATION_STATUS_COLORS: Record<number, string> = {
+  0: "bg-rose-100 text-rose-700",
+  1: "bg-slate-100 text-slate-600",
+  2: "bg-emerald-100 text-emerald-700",
+  3: "bg-red-100 text-red-700",
+  4: "bg-amber-100 text-amber-700",
+  5: "bg-slate-100 text-slate-500",
+  6: "bg-violet-100 text-violet-700",
+};
+
+const LAST_RUN_STATUS_COLORS: Record<string, string> = {
+  Passed: "bg-emerald-100 text-emerald-700",
+  Failed: "bg-rose-100 text-rose-700",
+  Skipped: "bg-amber-100 text-amber-700",
+};
+
 function CoverageBar({ percent }: { percent: number }) {
   return (
     <div className="w-full rounded-full bg-slate-100 h-2.5 overflow-hidden">
@@ -111,6 +137,18 @@ function RequirementCard({ row }: { row: any }) {
                 )}
                 {row.isCovered ? "Covered" : "Uncovered"}
               </span>
+              {row.validationStatus != null && (
+                <span
+                  className={cn(
+                    "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+                    VALIDATION_STATUS_COLORS[row.validationStatus as number] ??
+                      "bg-slate-100 text-slate-600",
+                  )}
+                >
+                  {VALIDATION_STATUS_LABELS[row.validationStatus as number] ??
+                    `Status ${row.validationStatus}`}
+                </span>
+              )}
             </div>
             <h2 className="text-base font-bold text-on-surface leading-snug">
               {row.title}
@@ -151,13 +189,36 @@ function RequirementCard({ row }: { row: any }) {
               key={tc.testCaseId}
               className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-3.5 flex items-start justify-between gap-3"
             >
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-on-surface truncate">
-                  {tc.testCaseName}
-                </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                  <p className="text-sm font-semibold text-on-surface truncate">
+                    {tc.testCaseName}
+                  </p>
+                  {tc.lastRunStatus && (
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                        LAST_RUN_STATUS_COLORS[tc.lastRunStatus] ??
+                          "bg-slate-100 text-slate-600",
+                      )}
+                    >
+                      {tc.lastRunStatus}
+                    </span>
+                  )}
+                  {tc.hasAdaptiveWarning && (
+                    <span className="shrink-0 rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-bold">
+                      ⚠ warn
+                    </span>
+                  )}
+                </div>
                 {tc.mappingRationale && (
                   <p className="mt-0.5 text-xs text-on-surface-variant">
                     {tc.mappingRationale}
+                  </p>
+                )}
+                {tc.failureSummary && (
+                  <p className="mt-0.5 text-xs text-rose-600 dark:text-rose-400">
+                    {tc.failureSummary}
                   </p>
                 )}
               </div>
@@ -372,6 +433,57 @@ export default function TraceabilityPage() {
                 </p>
               </div>
             </div>
+
+            {/* Validation stats — shown only when an evidence run exists */}
+            {data.evidenceRunId != null && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50 p-5">
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-emerald-700">
+                    Validated
+                  </p>
+                  <p className="mt-2 text-3xl font-black text-emerald-700">
+                    {data.validatedRequirements ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-rose-200/60 bg-rose-50 p-5">
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-rose-700">
+                    Violated
+                  </p>
+                  <p className="mt-2 text-3xl font-black text-rose-700">
+                    {data.violatedRequirements ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-amber-200/60 bg-amber-50 p-5">
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-amber-700">
+                    Partial
+                  </p>
+                  <p className="mt-2 text-3xl font-black text-amber-700">
+                    {data.partialRequirements ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
+                    Validation %
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-2 text-3xl font-black",
+                      (data.validationPercent ?? -1) < 0
+                        ? "text-on-surface-variant"
+                        : data.validationPercent >= 80
+                          ? "text-emerald-600"
+                          : data.validationPercent >= 50
+                            ? "text-amber-500"
+                            : "text-rose-600",
+                    )}
+                  >
+                    {(data.validationPercent ?? -1) < 0
+                      ? "—"
+                      : `${data.validationPercent}%`}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Coverage progress bar */}
             <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">

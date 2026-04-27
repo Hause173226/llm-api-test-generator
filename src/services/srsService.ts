@@ -85,12 +85,14 @@ class SrsService {
     sourceType: SrsSourceType;
     rawContent?: string | null;
     storageFileId?: string | null;
+    testSuiteId?: string | null;
   }): Promise<SrsDocument> {
     return await apiService.post<SrsDocument>(`/projects/${projectId}/srs-documents`, {
       title: data.title,
       sourceType: data.sourceType,
       rawContent: data.rawContent ?? null,
       storageFileId: data.storageFileId ?? null,
+      testSuiteId: data.testSuiteId ?? null,
     });
   }
 
@@ -149,8 +151,10 @@ class SrsService {
     return await apiService.patch<SrsClarification>(`/projects/${projectId}/srs-documents/${srsDocumentId}/requirements/${requirementId}/clarifications/${clarificationId}`, { userAnswer });
   }
 
-  async getTraceability(projectId: string, suiteId: string): Promise<any> {
-    return await apiService.get<any>(`/projects/${projectId}/test-suites/${suiteId}/traceability`);
+  async getTraceability(projectId: string, suiteId: string, testRunId?: string | null): Promise<any> {
+    return await apiService.get<any>(`/projects/${projectId}/test-suites/${suiteId}/traceability`, {
+      params: testRunId ? { testRunId } : undefined,
+    });
   }
 }
 

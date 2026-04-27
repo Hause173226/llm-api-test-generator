@@ -24,8 +24,10 @@ type ProposalApiResponse = {
   ProposalId?: string;
   rowVersion?: string;
   RowVersion?: string;
-  status?: string;
-  Status?: string;
+  // ProposalStatus is responseFormat: integer per contract
+  // 0=Pending, 1=Approved, 2=Rejected, 3=ModifiedAndApproved, 4=Superseded, 5=Applied, 6=Expired
+  status?: number;
+  Status?: number;
 };
 import { testSuiteService } from "../services/testSuiteService";
 import endpointService from "../services/endpointService";
@@ -124,31 +126,47 @@ export default function TestOrderGatePage() {
     }
 
     try {
-      // STEP-1: Always create a new proposal.
-      // This supersedes any existing Pending proposal for the same suite.
-      // An already-Approved proposal cannot be reordered (BE enforces Pending status),
-      // so we must always start fresh.
-      const createdProposal = await apiService.post<ProposalApiResponse>(
-        `/test-suites/${selectedSuiteId}/order-proposals`,
-        {
-          specificationId: suiteDetail.apiSpecId,
-          selectedEndpointIds: localOrder,
-          source: "User",
-          reasoningNote: "Created from Test Order Gate",
-        },
-      );
+      // STEP-3E: Check order gate status first
+      const gateStatus = await apiService.get<{
+        isGatePassed: boolean;
+        activeProposalId?: string | null;
+        activeProposalStatus?: string | null;
+      }>(`/test-suites/${selectedSuiteId}/order-gate-status`);
 
-      const proposalId =
-        createdProposal?.proposalId || createdProposal?.ProposalId;
-      const proposalRowVersion =
-        createdProposal?.rowVersion || createdProposal?.RowVersion;
+      let proposalId = gateStatus?.activeProposalId;
+      let proposalRowVersion: string | undefined;
 
-      if (!proposalId) {
-        throw new Error("Cannot resolve proposalId from proposal response.");
+      // Gate already passed — just approve the active proposal or skip
+      if (!gateStatus?.isGatePassed || !proposalId) {
+        // STEP-3F: Create a new proposal
+        const createdProposal = await apiService.post<ProposalApiResponse>(
+          `/test-suites/${selectedSuiteId}/order-proposals`,
+          {
+            specificationId: suiteDetail.apiSpecId,
+            selectedEndpointIds: localOrder,
+            source: "User",
+            reasoningNote: "Created from Test Order Gate",
+          },
+        );
+
+        proposalId = createdProposal?.proposalId || createdProposal?.ProposalId;
+        proposalRowVersion =
+          createdProposal?.rowVersion || createdProposal?.RowVersion;
+      } else {
+        // Fetch latest proposal to get the current rowVersion
+        const latestProposal = await apiService.get<ProposalApiResponse>(
+          `/test-suites/${selectedSuiteId}/order-proposals/latest`,
+        );
+        proposalId = latestProposal?.proposalId || latestProposal?.ProposalId;
+        proposalRowVersion =
+          latestProposal?.rowVersion || latestProposal?.RowVersion;
       }
 
-      // STEP-2: Reorder using the user's drag-and-drop order.
-      // rowVersion from STEP-1 response is required here.
+      if (!proposalId) {
+        throw new Error("Cannot resolve proposalId for reorder operation.");
+      }
+
+      // STEP-3H: Reorder
       const reordered = await apiService.put<ProposalApiResponse>(
         `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/reorder`,
         {
@@ -158,18 +176,21 @@ export default function TestOrderGatePage() {
         },
       );
 
-      // STEP-3: Approve using rowVersion from STEP-2 response (NOT from STEP-1).
-      // The rowVersion changes after reorder, so we must use the updated one.
+      const reorderedStatus = reordered?.status ?? reordered?.Status;
       const reorderedRowVersion =
         reordered?.rowVersion || reordered?.RowVersion;
 
-      await apiService.post(
-        `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/approve`,
-        {
-          rowVersion: reorderedRowVersion,
-          reviewNotes: "Approved after reorder from Test Order Gate",
-        },
-      );
+      // STEP-3I: Approve if not already approved
+      // ProposalStatus integers: 1=Approved, 3=ModifiedAndApproved
+      if (reorderedStatus !== 1 && reorderedStatus !== 3) {
+        await apiService.post(
+          `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/approve`,
+          {
+            rowVersion: reorderedRowVersion,
+            reviewNotes: "Approved after reorder from Test Order Gate",
+          },
+        );
+      }
 
       // Refresh suite detail to keep local state in sync.
       const refreshed = await testSuiteService.getTestSuiteDetail(
