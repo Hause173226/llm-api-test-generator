@@ -56,10 +56,44 @@ export interface PaymentTransaction {
   description?: string;
 }
 
+// Returned by POST /api/payments/subscribe/{planId}
+export interface SubscribeResult {
+  requiresPayment: boolean;
+  paymentIntentId?: string;
+  subscription?: Subscription;
+}
+
+// Returned by GET /api/payments/{intentId}
+export interface PaymentIntent {
+  id: string;
+  userId: string;
+  amount: number;
+  currency: string;
+  // 0=RequiresPayment, 1=Processing, 2=Succeeded, 3=Canceled, 4=Expired
+  status: number;
+  purpose: number;
+  planId: string;
+  planName?: string;
+  // 0=Monthly, 1=Yearly
+  billingCycle: number;
+  subscriptionId?: string;
+  checkoutUrl?: string;
+  expiresAt: string;
+  orderCode?: number;
+  createdDateTime: string;
+  updatedDateTime?: string;
+}
+
+// Returned by POST /api/payments/payos/create
+export interface PayOsCheckout {
+  checkoutUrl: string;
+  orderCode: number;
+}
+
 const subscriptionService = {
   // Get all available plans
   getPlans: async (): Promise<Plan[]> => {
-    return await apiService.get<Plan[]>("/subscriptions/plans");
+    return await apiService.get<Plan[]>("/payments/plans");
   },
 
   // Get current user's subscription
@@ -92,15 +126,28 @@ const subscriptionService = {
     );
   },
 
-  // Subscribe to a plan - returns payment link
-  // FE-14 contract: body must include billingCycle (0=Monthly, 1=Yearly)
+  // Subscribe to a plan
+  // FE-14 step 2: POST /api/payments/subscribe/{planId}
+  // Returns { requiresPayment, paymentIntentId?, subscription? }
   subscribeToPlan: async (
     planId: string,
     billingCycle: number,
-  ): Promise<{ paymentUrl: string; orderId: string }> => {
+  ): Promise<SubscribeResult> => {
     return await apiService.post(`/payments/subscribe/${planId}`, {
       billingCycle,
     });
+  },
+
+  // FE-14 step 3: Create PayOS checkout link
+  // POST /api/payments/payos/create → { checkoutUrl, orderCode }
+  createPayOsCheckout: async (intentId: string): Promise<PayOsCheckout> => {
+    return await apiService.post(`/payments/payos/create`, { intentId });
+  },
+
+  // FE-14 step 6: Get payment intent status
+  // GET /api/payments/{intentId}
+  getPaymentIntent: async (intentId: string): Promise<PaymentIntent> => {
+    return await apiService.get(`/payments/${intentId}`);
   },
 
   // Cancel subscription

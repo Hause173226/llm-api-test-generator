@@ -1,14 +1,27 @@
-import { apiService } from './apiService';
+import { apiService } from "./apiService";
 
 // Types
 // BE returns TestSuiteScopeModel enums as numbers. Map them here.
-const GENERATION_TYPE_MAP: Record<number, string> = { 0: 'Auto', 1: 'Manual', 2: 'LLMAssisted' };
-const SUITE_STATUS_MAP: Record<number, string> = { 0: 'Draft', 1: 'Active', 2: 'Ready', 3: 'Archived' };
-const APPROVAL_STATUS_MAP: Record<number, string> = { 0: 'Pending', 1: 'Approved', 2: 'Rejected' };
+const GENERATION_TYPE_MAP: Record<number, string> = {
+  0: "Auto",
+  1: "Manual",
+  2: "LLMAssisted",
+};
+const SUITE_STATUS_MAP: Record<number, string> = {
+  0: "Draft",
+  1: "Active",
+  2: "Ready",
+  3: "Archived",
+};
+const APPROVAL_STATUS_MAP: Record<number, string> = {
+  0: "Pending",
+  1: "Approved",
+  2: "Rejected",
+};
 
 function normalizeEnum(value: any, map: Record<number, string>): string {
-  if (typeof value === 'number' && map[value] !== undefined) return map[value];
-  if (typeof value === 'string') return value;
+  if (typeof value === "number" && map[value] !== undefined) return map[value];
+  if (typeof value === "string") return value;
   return String(value);
 }
 
@@ -27,9 +40,9 @@ export interface TestSuite {
   apiSpecId?: string;
   name: string;
   description?: string;
-  generationType: 'Auto' | 'Manual' | 'LLMAssisted';
-  status: 'Draft' | 'Active' | 'Ready' | 'Archived';
-  approvalStatus: 'Pending' | 'Approved' | 'Rejected';
+  generationType: "Auto" | "Manual" | "LLMAssisted";
+  status: "Draft" | "Active" | "Ready" | "Archived";
+  approvalStatus: "Pending" | "Approved" | "Rejected";
   selectedEndpointIds: string[];
   endpointBusinessContexts: Record<string, string>;
   globalBusinessRules?: string;
@@ -45,7 +58,7 @@ export interface CreateTestSuiteRequest {
   name: string;
   description?: string;
   apiSpecId?: string;
-  generationType?: 'Auto' | 'Manual' | 'LLMAssisted';
+  generationType?: "Auto" | "Manual" | "LLMAssisted";
   selectedEndpointIds?: string[];
   endpointBusinessContexts?: Record<string, string>;
   globalBusinessRules?: string;
@@ -69,13 +82,19 @@ export interface ExecuteTestSuiteRequest {
 
 export interface ExecuteTestSuiteResponse {
   testRunId: string;
-  status: 'Running';
+  status: "Running";
+}
+
+export interface ReorderProposalRequest {
+  rowVersion: string;
+  orderedEndpointIds: string[];
+  reviewNotes?: string;
 }
 
 export interface ProposeOrderRequest {
   specificationId: string;
   selectedEndpointIds?: string[];
-  source?: 'Ai' | 'User' | 'System' | 'Imported';
+  source?: "Ai" | "User" | "System" | "Imported";
   reasoningNote?: string;
 }
 
@@ -92,38 +111,41 @@ export interface OrderProposalResponse {
 class TestSuiteService {
   async getTestSuites(projectId: string): Promise<TestSuite[]> {
     const response = await apiService.get<TestSuite[]>(
-      `/projects/${projectId}/test-suites`
+      `/projects/${projectId}/test-suites`,
     );
     // Backend returns array directly, not paginated response
     const items = Array.isArray(response) ? response : [];
     return items.map(normalizeTestSuite);
   }
 
-  async getTestSuiteDetail(projectId: string, suiteId: string): Promise<TestSuite> {
+  async getTestSuiteDetail(
+    projectId: string,
+    suiteId: string,
+  ): Promise<TestSuite> {
     const response = await apiService.get<TestSuite>(
-      `/projects/${projectId}/test-suites/${suiteId}`
+      `/projects/${projectId}/test-suites/${suiteId}`,
     );
     return normalizeTestSuite(response);
   }
 
   async createTestSuite(
     projectId: string,
-    data: CreateTestSuiteRequest
+    data: CreateTestSuiteRequest,
   ): Promise<TestSuite> {
     // Backend uses camelCase (JsonStringEnumConverter)
     const payload = {
       name: data.name,
-      description: data.description || '',
+      description: data.description || "",
       apiSpecId: data.apiSpecId,
-      generationType: data.generationType || 'Auto',
+      generationType: data.generationType || "Auto",
       selectedEndpointIds: data.selectedEndpointIds || [],
       endpointBusinessContexts: data.endpointBusinessContexts || {},
-      globalBusinessRules: data.globalBusinessRules || '',
+      globalBusinessRules: data.globalBusinessRules || "",
     };
 
     const response = await apiService.post<TestSuite>(
       `/projects/${projectId}/test-suites`,
-      payload
+      payload,
     );
     return normalizeTestSuite(response);
   }
@@ -137,8 +159,9 @@ class TestSuiteService {
       {
         SpecificationId: data.specificationId,
         SelectedEndpointIds: data.selectedEndpointIds || [],
-        Source: data.source || 'System',
-        ReasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
+        Source: data.source || "System",
+        ReasoningNote:
+          data.reasoningNote || "Auto-generated after suite creation",
       },
     );
   }
@@ -147,13 +170,28 @@ class TestSuiteService {
     suiteId: string,
     proposalId: string,
     rowVersion?: string,
-    reviewNotes: string = 'Auto-approved after suite creation',
+    reviewNotes: string = "Auto-approved after suite creation",
   ): Promise<OrderProposalResponse> {
     return await apiService.post<OrderProposalResponse>(
       `/test-suites/${suiteId}/order-proposals/${proposalId}/approve`,
       {
         RowVersion: rowVersion,
         ReviewNotes: reviewNotes,
+      },
+    );
+  }
+
+  async reorderProposal(
+    suiteId: string,
+    proposalId: string,
+    data: ReorderProposalRequest,
+  ): Promise<OrderProposalResponse> {
+    return await apiService.put<OrderProposalResponse>(
+      `/test-suites/${suiteId}/order-proposals/${proposalId}/reorder`,
+      {
+        rowVersion: data.rowVersion,
+        orderedEndpointIds: data.orderedEndpointIds,
+        reviewNotes: data.reviewNotes,
       },
     );
   }
@@ -172,48 +210,54 @@ class TestSuiteService {
 
   async generateTestSuite(
     projectId: string,
-    data: GenerateTestSuiteRequest
+    data: GenerateTestSuiteRequest,
   ): Promise<{ jobId: string }> {
     return await apiService.post<{ jobId: string }>(
       `/projects/${projectId}/test-suites/generate`,
-      data
+      data,
     );
   }
 
   async updateTestSuite(
     projectId: string,
     suiteId: string,
-    data: Partial<CreateTestSuiteRequest>
+    data: Partial<CreateTestSuiteRequest>,
   ): Promise<TestSuite> {
     // Backend expects PascalCase
     const payload = {
       Name: data.name,
-      Description: data.description || '',
+      Description: data.description || "",
       ApiSpecId: data.apiSpecId,
-      GenerationType: data.generationType || 'Auto',
+      GenerationType: data.generationType || "Auto",
       SelectedEndpointIds: data.selectedEndpointIds || [],
       EndpointBusinessContexts: data.endpointBusinessContexts || {},
-      GlobalBusinessRules: data.globalBusinessRules || '',
+      GlobalBusinessRules: data.globalBusinessRules || "",
       RowVersion: data.rowVersion,
     };
 
     return await apiService.put<TestSuite>(
       `/projects/${projectId}/test-suites/${suiteId}`,
-      payload
+      payload,
     );
   }
 
-  async deleteTestSuite(projectId: string, suiteId: string, rowVersion: string): Promise<void> {
-    await apiService.delete(`/projects/${projectId}/test-suites/${suiteId}?rowVersion=${encodeURIComponent(rowVersion)}`);
+  async deleteTestSuite(
+    projectId: string,
+    suiteId: string,
+    rowVersion: string,
+  ): Promise<void> {
+    await apiService.delete(
+      `/projects/${projectId}/test-suites/${suiteId}?rowVersion=${encodeURIComponent(rowVersion)}`,
+    );
   }
 
   async executeTestSuite(
     suiteId: string,
-    environmentId: string
+    environmentId: string,
   ): Promise<ExecuteTestSuiteResponse> {
     return await apiService.post<ExecuteTestSuiteResponse>(
       `/test-suites/${suiteId}/execute`,
-      { environmentId }
+      { environmentId },
     );
   }
 }

@@ -157,7 +157,10 @@ export default function EnvironmentsPage() {
         tokenUrl: auth.tokenUrl || null,
         clientId: auth.clientId || null,
         clientSecret: auth.clientSecret || null,
-        scopes: auth.scopes && auth.scopes.length > 0 ? auth.scopes : [""],
+        scopes:
+          auth.scopes && auth.scopes.length > 0
+            ? auth.scopes.filter((s) => s.trim().length > 0)
+            : null,
       },
       isDefault: formData.isDefault,
     };
@@ -233,17 +236,33 @@ export default function EnvironmentsPage() {
     showSuccessToast(t("environments.success.urlCopied"));
   };
 
+  const MASKED = "******";
+
+  const clearMaskedSecrets = (
+    auth: ExecutionAuthConfig,
+  ): ExecutionAuthConfig => ({
+    ...auth,
+    // Clear masked sentinel values — user must re-enter secrets when editing.
+    // Backend masked fields cannot be round-tripped; sending "******" back would
+    // store the literal string as the actual secret value.
+    token: auth.token === MASKED ? null : auth.token,
+    password: auth.password === MASKED ? null : auth.password,
+    apiKeyValue: auth.apiKeyValue === MASKED ? null : auth.apiKeyValue,
+    clientSecret: auth.clientSecret === MASKED ? null : auth.clientSecret,
+  });
+
   const openEditModal = (env: any) => {
     setSelectedEnvId(env.id);
+    const rawAuth: ExecutionAuthConfig = {
+      ...createDefaultAuthConfig(),
+      ...(env.authConfig || {}),
+    };
     setFormData({
       name: env.name,
       baseUrl: env.baseUrl,
       variables: env.variables || {},
       headers: env.headers || {},
-      authConfig: {
-        ...createDefaultAuthConfig(),
-        ...(env.authConfig || {}),
-      },
+      authConfig: clearMaskedSecrets(rawAuth),
       isDefault: env.isDefault,
     });
     setShowVariablesSection(Object.keys(env.variables || {}).length > 0);
