@@ -41,6 +41,7 @@ export default function BillingPage() {
     loading,
     error,
     subscribeToPlan,
+    createPayOsCheckout,
     refetch,
   } = hookResult;
 
@@ -50,43 +51,39 @@ export default function BillingPage() {
 
   const handleSubscribe = async (planId: string) => {
     try {
-      const paymentData = await subscribeToPlan(planId, selectedBillingCycle);
-      console.log("Payment data received:", paymentData);
+      // Step 1: Create subscription purchase intent
+      const subscribeResult = await subscribeToPlan(
+        planId,
+        selectedBillingCycle,
+      );
 
-      if (!paymentData) {
-        showErrorToast("Failed to create payment. Please try again.");
+      if (!subscribeResult) {
+        showErrorToast("Failed to create subscription. Please try again.");
         return;
       }
 
-      // Check if subscription was created directly (free plan)
-      if ((paymentData as any).subscription) {
+      // Free plan – no payment required
+      if (!subscribeResult.requiresPayment) {
         showSuccessToast("Successfully subscribed to plan!");
         await refetch();
         return;
       }
 
-      // Try to find payment URL in response
-      const paymentDataAny = paymentData as any;
-      const paymentUrl =
-        paymentData.paymentUrl ||
-        paymentDataAny.checkoutUrl ||
-        paymentDataAny.url ||
-        paymentDataAny.paymentLink;
-
-      if (paymentUrl) {
-        window.location.href = paymentUrl;
-      } else if (
-        paymentDataAny.requiresPayment &&
-        paymentDataAny.paymentIntentId
-      ) {
-        // Payment intent created – redirect via payos/create if available
-        showErrorToast(
-          `Payment intent created. Redirecting is not yet implemented. Intent: ${paymentDataAny.paymentIntentId}`,
-        );
-      } else {
-        console.error("No payment URL found in response:", paymentData);
-        showErrorToast("Payment URL not found. Please contact support.");
+      const intentId = subscribeResult.paymentIntentId;
+      if (!intentId) {
+        showErrorToast("Payment intent missing. Please try again.");
+        return;
       }
+
+      // Step 2: Create PayOS checkout link
+      const checkout = await hookResult.createPayOsCheckout(intentId);
+      if (!checkout?.checkoutUrl) {
+        showErrorToast("Could not create payment link. Please try again.");
+        return;
+      }
+
+      // Redirect to PayOS checkout
+      window.location.href = checkout.checkoutUrl;
     } catch (error) {
       console.error("Subscribe error:", error);
       showErrorToast("Failed to subscribe. Please try again.");
