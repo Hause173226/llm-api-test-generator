@@ -4,6 +4,8 @@ import subscriptionService, {
   Subscription,
   UsageTracking,
   PaymentTransaction,
+  SubscribeResult,
+  PayOsCheckout,
 } from "../services/subscriptionService";
 import { handleError } from "../utils/errorHandler";
 
@@ -86,14 +88,20 @@ export const useSubscription = () => {
   const subscribeToPlan = async (
     planId: string,
     billingCycle: number = 0, // 0=Monthly, 1=Yearly
-  ): Promise<{ paymentUrl: string; orderId: string } | null> => {
+  ): Promise<SubscribeResult | null> => {
     try {
-      const paymentData = await subscriptionService.subscribeToPlan(
-        planId,
-        billingCycle,
-      );
-      // Return payment data so caller can redirect to payment page
-      return paymentData;
+      return await subscriptionService.subscribeToPlan(planId, billingCycle);
+    } catch (err) {
+      handleError(err);
+      return null;
+    }
+  };
+
+  const createPayOsCheckout = async (
+    intentId: string,
+  ): Promise<PayOsCheckout | null> => {
+    try {
+      return await subscriptionService.createPayOsCheckout(intentId);
     } catch (err) {
       handleError(err);
       return null;
@@ -124,6 +132,7 @@ export const useSubscription = () => {
     loading,
     error,
     subscribeToPlan,
+    createPayOsCheckout,
     cancelSubscription,
     refetch: fetchData,
   };

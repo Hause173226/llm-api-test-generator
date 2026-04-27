@@ -124,47 +124,31 @@ export default function TestOrderGatePage() {
     }
 
     try {
-      // STEP-3E: Check order gate status first
-      const gateStatus = await apiService.get<{
-        isGatePassed: boolean;
-        activeProposalId?: string | null;
-        activeProposalStatus?: string | null;
-      }>(`/test-suites/${selectedSuiteId}/order-gate-status`);
+      // STEP-1: Always create a new proposal.
+      // This supersedes any existing Pending proposal for the same suite.
+      // An already-Approved proposal cannot be reordered (BE enforces Pending status),
+      // so we must always start fresh.
+      const createdProposal = await apiService.post<ProposalApiResponse>(
+        `/test-suites/${selectedSuiteId}/order-proposals`,
+        {
+          specificationId: suiteDetail.apiSpecId,
+          selectedEndpointIds: localOrder,
+          source: "User",
+          reasoningNote: "Created from Test Order Gate",
+        },
+      );
 
-      let proposalId = gateStatus?.activeProposalId;
-      let proposalRowVersion: string | undefined;
-
-      // Gate already passed — just approve the active proposal or skip
-      if (!gateStatus?.isGatePassed || !proposalId) {
-        // STEP-3F: Create a new proposal
-        const createdProposal = await apiService.post<ProposalApiResponse>(
-          `/test-suites/${selectedSuiteId}/order-proposals`,
-          {
-            specificationId: suiteDetail.apiSpecId,
-            selectedEndpointIds: localOrder,
-            source: "User",
-            reasoningNote: "Created from Test Order Gate",
-          },
-        );
-
-        proposalId = createdProposal?.proposalId || createdProposal?.ProposalId;
-        proposalRowVersion =
-          createdProposal?.rowVersion || createdProposal?.RowVersion;
-      } else {
-        // Fetch latest proposal to get the current rowVersion
-        const latestProposal = await apiService.get<ProposalApiResponse>(
-          `/test-suites/${selectedSuiteId}/order-proposals/latest`,
-        );
-        proposalId = latestProposal?.proposalId || latestProposal?.ProposalId;
-        proposalRowVersion =
-          latestProposal?.rowVersion || latestProposal?.RowVersion;
-      }
+      const proposalId =
+        createdProposal?.proposalId || createdProposal?.ProposalId;
+      const proposalRowVersion =
+        createdProposal?.rowVersion || createdProposal?.RowVersion;
 
       if (!proposalId) {
-        throw new Error("Cannot resolve proposalId for reorder operation.");
+        throw new Error("Cannot resolve proposalId from proposal response.");
       }
 
-      // STEP-3H: Reorder
+      // STEP-2: Reorder using the user's drag-and-drop order.
+      // rowVersion from STEP-1 response is required here.
       const reordered = await apiService.put<ProposalApiResponse>(
         `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/reorder`,
         {
@@ -174,23 +158,18 @@ export default function TestOrderGatePage() {
         },
       );
 
-      const reorderedStatus = reordered?.status || reordered?.Status || "";
+      // STEP-3: Approve using rowVersion from STEP-2 response (NOT from STEP-1).
+      // The rowVersion changes after reorder, so we must use the updated one.
       const reorderedRowVersion =
         reordered?.rowVersion || reordered?.RowVersion;
 
-      // STEP-3I: Approve if not already approved
-      if (
-        String(reorderedStatus).toLowerCase() !== "approved" &&
-        String(reorderedStatus).toLowerCase() !== "modifiedandapproved"
-      ) {
-        await apiService.post(
-          `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/approve`,
-          {
-            rowVersion: reorderedRowVersion,
-            reviewNotes: "Approved after reorder from Test Order Gate",
-          },
-        );
-      }
+      await apiService.post(
+        `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/approve`,
+        {
+          rowVersion: reorderedRowVersion,
+          reviewNotes: "Approved after reorder from Test Order Gate",
+        },
+      );
 
       // Refresh suite detail to keep local state in sync.
       const refreshed = await testSuiteService.getTestSuiteDetail(

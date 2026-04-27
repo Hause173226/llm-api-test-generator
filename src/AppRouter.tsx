@@ -34,6 +34,8 @@ import HelpPage from "./pages/HelpPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ManualTestingPage from "./pages/ManualTestingPage";
 import ChooseTestingPage from "./pages/ChooseTestingPage";
+import PaymentResultPage from "./pages/PaymentResultPage";
+import PaymentCancelPage from "./pages/PaymentCancelPage";
 
 export default function AppRouter() {
   return (
@@ -49,6 +51,9 @@ export default function AppRouter() {
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        {/* PayOS payment return pages – public (no auth required after redirect) */}
+        <Route path="/payment/result" element={<PaymentResultPage />} />
+        <Route path="/payment/cancel" element={<PaymentCancelPage />} />
 
         {/* Protected Routes */}
         <Route
