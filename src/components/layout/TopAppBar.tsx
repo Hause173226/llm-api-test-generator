@@ -203,7 +203,8 @@ export default function TopAppBar({
                 {user?.fullName}
               </p>
               <p className="text-[10px] text-on-surface-variant tracking-wider uppercase font-bold mt-1">
-                {user?.roles?.[0] || t("common.softwareStudent")}
+                {/* {user?.roles?.[0] || t("common.softwareStudent")} */}
+                USER
               </p>
             </div>
             <div className="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-sm">

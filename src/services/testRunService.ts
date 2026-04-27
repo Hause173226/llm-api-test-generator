@@ -407,8 +407,9 @@ const testRunService = {
   },
 
   // Start a new test run (suite-level)
-  startTestRun: async (data: StartTestRunRequest): Promise<TestRun> => {
-    return await apiService.post<TestRun>(
+  // BE returns TestRunResultModel (HTTP 201) which maps to TestRunDetailResponse.
+  startTestRun: async (data: StartTestRunRequest): Promise<TestRunDetailResponse> => {
+    const response = await apiService.post<BackendTestRunDetail>(
       `/test-suites/${data.testSuiteId}/test-runs`,
       {
         environmentId: data.environmentId,
@@ -417,6 +418,7 @@ const testRunService = {
         retryPolicy: data.retryPolicy ?? null,
       },
     );
+    return mapBackendRunDetail(response || {});
   },
 
   // Get test run results (suite-level)

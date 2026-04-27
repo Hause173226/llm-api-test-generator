@@ -24,8 +24,10 @@ type ProposalApiResponse = {
   ProposalId?: string;
   rowVersion?: string;
   RowVersion?: string;
-  status?: string;
-  Status?: string;
+  // ProposalStatus is responseFormat: integer per contract
+  // 0=Pending, 1=Approved, 2=Rejected, 3=ModifiedAndApproved, 4=Superseded, 5=Applied, 6=Expired
+  status?: number;
+  Status?: number;
 };
 import { testSuiteService } from "../services/testSuiteService";
 import endpointService from "../services/endpointService";
@@ -174,15 +176,13 @@ export default function TestOrderGatePage() {
         },
       );
 
-      const reorderedStatus = reordered?.status || reordered?.Status || "";
+      const reorderedStatus = reordered?.status ?? reordered?.Status;
       const reorderedRowVersion =
         reordered?.rowVersion || reordered?.RowVersion;
 
       // STEP-3I: Approve if not already approved
-      if (
-        String(reorderedStatus).toLowerCase() !== "approved" &&
-        String(reorderedStatus).toLowerCase() !== "modifiedandapproved"
-      ) {
+      // ProposalStatus integers: 1=Approved, 3=ModifiedAndApproved
+      if (reorderedStatus !== 1 && reorderedStatus !== 3) {
         await apiService.post(
           `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/approve`,
           {

@@ -3,8 +3,8 @@ import { apiService } from './apiService';
 // Types
 // BE returns TestSuiteScopeModel enums as numbers. Map them here.
 const GENERATION_TYPE_MAP: Record<number, string> = { 0: 'Auto', 1: 'Manual', 2: 'LLMAssisted' };
-const SUITE_STATUS_MAP: Record<number, string> = { 0: 'Draft', 1: 'Active', 2: 'Ready', 3: 'Archived' };
-const APPROVAL_STATUS_MAP: Record<number, string> = { 0: 'Pending', 1: 'Approved', 2: 'Rejected' };
+const SUITE_STATUS_MAP: Record<number, string> = { 0: 'Draft', 1: 'Ready', 2: 'Archived' };
+const APPROVAL_STATUS_MAP: Record<number, string> = { 0: 'NotApplicable', 1: 'PendingReview', 2: 'Approved', 3: 'Rejected', 4: 'ModifiedAndApproved' };
 
 function normalizeEnum(value: any, map: Record<number, string>): string {
   if (typeof value === 'number' && map[value] !== undefined) return map[value];
@@ -28,8 +28,8 @@ export interface TestSuite {
   name: string;
   description?: string;
   generationType: 'Auto' | 'Manual' | 'LLMAssisted';
-  status: 'Draft' | 'Active' | 'Ready' | 'Archived';
-  approvalStatus: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Draft' | 'Ready' | 'Archived';
+  approvalStatus: 'NotApplicable' | 'PendingReview' | 'Approved' | 'Rejected' | 'ModifiedAndApproved';
   selectedEndpointIds: string[];
   endpointBusinessContexts: Record<string, string>;
   globalBusinessRules?: string;
@@ -135,10 +135,10 @@ class TestSuiteService {
     return await apiService.post<OrderProposalResponse>(
       `/test-suites/${suiteId}/order-proposals`,
       {
-        SpecificationId: data.specificationId,
-        SelectedEndpointIds: data.selectedEndpointIds || [],
-        Source: data.source || 'System',
-        ReasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
+        specificationId: data.specificationId,
+        selectedEndpointIds: data.selectedEndpointIds || [],
+        source: data.source || 'System',
+        reasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
       },
     );
   }
@@ -152,8 +152,8 @@ class TestSuiteService {
     return await apiService.post<OrderProposalResponse>(
       `/test-suites/${suiteId}/order-proposals/${proposalId}/approve`,
       {
-        RowVersion: rowVersion,
-        ReviewNotes: reviewNotes,
+        rowVersion: rowVersion,
+        reviewNotes: reviewNotes,
       },
     );
   }
@@ -185,16 +185,15 @@ class TestSuiteService {
     suiteId: string,
     data: Partial<CreateTestSuiteRequest>
   ): Promise<TestSuite> {
-    // Backend expects PascalCase
     const payload = {
-      Name: data.name,
-      Description: data.description || '',
-      ApiSpecId: data.apiSpecId,
-      GenerationType: data.generationType || 'Auto',
-      SelectedEndpointIds: data.selectedEndpointIds || [],
-      EndpointBusinessContexts: data.endpointBusinessContexts || {},
-      GlobalBusinessRules: data.globalBusinessRules || '',
-      RowVersion: data.rowVersion,
+      name: data.name,
+      description: data.description || '',
+      apiSpecId: data.apiSpecId,
+      generationType: data.generationType || 'Auto',
+      selectedEndpointIds: data.selectedEndpointIds || [],
+      endpointBusinessContexts: data.endpointBusinessContexts || {},
+      globalBusinessRules: data.globalBusinessRules || '',
+      rowVersion: data.rowVersion,
     };
 
     return await apiService.put<TestSuite>(
