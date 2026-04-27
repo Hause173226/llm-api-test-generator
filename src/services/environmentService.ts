@@ -1,16 +1,16 @@
-import apiService from './apiService';
-import { ApiError } from '../utils/errorHandler';
+import apiService from "./apiService";
+import { ApiError } from "../utils/errorHandler";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type AuthType =
-  | 'None'
-  | 'BearerToken'
-  | 'Basic'
-  | 'ApiKey'
-  | 'OAuth2ClientCredentials';
+  | "None"
+  | "BearerToken"
+  | "Basic"
+  | "ApiKey"
+  | "OAuth2ClientCredentials";
 
-export type ApiKeyLocation = 'Header' | 'Query';
+export type ApiKeyLocation = "Header" | "Query";
 
 export interface ExecutionAuthConfig {
   authType: AuthType;
@@ -62,8 +62,8 @@ export interface UpdateEnvironmentRequest {
 
 // reasonCode từ backend khi 409
 export type ConflictReasonCode =
-  | 'CONCURRENCY_CONFLICT'
-  | 'DEFAULT_ENVIRONMENT_CONFLICT';
+  | "CONCURRENCY_CONFLICT"
+  | "DEFAULT_ENVIRONMENT_CONFLICT";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -72,23 +72,27 @@ export type ConflictReasonCode =
  * FE phải giữ secret gốc trong state riêng và truyền vào đây.
  */
 export function sanitizeAuthConfig(
-  authConfig?: ExecutionAuthConfig | null
+  authConfig?: ExecutionAuthConfig | null,
 ): ExecutionAuthConfig | null | undefined {
   if (!authConfig) return authConfig;
-  const MASKED = '******';
+  const MASKED = "******";
   return {
     ...authConfig,
     token: authConfig.token === MASKED ? null : authConfig.token,
     password: authConfig.password === MASKED ? null : authConfig.password,
-    apiKeyValue: authConfig.apiKeyValue === MASKED ? null : authConfig.apiKeyValue,
-    clientSecret: authConfig.clientSecret === MASKED ? null : authConfig.clientSecret,
+    apiKeyValue:
+      authConfig.apiKeyValue === MASKED ? null : authConfig.apiKeyValue,
+    clientSecret:
+      authConfig.clientSecret === MASKED ? null : authConfig.clientSecret,
   };
 }
 
 /**
  * Kiểm tra lỗi 409 và trả về reasonCode nếu có.
  */
-export function getConflictReasonCode(error: unknown): ConflictReasonCode | null {
+export function getConflictReasonCode(
+  error: unknown,
+): ConflictReasonCode | null {
   if (error instanceof ApiError && error.status === 409) {
     return (error.data?.reasonCode as ConflictReasonCode) ?? null;
   }
@@ -102,9 +106,11 @@ const environmentService = {
    * GET /api/projects/{projectId}/execution-environments
    * Permission: Permission:GetExecutionEnvironments
    */
-  getEnvironments: async (projectId: string): Promise<ExecutionEnvironment[]> => {
+  getEnvironments: async (
+    projectId: string,
+  ): Promise<ExecutionEnvironment[]> => {
     const data = await apiService.get<ExecutionEnvironment[]>(
-      `/projects/${projectId}/execution-environments`
+      `/projects/${projectId}/execution-environments`,
     );
     return Array.isArray(data) ? data : [];
   },
@@ -115,10 +121,10 @@ const environmentService = {
    */
   getEnvironmentById: async (
     projectId: string,
-    environmentId: string
+    environmentId: string,
   ): Promise<ExecutionEnvironment> => {
     return apiService.get<ExecutionEnvironment>(
-      `/projects/${projectId}/execution-environments/${environmentId}`
+      `/projects/${projectId}/execution-environments/${environmentId}`,
     );
   },
 
@@ -129,7 +135,7 @@ const environmentService = {
    */
   createEnvironment: async (
     projectId: string,
-    data: CreateEnvironmentRequest
+    data: CreateEnvironmentRequest,
   ): Promise<ExecutionEnvironment> => {
     const payload: CreateEnvironmentRequest = {
       name: data.name,
@@ -141,7 +147,7 @@ const environmentService = {
     };
     return apiService.post<ExecutionEnvironment>(
       `/projects/${projectId}/execution-environments`,
-      payload
+      payload,
     );
   },
 
@@ -153,7 +159,7 @@ const environmentService = {
   updateEnvironment: async (
     projectId: string,
     environmentId: string,
-    data: UpdateEnvironmentRequest
+    data: UpdateEnvironmentRequest,
   ): Promise<ExecutionEnvironment> => {
     const payload: UpdateEnvironmentRequest = {
       rowVersion: data.rowVersion,
@@ -166,7 +172,7 @@ const environmentService = {
     };
     return apiService.put<ExecutionEnvironment>(
       `/projects/${projectId}/execution-environments/${environmentId}`,
-      payload
+      payload,
     );
   },
 
@@ -179,11 +185,11 @@ const environmentService = {
   deleteEnvironment: async (
     projectId: string,
     environmentId: string,
-    rowVersion: string
+    rowVersion: string | null | undefined,
   ): Promise<void> => {
     await apiService.delete<void>(
       `/projects/${projectId}/execution-environments/${environmentId}`,
-      { params: { rowVersion } }
+      { params: { rowVersion } },
     );
   },
 };

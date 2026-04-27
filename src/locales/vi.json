@@ -757,7 +757,8 @@
       "prompt": "Nhập tên cho môi trường được nhân bản:"
     },
     "confirm": {
-      "delete": "Bạn có chắc chắn muốn xóa môi trường này không?"
+      "deleteTitle": "Xóa môi trường",
+      "delete": "Bạn có chắc chắn muốn xóa môi trường này không? Hành động này không thể hoàn tác."
     },
     "variables": {
       "title": "Cấu hình Biến & Headers",
