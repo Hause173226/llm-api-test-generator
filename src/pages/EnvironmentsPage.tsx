@@ -54,6 +54,9 @@ export default function EnvironmentsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showVariablesModal, setShowVariablesModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
 
@@ -193,13 +196,26 @@ export default function EnvironmentsPage() {
     }
   };
 
-  const handleDelete = async (envId: string) => {
-    if (!confirm(t("environments.confirm.delete"))) return;
+  const handleDelete = (envId: string) => {
+    setDeleteTargetId(envId);
+    setShowDeleteModal(true);
+  };
 
-    const success = await deleteEnvironment(envId);
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setDeleting(true);
+    const success = await deleteEnvironment(deleteTargetId);
+    setDeleting(false);
+    setShowDeleteModal(false);
+    setDeleteTargetId(null);
     if (success) {
       showSuccessToast(t("environments.success.deleted"));
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeleteTargetId(null);
   };
 
   const handleSetDefault = async (envId: string) => {
@@ -1158,6 +1174,50 @@ export default function EnvironmentsPage() {
                   className="flex-1 px-6 py-3 bg-surface-container-high text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-all cursor-pointer"
                 >
                   {t("common.cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-6 h-6 text-error" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-on-surface">
+                    {t("environments.confirm.deleteTitle")}
+                  </h3>
+                  <p className="text-sm text-on-surface-variant mt-0.5">
+                    {t("environments.confirm.delete")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={cancelDelete}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-outline-variant text-on-surface font-bold text-sm hover:bg-surface-container transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-error text-white font-bold text-sm hover:bg-error/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {deleting ? (
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  {t("common.delete")}
                 </button>
               </div>
             </div>

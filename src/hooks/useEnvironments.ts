@@ -158,15 +158,22 @@ export const useEnvironments = (projectId: string) => {
 
   const deleteEnvironment = async (environmentId: string): Promise<boolean> => {
     try {
-      const current = environments.find((env) => env.id === environmentId);
+      let current = environments.find((env) => env.id === environmentId);
+
+      // If rowVersion is missing in local state, fetch latest to get a fresh copy.
+      // Rows created before rowVersion column was populated will still have null —
+      // that is handled on the BE side (skip concurrency check when DB row has no version).
       if (!current?.rowVersion) {
-        throw new Error("Missing rowVersion for delete operation");
+        current = await environmentService.getEnvironmentById(
+          projectId,
+          environmentId,
+        );
       }
 
       await environmentService.deleteEnvironment(
         projectId,
         environmentId,
-        current.rowVersion,
+        current?.rowVersion ?? null,
       );
       setEnvironments((prev) => prev.filter((env) => env.id !== environmentId));
       return true;
