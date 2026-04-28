@@ -11,6 +11,18 @@ export interface SuiteSuggestionModel {
   id: string;
   testSuiteId: string;
   endpointId?: string;
+  /** HTTP method resolved from suggestedRequest (e.g. "GET", "POST"). Avoids raw UUID display. */
+  endpointMethod?: string;
+  /** Endpoint path resolved from suggestedRequest (e.g. "/api/auth/register"). */
+  endpointPath?: string;
+  /** True if the suggestion was generated while an SRS document was linked to its TestSuite. */
+  hasSrsContext?: boolean;
+  /** Title of the SRS document used at generation time. */
+  srsDocumentTitle?: string;
+  /** UUIDs of SRS requirements this suggestion covers (as reported by the LLM). */
+  coveredRequirementIds?: string[];
+  /** Resolved code + title for each covered requirement. */
+  coveredRequirements?: Array<{ id: string; code: string; title: string }>;
   cacheKey?: string | null;
   displayOrder?: number;
   suggestionType?: string;

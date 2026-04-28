@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import MainLayout from "../components/layout/MainLayout";
 import { useProject } from "../contexts/ProjectContext";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 import { useTestSuites } from "../hooks/useTestSuites";
 import { srsService } from "../services/srsService";
-import { handleError } from "../utils/errorHandler";
+import testRunService from "../services/testRunService";
+import testCaseService from "../services/testCaseService";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
 import {
   Loader2,
   ShieldCheck,
@@ -14,7 +16,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   ExternalLink,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { cn } from "../lib/utils";
@@ -48,13 +53,13 @@ const VALIDATION_STATUS_LABELS: Record<number, string> = {
 };
 
 const VALIDATION_STATUS_COLORS: Record<number, string> = {
-  0: "bg-rose-100 text-rose-700",
-  1: "bg-slate-100 text-slate-600",
-  2: "bg-emerald-100 text-emerald-700",
-  3: "bg-red-100 text-red-700",
-  4: "bg-amber-100 text-amber-700",
-  5: "bg-slate-100 text-slate-500",
-  6: "bg-violet-100 text-violet-700",
+  0: "bg-slate-100 text-slate-600",   // Uncovered — gray
+  1: "bg-blue-100 text-blue-600",     // Unverified — light blue
+  2: "bg-emerald-100 text-emerald-700", // Validated — green
+  3: "bg-red-100 text-red-700",       // Violated — red
+  4: "bg-amber-100 text-amber-700",   // Partial — yellow
+  5: "bg-slate-100 text-slate-500",   // SkippedOnly
+  6: "bg-violet-100 text-violet-700", // Inconclusive
 };
 
 const LAST_RUN_STATUS_COLORS: Record<string, string> = {
@@ -81,7 +86,7 @@ function CoverageBar({ percent }: { percent: number }) {
   );
 }
 
-function RequirementCard({ row }: { row: any }) {
+function RequirementCard({ row, onAddLink, onDeleteLink }: { row: any; onAddLink?: () => void; onDeleteLink?: (linkId: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const typeLabel =
     REQ_TYPE_LABELS[row.requirementType] ?? `Type ${row.requirementType}`;
@@ -89,7 +94,12 @@ function RequirementCard({ row }: { row: any }) {
     REQ_TYPE_COLORS[row.requirementType] ?? "bg-slate-100 text-slate-700";
 
   return (
-    <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest shadow-sm overflow-hidden">
+    <div className={cn(
+      "rounded-2xl border shadow-sm overflow-hidden",
+      row.validationStatus === 3
+        ? "border-rose-300 bg-rose-50/60 dark:border-rose-700/50 dark:bg-rose-950/20"  // Violated — red highlight
+        : "border-outline-variant/10 bg-surface-container-lowest"
+    )}>
       <div className="p-5">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -154,7 +164,10 @@ function RequirementCard({ row }: { row: any }) {
               {row.title}
             </h2>
             {row.confidenceScore != null && (
-              <p className="mt-1 text-xs text-on-surface-variant">
+              <p className="mt-1 text-xs text-on-surface-variant flex items-center gap-1">
+                {row.confidenceScore < 0.6 && (
+                  <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" title="Low confidence extraction" />
+                )}
                 Confidence: {(row.confidenceScore * 100).toFixed(0)}%
               </p>
             )}
@@ -184,51 +197,102 @@ function RequirementCard({ row }: { row: any }) {
 
       {expanded && (row.testCases || []).length > 0 && (
         <div className="border-t border-outline-variant/10 bg-surface-container-low/50 px-5 py-4 space-y-3">
-          {(row.testCases || []).map((tc: any) => (
+          {(row.testCases || []).map((tc: any) => {
+            const displayStatus = tc.liveStatus ?? tc.lastRunStatus;
+            const displayStatusLower = (displayStatus || "").toLowerCase();
+            const retryCount = (tc.liveTotalAttempts ?? 1) - 1;
+            return (
             <div
               key={tc.testCaseId}
-              className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-3.5 flex items-start justify-between gap-3"
+              className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-3.5 flex flex-col gap-2"
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                  <p className="text-sm font-semibold text-on-surface truncate">
-                    {tc.testCaseName}
-                  </p>
-                  {tc.lastRunStatus && (
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                        LAST_RUN_STATUS_COLORS[tc.lastRunStatus] ??
-                          "bg-slate-100 text-slate-600",
-                      )}
-                    >
-                      {tc.lastRunStatus}
-                    </span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                    <p className="text-sm font-semibold text-on-surface truncate">
+                      {tc.testCaseName}
+                    </p>
+                    {displayStatus && (
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                          LAST_RUN_STATUS_COLORS[displayStatus] ??
+                            "bg-slate-100 text-slate-600",
+                        )}
+                      >
+                        {displayStatus}
+                      </span>
+                    )}
+                    {retryCount > 0 && (
+                      <span className="shrink-0 rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[10px] font-bold">
+                        ↩ ×{retryCount}
+                      </span>
+                    )}
+                    {tc.hasAdaptiveWarning && (
+                      <span className="shrink-0 rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-bold">
+                        ⚠ warn
+                      </span>
+                    )}
+                  </div>
+                  {tc.mappingRationale && (
+                    <p className="mt-0.5 text-xs text-on-surface-variant">
+                      {tc.mappingRationale}
+                    </p>
                   )}
-                  {tc.hasAdaptiveWarning && (
-                    <span className="shrink-0 rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-bold">
-                      ⚠ warn
-                    </span>
+                  {/* live skip cause */}
+                  {displayStatusLower === "skipped" && tc.liveSkippedCause && (
+                    <p className="mt-0.5 text-xs text-amber-600">{tc.liveSkippedCause}</p>
                   )}
+                  {/* live failure reasons (preferred over failureSummary) */}
+                  {tc.liveFailureReasons && tc.liveFailureReasons.length > 0 ? (
+                    <div className="mt-0.5 space-y-0.5">
+                      {tc.liveFailureReasons.map((fr: any, i: number) => (
+                        <p key={i} className="text-xs text-rose-600">
+                          <span className="font-mono font-semibold">{fr.code}</span>
+                          {fr.expected && (
+                            <span className="text-on-surface-variant"> — expected: <span className="text-on-surface">{fr.expected}</span>, got: <span className="text-on-surface">{fr.actual}</span></span>
+                          )}
+                        </p>
+                      ))}
+                    </div>
+                  ) : tc.failureSummary ? (
+                    <p className="mt-0.5 text-xs text-rose-600 dark:text-rose-400">
+                      {tc.failureSummary}
+                    </p>
+                  ) : null}
                 </div>
-                {tc.mappingRationale && (
-                  <p className="mt-0.5 text-xs text-on-surface-variant">
-                    {tc.mappingRationale}
-                  </p>
+                {tc.traceabilityScore != null && (
+                  <span className="shrink-0 rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
+                    {(tc.traceabilityScore * 100).toFixed(0)}%
+                  </span>
                 )}
-                {tc.failureSummary && (
-                  <p className="mt-0.5 text-xs text-rose-600 dark:text-rose-400">
-                    {tc.failureSummary}
-                  </p>
+                {onDeleteLink && tc.linkId && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteLink(tc.linkId)}
+                    title="Remove link"
+                    className="shrink-0 rounded-full border border-rose-200 bg-rose-50 p-1 text-rose-600 hover:bg-rose-100 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 )}
               </div>
-              {tc.traceabilityScore != null && (
-                <span className="shrink-0 rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
-                  {(tc.traceabilityScore * 100).toFixed(0)}%
-                </span>
-              )}
             </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+      {/* Add link CTA */}
+      {onAddLink && (
+        <div className="px-5 pb-4 pt-2 border-t border-outline-variant/10">
+          <button
+            type="button"
+            onClick={onAddLink}
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Link test case
+          </button>
         </div>
       )}
     </div>
@@ -240,23 +304,30 @@ export default function TraceabilityPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const suiteId = searchParams.get("suiteId") || "";
+  const testRunId = searchParams.get("testRunId") || "";
   const projectId = selectedProject?.id || "";
   const breadcrumbs = useProjectBreadcrumbs("Traceability");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [testRunDetail, setTestRunDetail] = useState<any>(null);
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
 
   const { testSuites, isLoading: suitesLoading } = useTestSuites(projectId);
+  const [suiteTestCases, setSuiteTestCases] = useState<any[]>([]);
+  const [addLinkReqId, setAddLinkReqId] = useState<string | null>(null); // requirementId for "add link" modal
+  const [addLinkTestCaseId, setAddLinkTestCaseId] = useState<string>("");
+  const [isCreatingLink, setIsCreatingLink] = useState(false);
 
   const selectedSuite = testSuites.find((s: any) => s.id === suiteId);
 
   useEffect(() => {
     if (!projectId || !suiteId) return;
     setData(null);
+    setTestRunDetail(null);
     (async () => {
       try {
         setLoading(true);
-        const result = await srsService.getTraceability(projectId, suiteId);
+        const result = await srsService.getTraceability(projectId, suiteId, testRunId || null);
         setData(result);
       } catch (err) {
         handleError(err);
@@ -264,12 +335,104 @@ export default function TraceabilityPage() {
         setLoading(false);
       }
     })();
-  }, [projectId, suiteId]);
+  }, [projectId, suiteId, testRunId]);
+
+  // Fetch test run results for JOIN when testRunId is provided
+  useEffect(() => {
+    if (!suiteId || !testRunId) {
+      setTestRunDetail(null);
+      return;
+    }
+    (async () => {
+      try {
+        const detail = await testRunService.getTestRunResults(suiteId, testRunId);
+        setTestRunDetail(detail);
+      } catch {
+        // non-critical — traceability still shows without live JOIN data
+      }
+    })();
+  }, [suiteId, testRunId]);
+
+  // Fetch test cases in suite for "add link" dropdown
+  useEffect(() => {
+    if (!suiteId) { setSuiteTestCases([]); return; }
+    (async () => {
+      try {
+        const res = await testCaseService.getTestCases(suiteId, 1, 200);
+        setSuiteTestCases(res.items ?? []);
+      } catch {
+        setSuiteTestCases([]);
+      }
+    })();
+  }, [suiteId]);
+
+  const reloadTraceability = async () => {
+    if (!projectId || !suiteId) return;
+    try {
+      const result = await srsService.getTraceability(projectId, suiteId, testRunId || null);
+      setData(result);
+    } catch (err) {
+      handleError(err);
+    }
+  };
+
+  const handleCreateLink = async () => {
+    if (!projectId || !suiteId || !addLinkReqId || !addLinkTestCaseId) return;
+    setIsCreatingLink(true);
+    try {
+      await srsService.createTraceabilityLink(projectId, suiteId, {
+        testCaseId: addLinkTestCaseId,
+        srsRequirementId: addLinkReqId,
+      });
+      showSuccessToast("Link created.");
+      setAddLinkReqId(null);
+      setAddLinkTestCaseId("");
+      await reloadTraceability();
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsCreatingLink(false);
+    }
+  };
+
+  const handleDeleteLink = async (linkId: string) => {
+    if (!projectId || !suiteId) return;
+    try {
+      await srsService.deleteTraceabilityLink(projectId, suiteId, linkId);
+      showSuccessToast("Link removed.");
+      await reloadTraceability();
+    } catch (err) {
+      handleError(err);
+    }
+  };
+
+  // JOIN: enrich traceability testCases with live run data
+  const caseMap = useMemo(() => {
+    if (!testRunDetail?.cases) return new Map<string, any>();
+    return new Map<string, any>(testRunDetail.cases.map((c: any) => [c.testCaseId, c]));
+  }, [testRunDetail]);
+
+  const enrichedRequirements = useMemo(() => {
+    if (!data?.requirements) return [];
+    return data.requirements.map((req: any) => ({
+      ...req,
+      testCases: (req.testCases || []).map((ref: any) => {
+        const live = caseMap.get(ref.testCaseId);
+        return {
+          ...ref,
+          liveStatus: live?.status ?? ref.lastRunStatus,
+          liveFailureReasons: live?.failureReasons ?? [],
+          liveTotalAttempts: live?.totalAttempts ?? 1,
+          liveSkippedCause: live?.skippedCause ?? null,
+        };
+      }),
+    }));
+  }, [data, caseMap]);
 
   const hasNoSrsLink = data && data.srsDocumentId == null;
   const hasRequirements = data && (data.requirements || []).length > 0;
 
-  const filteredRequirements = (data?.requirements || []).filter((r: any) => {
+  const filteredRequirements = enrichedRequirements.filter((r: any) => {
     if (coverageFilter === "covered") return r.isCovered;
     if (coverageFilter === "uncovered") return !r.isCovered;
     return true;
@@ -539,13 +702,58 @@ export default function TraceabilityPage() {
                 </div>
               ) : (
                 filteredRequirements.map((row: any) => (
-                  <RequirementCard key={row.requirementId} row={row} />
+                  <RequirementCard
+                    key={row.requirementId}
+                    row={row}
+                    onAddLink={() => {
+                      setAddLinkReqId(row.requirementId);
+                      setAddLinkTestCaseId("");
+                    }}
+                    onDeleteLink={handleDeleteLink}
+                  />
                 ))
               )}
             </div>
           </div>
         )}
       </div>
+
+      {/* Add link modal */}
+      {addLinkReqId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-6 space-y-4">
+            <h2 className="text-lg font-bold text-on-surface">Link test case to requirement</h2>
+            <select
+              value={addLinkTestCaseId}
+              onChange={(e) => setAddLinkTestCaseId(e.target.value)}
+              className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
+            >
+              <option value="">— Select a test case —</option>
+              {suiteTestCases.map((tc: any) => (
+                <option key={tc.id} value={tc.id}>{tc.name}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setAddLinkReqId(null); setAddLinkTestCaseId(""); }}
+                className="rounded-xl bg-surface-container-low px-4 py-2 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateLink}
+                disabled={isCreatingLink || !addLinkTestCaseId}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {isCreatingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }

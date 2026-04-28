@@ -12,6 +12,7 @@ import {
   FileText,
   Loader2,
   MessagesSquare,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -155,6 +156,16 @@ export default function SrsDocumentsPage() {
     rawContent: "",
     storageFileId: "",
   });
+
+  const [isAddReqOpen, setIsAddReqOpen] = useState(false);
+  const [addReqForm, setAddReqForm] = useState({
+    title: "",
+    description: "",
+    requirementType: 0,
+    testableConstraints: "",
+    endpointId: "",
+  });
+  const [isAddingReq, setIsAddingReq] = useState(false);
 
   const { testSuites } = useTestSuites(projectId);
   const [linkSuiteId, setLinkSuiteId] = useState<string>("");
@@ -332,6 +343,9 @@ export default function SrsDocumentsPage() {
   const updateRequirement = async (req: SrsRequirement) => {
     if (!selectedDocument || !projectId) return;
     try {
+      const trimmedEndpointId = updateForm.endpointId.trim();
+      const hadEndpoint = !!req.endpointId;
+      const clearEndpointId = hadEndpoint && !trimmedEndpointId;
       const updated = await srsService.updateRequirement(
         projectId,
         selectedDocument.id,
@@ -340,7 +354,11 @@ export default function SrsDocumentsPage() {
           title: updateForm.title.trim() || undefined,
           testableConstraints:
             updateForm.testableConstraints.trim() || undefined,
-          endpointId: updateForm.endpointId.trim() || undefined,
+          ...(clearEndpointId
+            ? { clearEndpointId: true }
+            : trimmedEndpointId
+              ? { endpointId: trimmedEndpointId }
+              : {}),
           isReviewed: updateForm.isReviewed,
         },
       );
@@ -455,6 +473,52 @@ export default function SrsDocumentsPage() {
     } finally {
       setIsLinkingSuite(false);
     }
+  };
+
+  const handleAddRequirement = async () => {
+    if (!projectId || !selectedDocument) return;
+    if (!addReqForm.title.trim()) {
+      showErrorToast("Title is required.");
+      return;
+    }
+    setIsAddingReq(true);
+    try {
+      const created = await srsService.addRequirement(projectId, selectedDocument.id, {
+        title: addReqForm.title.trim(),
+        description: addReqForm.description.trim() || null,
+        requirementType: addReqForm.requirementType,
+        testableConstraints: addReqForm.testableConstraints.trim() || null,
+        endpointId: addReqForm.endpointId.trim() || null,
+      });
+      setRequirements((prev) => [...prev, created]);
+      showSuccessToast("Requirement added.");
+      setIsAddReqOpen(false);
+      setAddReqForm({ title: "", description: "", requirementType: 0, testableConstraints: "", endpointId: "" });
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsAddingReq(false);
+    }
+  };
+
+  const handleDeleteRequirement = (req: SrsRequirement) => {
+    if (!projectId || !selectedDocument) return;
+    showConfirm({
+      title: "Delete requirement",
+      message: `Delete "${req.requirementCode ?? req.title}"? All traceability links for this requirement will also be removed.`,
+      confirmLabel: "Delete",
+      confirmClass: "bg-rose-600 hover:bg-rose-700 text-white",
+      onConfirm: async () => {
+        try {
+          await srsService.deleteRequirement(projectId, selectedDocument.id, req.id);
+          setRequirements((prev) => prev.filter((r) => r.id !== req.id));
+          if (selectedRequirement?.id === req.id) setSelectedRequirement(null);
+          showSuccessToast("Requirement deleted.");
+        } catch (err) {
+          handleError(err);
+        }
+      },
+    });
   };
 
   const filteredRequirements = useMemo(() => {
@@ -990,6 +1054,14 @@ export default function SrsDocumentsPage() {
                       <option value="3">Performance</option>
                       <option value="4">Constraint</option>
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddReqOpen(true)}
+                      className="rounded-2xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white inline-flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add
+                    </button>
                   </div>
                 </div>
 
@@ -1064,6 +1136,20 @@ export default function SrsDocumentsPage() {
                           </button>
 
                           <div className="mt-4 flex flex-wrap items-center gap-3">
+                            {/* Edit requirement — always visible */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openRequirement(req);
+                                setIsClarifyModalOpen(true);
+                              }}
+                              title="Edit this requirement"
+                              className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
+                            >
+                              <Pencil className="w-4 h-4" />
+                              Edit
+                            </button>
+
                             {/* Clarifications shortcut — only when unanswered critical exist */}
                             {hasOpenCritical && (
                               <button
@@ -1201,6 +1287,18 @@ export default function SrsDocumentsPage() {
                                 Mark reviewed
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRequirement(req);
+                              }}
+                              title="Delete requirement"
+                              className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
                           </div>
 
                           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
@@ -1504,6 +1602,69 @@ export default function SrsDocumentsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={isAddReqOpen}
+        onClose={() => setIsAddReqOpen(false)}
+        title="Add Requirement"
+        footer={
+          <>
+            <button
+              onClick={() => setIsAddReqOpen(false)}
+              className="rounded-xl bg-surface-container-low px-4 py-2 font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddRequirement}
+              disabled={isAddingReq}
+              className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white inline-flex items-center gap-2"
+            >
+              {isAddingReq ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Add
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <input
+            value={addReqForm.title}
+            onChange={(e) => setAddReqForm((prev) => ({ ...prev, title: e.target.value }))}
+            placeholder="Title *"
+            className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
+          />
+          <input
+            value={addReqForm.description}
+            onChange={(e) => setAddReqForm((prev) => ({ ...prev, description: e.target.value }))}
+            placeholder="Description (optional)"
+            className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
+          />
+          <select
+            value={addReqForm.requirementType}
+            onChange={(e) => setAddReqForm((prev) => ({ ...prev, requirementType: Number(e.target.value) }))}
+            className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
+          >
+            <option value={0}>Functional</option>
+            <option value={1}>NonFunctional</option>
+            <option value={2}>Security</option>
+            <option value={3}>Performance</option>
+            <option value={4}>Constraint</option>
+          </select>
+          <textarea
+            rows={3}
+            value={addReqForm.testableConstraints}
+            onChange={(e) => setAddReqForm((prev) => ({ ...prev, testableConstraints: e.target.value }))}
+            placeholder="Testable constraints (optional)"
+            className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm font-mono"
+          />
+          <input
+            value={addReqForm.endpointId}
+            onChange={(e) => setAddReqForm((prev) => ({ ...prev, endpointId: e.target.value }))}
+            placeholder="Endpoint ID (optional)"
+            className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
+          />
+        </div>
       </Modal>
 
       <Modal

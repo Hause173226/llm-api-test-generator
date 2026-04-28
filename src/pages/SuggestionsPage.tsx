@@ -748,6 +748,274 @@ export default function SuggestionsPage() {
                         {getExecutionModeLabel(testCase.testType)}
                       </div>
 
+                      {/* ── Evidence: Expected vs Actual ── */}
+                      {(() => {
+                        const isSkipped = (testCase.status || "").toLowerCase() === "skipped";
+                        const neverSentRequest = isSkipped || testCase.httpStatusCode == null;
+                        return (
+                          <div className="rounded-xl border border-outline-variant/20 dark:border-slate-600 overflow-hidden">
+                            <div className="px-3 py-2 bg-surface-container-high dark:bg-slate-700/80 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+                              Evidence — Expected vs Actual
+                            </div>
+                            <div className="px-3 py-3 space-y-2 text-xs">
+                              {isSkipped ? (
+                                // Skipped: no HTTP request was made, don't show misleading FAIL
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                                    ⏭ SKIPPED — no HTTP request sent
+                                  </span>
+                                  {testCase.skippedCause && (
+                                    <span className="text-amber-600 dark:text-amber-400 break-all">
+                                      {testCase.skippedCause}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <>
+                                  {/* HTTP Status row */}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-on-surface-variant w-24 shrink-0">HTTP Status</span>
+                                    <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">
+                                      Expected: {testCase.expectedStatus || "—"}
+                                    </span>
+                                    <span className="text-on-surface-variant">→</span>
+                                    <span className={`font-mono px-2 py-0.5 rounded ${
+                                      testCase.statusCodeMatched === true
+                                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                        : neverSentRequest
+                                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                        : "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                    }`}>
+                                      Actual: {testCase.httpStatusCode ?? "(no response)"}
+                                    </span>
+                                    <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      testCase.statusCodeMatched === true
+                                        ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                                        : neverSentRequest
+                                        ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                                        : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
+                                    }`}>
+                                      {testCase.statusCodeMatched === true ? "✓ PASS" : neverSentRequest ? "⚠ NO RESP" : "✗ FAIL"}
+                                    </span>
+                                  </div>
+                                  {/* ── Detailed check evidence rows — only when HTTP was sent ── */}
+                                  {!neverSentRequest && (() => {
+                                    // Parse helper — returns null if string is empty/invalid JSON
+                                    const parseJson = <T,>(raw?: string): T | null => {
+                                      if (!raw) return null;
+                                      try { return JSON.parse(raw) as T; } catch { return null; }
+                                    };
+
+                                    const bodyContainsList = parseJson<string[]>(testCase.expectedBodyContains);
+                                    const bodyNotContainsList = parseJson<string[]>(testCase.expectedBodyNotContains);
+                                    const headerMap = parseJson<Record<string, string>>(testCase.expectedHeaderChecks);
+                                    const jsonPathMap = parseJson<Record<string, string>>(testCase.expectedJsonPathChecks);
+                                    const maxRespTime = testCase.expectedMaxResponseTime;
+
+                                    const hasDetailedRows = bodyContainsList?.length || bodyNotContainsList?.length
+                                      || (headerMap && Object.keys(headerMap).length)
+                                      || (jsonPathMap && Object.keys(jsonPathMap).length)
+                                      || maxRespTime != null
+                                      || testCase.schemaMatched != null;
+
+                                    const hasFailureReasons = testCase.failureReasons && testCase.failureReasons.length > 0;
+                                    const hasResponseBody = !!testCase.responseBodyPreview;
+
+                                    if (!hasDetailedRows && !hasFailureReasons && !hasResponseBody) return null;
+                                    return (
+                                      <div className="space-y-1.5 pt-1 border-t border-outline-variant/10 dark:border-slate-700">
+
+                                        {/* Schema row */}
+                                        {testCase.schemaMatched != null && (
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-on-surface-variant w-24 shrink-0 text-[11px]">Schema</span>
+                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${testCase.schemaMatched ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}>
+                                              {testCase.schemaMatched ? "✓ PASS" : "✗ FAIL"}
+                                            </span>
+                                            <span className="text-on-surface-variant text-[10px] italic">(JSON schema validated against response body)</span>
+                                          </div>
+                                        )}
+
+                                        {/* Headers row */}
+                                        {headerMap && Object.keys(headerMap).length > 0 && (
+                                          <div className="flex items-start gap-2 flex-wrap">
+                                            <span className="text-on-surface-variant w-24 shrink-0 text-[11px] mt-0.5">Headers</span>
+                                            <div className="flex flex-col gap-0.5 flex-1">
+                                              {Object.entries(headerMap).map(([k, v]) => {
+                                                const actualV = testCase.responseHeaders?.[k] ?? testCase.responseHeaders?.[k.toLowerCase()];
+                                                const matched = actualV?.trim() === v?.trim();
+                                                return (
+                                                  <div key={k} className="flex items-center gap-1 flex-wrap">
+                                                    <span className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]">{k}: {v}</span>
+                                                    {actualV !== undefined && (
+                                                      <>
+                                                        <span className="text-on-surface-variant text-[10px]">→ actual:</span>
+                                                        <span className={`font-mono px-1.5 py-0.5 rounded text-[10px] ${matched ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-rose-500/10 text-rose-700 dark:text-rose-300"}`}>{actualV}</span>
+                                                      </>
+                                                    )}
+                                                    <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${testCase.headerChecksPassed ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}>
+                                                      {testCase.headerChecksPassed ? "✓" : "✗"}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Body Contains row */}
+                                        {bodyContainsList && bodyContainsList.length > 0 && (
+                                          <div className="flex items-start gap-2 flex-wrap">
+                                            <span className="text-on-surface-variant w-24 shrink-0 text-[11px] mt-0.5">Body Contains</span>
+                                            <div className="flex flex-col gap-0.5 flex-1">
+                                              {bodyContainsList.map((s, i) => {
+                                                const inBody = testCase.responseBodyPreview?.includes(s);
+                                                // failureReasons has expected=s when this specific string was missing
+                                                const failedForThis = testCase.failureReasons?.some(
+                                                  (r) => r.code === "BODY_CONTAINS_MISSING" && r.expected === s
+                                                );
+                                                const pass = inBody === true && !failedForThis;
+                                                return (
+                                                  <div key={i} className="flex items-center gap-1 flex-wrap">
+                                                    <span className="font-mono bg-violet-500/10 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded text-[10px] break-all">&quot;{s}&quot;</span>
+                                                    <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${pass ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}>
+                                                      {pass ? "✓ found" : "✗ missing"}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Body Not Contains row */}
+                                        {bodyNotContainsList && bodyNotContainsList.length > 0 && (
+                                          <div className="flex items-start gap-2 flex-wrap">
+                                            <span className="text-on-surface-variant w-24 shrink-0 text-[11px] mt-0.5">Body ¬ Contains</span>
+                                            <div className="flex flex-col gap-0.5 flex-1">
+                                              {bodyNotContainsList.map((s, i) => {
+                                                const inBody = testCase.responseBodyPreview?.includes(s);
+                                                const pass = !inBody;
+                                                return (
+                                                  <div key={i} className="flex items-center gap-1 flex-wrap">
+                                                    <span className="font-mono bg-orange-500/10 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded text-[10px] break-all">&quot;{s}&quot;</span>
+                                                    <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${pass ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}>
+                                                      {pass ? "✓ absent" : "✗ present"}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* JSONPath rows */}
+                                        {jsonPathMap && Object.keys(jsonPathMap).length > 0 && (
+                                          <div className="flex items-start gap-2 flex-wrap">
+                                            <span className="text-on-surface-variant w-24 shrink-0 text-[11px] mt-0.5">JSON Path</span>
+                                            <div className="flex flex-col gap-0.5 flex-1">
+                                              {Object.entries(jsonPathMap).map(([path, expected]) => {
+                                                const failureForPath = testCase.failureReasons?.find(
+                                                  (r) => r.target === path && r.code?.startsWith("JSONPATH")
+                                                );
+                                                const pass = !failureForPath && testCase.jsonPathChecksPassed !== false;
+                                                return (
+                                                  <div key={path} className="flex items-center gap-1 flex-wrap">
+                                                    <span className="font-mono bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 rounded text-[10px]">{path}</span>
+                                                    <span className="text-on-surface-variant text-[10px]">=</span>
+                                                    <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">{expected || "*"}</span>
+                                                    {failureForPath?.actual && (
+                                                      <>
+                                                        <span className="text-on-surface-variant text-[10px]">→ actual:</span>
+                                                        <span className="font-mono bg-rose-500/10 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded text-[10px]">{failureForPath.actual}</span>
+                                                      </>
+                                                    )}
+                                                    <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${pass ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}>
+                                                      {pass ? "✓" : "✗"}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Response Time row */}
+                                        {maxRespTime != null && (
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-on-surface-variant w-24 shrink-0 text-[11px]">Resp Time</span>
+                                            <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">max {maxRespTime}ms</span>
+                                            <span className="text-on-surface-variant text-[10px]">→ actual:</span>
+                                            <span className={`font-mono px-1.5 py-0.5 rounded text-[10px] ${testCase.responseTimePassed !== false ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-rose-500/10 text-rose-700 dark:text-rose-300"}`}>
+                                              {testCase.durationMs}ms
+                                            </span>
+                                            <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${testCase.responseTimePassed !== false ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}>
+                                              {testCase.responseTimePassed !== false ? "✓" : "✗"}
+                                            </span>
+                                          </div>
+                                        )}
+
+                                        {/* Failure Reasons — always show when there are failures */}
+                                        {hasFailureReasons && (
+                                          <div className="flex items-start gap-2 flex-wrap pt-1 border-t border-rose-200/40 dark:border-rose-900/40">
+                                            <span className="w-24 shrink-0 text-[11px] mt-0.5 text-rose-600 dark:text-rose-400 font-semibold">Failures</span>
+                                            <div className="flex flex-col gap-1 flex-1">
+                                              {testCase.failureReasons!.map((fr, i) => (
+                                                <div key={i} className="flex flex-col gap-0.5 rounded bg-rose-50 dark:bg-rose-900/20 px-2 py-1">
+                                                  <div className="flex items-center gap-1 flex-wrap">
+                                                    <span className="font-mono text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase">{fr.code?.replace(/_/g, " ")}</span>
+                                                    {fr.target && <span className="text-[10px] text-rose-600 dark:text-rose-400 italic">({fr.target})</span>}
+                                                  </div>
+                                                  {(fr.expected || fr.actual) && (
+                                                    <div className="flex items-center gap-2 flex-wrap text-[10px]">
+                                                      {fr.expected && (
+                                                        <span>
+                                                          <span className="text-on-surface-variant">Expected: </span>
+                                                          <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1 rounded">{fr.expected}</span>
+                                                        </span>
+                                                      )}
+                                                      {fr.actual && (
+                                                        <span>
+                                                          <span className="text-on-surface-variant">Actual: </span>
+                                                          <span className="font-mono bg-rose-500/10 text-rose-700 dark:text-rose-300 px-1 rounded">{fr.actual}</span>
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                  {fr.message && (
+                                                    <span className="text-[10px] text-on-surface-variant break-all">{fr.message}</span>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Actual Response Body — always show when available */}
+                                        {hasResponseBody && (
+                                          <div className="flex items-start gap-2 pt-1 border-t border-outline-variant/10 dark:border-slate-700">
+                                            <span className="text-on-surface-variant w-24 shrink-0 text-[11px] mt-1">Response Body</span>
+                                            <pre className="flex-1 font-mono text-[10px] bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all max-h-48">{
+                                              (() => {
+                                                try {
+                                                  return JSON.stringify(JSON.parse(testCase.responseBodyPreview!), null, 2);
+                                                } catch {
+                                                  return testCase.responseBodyPreview;
+                                                }
+                                              })()
+                                            }</pre>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
                           <span className="font-semibold">
@@ -1004,6 +1272,22 @@ export default function SuggestionsPage() {
                                 <p className="text-xs text-on-surface mt-1">
                                   {reason.message || t("suggestions.none")}
                                 </p>
+                                {(reason.expected != null || reason.actual != null) && (
+                                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                                    <div className="rounded px-2 py-1 bg-emerald-500/10">
+                                      <span className="text-on-surface-variant">Expected: </span>
+                                      <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                                        {reason.expected ?? "—"}
+                                      </span>
+                                    </div>
+                                    <div className="rounded px-2 py-1 bg-rose-500/10">
+                                      <span className="text-on-surface-variant">Actual: </span>
+                                      <span className="font-mono font-semibold text-rose-700 dark:text-rose-300">
+                                        {reason.actual ?? "—"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

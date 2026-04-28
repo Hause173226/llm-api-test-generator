@@ -167,6 +167,15 @@ export default function TestSuiteDetailPage() {
   // Chỉ tính isStep1Completed sau khi load xong để tránh redirect nhầm
   const isStep1Completed = !isLoading && !hasChanges && hasGeneratedSuggestions;
 
+  // True when the suite now has an SRS linked but existing pending suggestions
+  // were generated before the SRS was linked (hasSrsContext === false).
+  // Signals user to regenerate so the LLM actually uses the SRS requirements.
+  const hasStaleNoSrsSuggestions =
+    !!linkedSrsDocId &&
+    allSuggestions.some(
+      (s) => s.reviewStatus === "Pending" && !s.hasSrsContext,
+    );
+
   const breadcrumbs = useProjectBreadcrumbs(
     t("testSuites.title"),
     suite?.name || undefined,
@@ -2507,6 +2516,33 @@ export default function TestSuiteDetailPage() {
 
           {activeTab === "suggestions" && (
             <div className="space-y-4">
+              {/* Stale-suggestions warning: SRS was linked AFTER generation */}
+              {hasStaleNoSrsSuggestions && !isGeneratingSuggestions && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 px-4 py-3">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      Pending suggestions were generated without SRS context
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                      The SRS document &ldquo;
+                      {srsDocuments.find((d) => d.id === linkedSrsDocId)
+                        ?.title ?? linkedSrsDocId}
+                      &rdquo; was linked after these suggestions were generated.
+                      Regenerate so the LLM aligns scenarios with your
+                      requirements.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleGenerateSuggestions(true)}
+                    className="flex items-center gap-1.5 shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Regenerate with SRS
+                  </button>
+                </div>
+              )}
+
               <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
