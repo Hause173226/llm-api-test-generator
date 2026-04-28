@@ -139,8 +139,30 @@ class SrsService {
     });
   }
 
-  async updateRequirement(projectId: string, srsDocumentId: string, requirementId: string, data: Partial<Pick<SrsRequirement, "title" | "testableConstraints" | "endpointId" | "isReviewed">>): Promise<SrsRequirement> {
+  async addRequirement(projectId: string, srsDocumentId: string, data: {
+    title: string;
+    description?: string | null;
+    requirementType?: number;
+    testableConstraints?: string | null;
+    endpointId?: string | null;
+  }): Promise<SrsRequirement> {
+    return await apiService.post<SrsRequirement>(`/projects/${projectId}/srs-documents/${srsDocumentId}/requirements`, data);
+  }
+
+  async deleteRequirement(projectId: string, srsDocumentId: string, requirementId: string): Promise<void> {
+    await apiService.delete(`/projects/${projectId}/srs-documents/${srsDocumentId}/requirements/${requirementId}`);
+  }
+
+  async updateRequirement(projectId: string, srsDocumentId: string, requirementId: string, data: Partial<Pick<SrsRequirement, "title" | "testableConstraints" | "endpointId" | "isReviewed">> & { clearEndpointId?: boolean }): Promise<SrsRequirement> {
     return await apiService.patch<SrsRequirement>(`/projects/${projectId}/srs-documents/${srsDocumentId}/requirements/${requirementId}`, data);
+  }
+
+  async createTraceabilityLink(projectId: string, suiteId: string, data: { testCaseId: string; srsRequirementId: string }): Promise<{ id: string; testCaseId: string; testCaseName: string; srsRequirementId: string; requirementCode: string; traceabilityScore: number | null; mappingRationale: string }> {
+    return await apiService.post(`/projects/${projectId}/test-suites/${suiteId}/traceability/links`, data);
+  }
+
+  async deleteTraceabilityLink(projectId: string, suiteId: string, linkId: string): Promise<void> {
+    await apiService.delete(`/projects/${projectId}/test-suites/${suiteId}/traceability/links/${linkId}`);
   }
 
   async listClarifications(projectId: string, srsDocumentId: string, requirementId: string): Promise<SrsClarification[]> {

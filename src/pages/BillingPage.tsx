@@ -328,8 +328,9 @@ export default function BillingPage() {
                       </h3>
                       <div className="flex items-baseline gap-1 mb-4">
                         <span className="text-4xl font-bold text-on-surface">
-                          ${plan.price || 0}
+                          ${plan.priceMonthly || 0}
                         </span>
+                       
                         <span className="text-on-surface-variant font-medium">
                           /
                           {t(

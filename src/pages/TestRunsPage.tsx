@@ -803,6 +803,17 @@ export default function TestRunsPage() {
                         <td className="px-8 py-6 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
+                              onClick={() =>
+                                navigate(
+                                  `/traceability?suiteId=${run.testSuiteId}&testRunId=${run.id}${projectId ? `&projectId=${projectId}` : ""}`,
+                                )
+                              }
+                              className="px-4 py-2 bg-surface-container-high dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-widest rounded-lg hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-700 transition-all flex items-center gap-2 cursor-pointer"
+                              title="View SRS Coverage for this run"
+                            >
+                              SRS
+                            </button>
+                            <button
                               onClick={() => {
                                 const status = run.status.toLowerCase();
                                 const isFinished =
@@ -909,16 +920,18 @@ export default function TestRunsPage() {
                                             testCase.testCaseId;
 
                                           // BC-1/BC-2: retry badge logic
-                                          const attempt = testCase.executionAttempt ?? 1;
+                                          // totalAttempts is the correct field (executionAttempt = index of last attempt, NOT total count)
+                                          const totalAttempts = testCase.totalAttempts ?? 1;
+                                          const retryCount = totalAttempts - 1;
                                           const statusLower = (testCase.status || "").toLowerCase();
                                           let statusLabel = testCase.status;
                                           let statusColor = "text-on-surface-variant";
                                           if (statusLower === "passed") {
                                             statusColor = "text-emerald-600 dark:text-emerald-400";
-                                            statusLabel = attempt > 1 ? `Passed (Retried ×${attempt - 1})` : "Passed";
+                                            statusLabel = retryCount > 0 ? `Passed (Retried ×${retryCount})` : "Passed";
                                           } else if (statusLower === "failed") {
                                             statusColor = "text-rose-600 dark:text-rose-400";
-                                            statusLabel = attempt > 1 ? `Failed (after ${attempt - 1} retr${attempt - 1 > 1 ? "ies" : "y"})` : "Failed";
+                                            statusLabel = retryCount > 0 ? `Failed (after ${retryCount} retr${retryCount > 1 ? "ies" : "y"})` : "Failed";
                                           } else if (statusLower === "skipped") {
                                             statusColor = "text-amber-500 dark:text-amber-400";
                                             statusLabel = "Skipped";
@@ -936,9 +949,9 @@ export default function TestRunsPage() {
                                                       {testCase.name}
                                                     </p>
                                                     {/* Retry / Replay badge */}
-                                                    {attempt > 1 && (
+                                                    {retryCount > 0 && (
                                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 shrink-0">
-                                                        ↩ ×{attempt - 1}
+                                                        ↩ ×{retryCount}
                                                       </span>
                                                     )}
                                                     {testCase.hasWarnings && (
@@ -955,6 +968,11 @@ export default function TestRunsPage() {
                                                     </span>
                                                   </p>
                                                   {/* BC-1: skipped dependency info */}
+                                                  {statusLower === "skipped" && testCase.skippedCause && (
+                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                                      {testCase.skippedCause}
+                                                    </p>
+                                                  )}
                                                   {statusLower === "skipped" && testCase.skippedBecauseDependencyIds?.length > 0 && (
                                                     <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
                                                       Depends on: {testCase.skippedBecauseDependencyIds.map((depId) => {
@@ -1001,8 +1019,8 @@ export default function TestRunsPage() {
                                                       </span>
                                                     )}
                                                   </p>
-                                                  {/* Check results row */}
-                                                  {(testCase.checksPerformed != null || testCase.checksSkipped != null) && (
+                                                  {/* Check results row — hide for skipped cases */}
+                                                  {statusLower !== "skipped" && (testCase.checksPerformed != null || testCase.checksSkipped != null) && (
                                                     <p>
                                                       Checks:{" "}
                                                       <span className="text-on-surface">
@@ -1011,8 +1029,8 @@ export default function TestRunsPage() {
                                                       </span>
                                                     </p>
                                                   )}
-                                                  {/* Individual check results */}
-                                                  {[
+                                                  {/* Individual check results — only show when HTTP was actually sent */}
+                                                  {statusLower !== "skipped" && testCase.httpStatusCode != null && [
                                                     { label: "Status code", value: testCase.statusCodeMatched },
                                                     { label: "Schema", value: testCase.schemaMatched },
                                                     { label: "Headers", value: testCase.headerChecksPassed },
@@ -1039,6 +1057,12 @@ export default function TestRunsPage() {
                                                         </span>
                                                       ))}
                                                     </div>
+                                                  )}
+                                                  {/* For failed cases with no HTTP (pre-request failure like UNRESOLVED_VARIABLE) */}
+                                                  {statusLower === "failed" && testCase.httpStatusCode == null && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                                                      ⚠ Request not sent — pre-execution failure
+                                                    </span>
                                                   )}
                                                   {/* Failure reasons */}
                                                   {testCase.failureReasons?.length > 0 && (

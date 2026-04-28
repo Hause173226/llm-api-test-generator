@@ -60,7 +60,9 @@ export interface TestCaseRunDetail {
   extractedVariables: Record<string, string>;
   dependencyIds: string[];
   skippedBecauseDependencyIds: string[];
+  skippedCause?: string | null;
   executionAttempt?: number;
+  totalAttempts?: number;
   statusCodeMatched?: boolean;
   schemaMatched?: boolean;
   headerChecksPassed?: boolean;
@@ -68,6 +70,12 @@ export interface TestCaseRunDetail {
   bodyNotContainsPassed?: boolean;
   jsonPathChecksPassed?: boolean;
   responseTimePassed?: boolean;
+  // Expectation snapshots — for FE Evidence panel
+  expectedBodyContains?: string;
+  expectedBodyNotContains?: string;
+  expectedHeaderChecks?: string;
+  expectedJsonPathChecks?: string;
+  expectedMaxResponseTime?: number;
 }
 
 export interface TestRunDetailResponse {
@@ -195,7 +203,9 @@ interface BackendTestCaseRunDetail {
   extractedVariables?: Record<string, string>;
   dependencyIds?: string[];
   skippedBecauseDependencyIds?: string[];
+  skippedCause?: string | null;
   executionAttempt?: number;
+  totalAttempts?: number;
   statusCodeMatched?: boolean;
   schemaMatched?: boolean;
   headerChecksPassed?: boolean;
@@ -226,6 +236,8 @@ const normalizeStatus = (status?: string): TestRun["status"] => {
   ) {
     return value;
   }
+  // BE TestRunResultModel returns 'Passed'/'Failed'/'Running' (PascalCase)
+  if (value === "passed") return "completed";
   return "failed";
 };
 
@@ -300,8 +312,12 @@ const mapBackendTestCaseRunDetail = (
     (detail as any).skippedBecauseDependencyIds ||
     (detail as any).SkippedBecauseDependencyIds ||
     [],
+  skippedCause:
+    (detail as any).skippedCause ?? (detail as any).SkippedCause ?? null,
   executionAttempt:
     (detail as any).executionAttempt ?? (detail as any).ExecutionAttempt,
+  totalAttempts:
+    (detail as any).totalAttempts ?? (detail as any).TotalAttempts,
   statusCodeMatched:
     (detail as any).statusCodeMatched ?? (detail as any).StatusCodeMatched,
   schemaMatched: (detail as any).schemaMatched ?? (detail as any).SchemaMatched,

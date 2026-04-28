@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, X, Pencil, Filter, Loader2, Route, Clock } from "lucide-react";
+import { Check, X, Pencil, Filter, Loader2, Route, Clock, BookOpen, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
 import Modal from "../ui/Modal";
 import { cn } from "../../lib/utils";
 import { SuiteSuggestionModel } from "../../services/testSuiteLlmSuggestionService";
@@ -382,8 +382,49 @@ export default function SuggestionReviewPanel({
     return "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300";
   };
 
+  const srsLinkedCount = useMemo(
+    () => suggestions.filter((s) => s.hasSrsContext).length,
+    [suggestions],
+  );
+  const srsDocTitles = useMemo(() => {
+    const titles = new Set(
+      suggestions
+        .filter((s) => s.hasSrsContext && s.srsDocumentTitle)
+        .map((s) => s.srsDocumentTitle!),
+    );
+    return [...titles];
+  }, [suggestions]);
+
   return (
     <div className="space-y-4">
+      {/* SRS Trust Banner — shown when all/some suggestions have SRS context */}
+      {srsLinkedCount > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-emerald-300/60 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-950/30">
+          <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              {srsLinkedCount === suggestions.length
+                ? "All suggestions generated with SRS context"
+                : `${srsLinkedCount} of ${suggestions.length} suggestions generated with SRS context`}
+            </p>
+            {srsDocTitles.length > 0 && (
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                Based on:{" "}
+                {srsDocTitles.map((title, i) => (
+                  <span key={title}>
+                    {i > 0 && ", "}
+                    <span className="font-mono font-semibold">&ldquo;{title}&rdquo;</span>
+                  </span>
+                ))}
+              </p>
+            )}
+          </div>
+          <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600/40">
+            SRS-ALIGNED
+          </span>
+        </div>
+      )}
+
       {isHistoricalView && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 rounded-2xl">
           <div className="flex items-center gap-2">
@@ -596,6 +637,12 @@ export default function SuggestionReviewPanel({
                           suggestion.suggestionType ||
                           "Unknown"}
                       </span>
+                      {suggestion.hasSrsContext && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/25">
+                          <BookOpen className="w-2.5 h-2.5" />
+                          SRS
+                        </span>
+                      )}
                       {draftEdits[suggestion.id] && (
                         <span className="px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black tracking-wider border border-cyan-400/25">
                           Edited
@@ -609,6 +656,46 @@ export default function SuggestionReviewPanel({
                     <p className="text-xs text-on-surface-variant mt-1">
                       {suggestion.suggestedDescription || "No description"}
                     </p>
+
+                    {/* SRS requirement coverage — shown only when SRS context available */}
+                    {suggestion.hasSrsContext && (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          {suggestion.srsDocumentTitle
+                            ? `${suggestion.srsDocumentTitle}:`
+                            : "SRS:"}
+                        </span>
+                        {suggestion.coveredRequirements &&
+                        suggestion.coveredRequirements.length > 0 ? (
+                          suggestion.coveredRequirements.slice(0, 4).map((req) => (
+                            <span
+                              key={req.id}
+                              title={req.title}
+                              className="px-1.5 py-0.5 rounded text-[9px] font-black font-mono bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40"
+                            >
+                              {req.code}
+                            </span>
+                          ))
+                        ) : suggestion.coveredRequirementIds &&
+                          suggestion.coveredRequirementIds.length > 0 ? (
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
+                            {suggestion.coveredRequirementIds.length} req(s)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-500 italic">
+                            SRS-aligned
+                          </span>
+                        )}
+                        {suggestion.coveredRequirements &&
+                          suggestion.coveredRequirements.length > 4 && (
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                              +{suggestion.coveredRequirements.length - 4} more
+                            </span>
+                          )}
+                      </div>
+                    )}
+
                     <div className="mt-2 flex items-center gap-2 text-[11px] text-on-surface-variant">
                       <Route className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />
                       <span className="font-semibold">Endpoint:</span>
