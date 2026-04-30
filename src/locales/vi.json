@@ -537,6 +537,12 @@
     "subtitle": "Thiết kế và tinh chỉnh các trường hợp kiểm thử API riêng lẻ với xác thực thời gian thực.",
     "saveButton": "Lưu Trường hợp",
     "runButton": "Chạy Kiểm thử",
+    "unsaved": {
+      "title": "Thay đổi chưa được lưu",
+      "message": "Bạn có thay đổi chưa lưu. Hãy lưu trường hợp kiểm thử trước khi thực thi.",
+      "cancel": "Hủy",
+      "confirm": "Lưu và Thực thi"
+    },
     "caseNameLabel": "Tên Trường hợp Kiểm thử",
     "endpointTargetLabel": "Mục tiêu Điểm cuối",
     "assertionsLabel": "Khẳng định",

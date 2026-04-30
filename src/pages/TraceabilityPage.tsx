@@ -321,6 +321,29 @@ export default function TraceabilityPage() {
   const selectedSuite = testSuites.find((s: any) => s.id === suiteId);
 
   useEffect(() => {
+    if (!projectId || suiteId || testSuites.length === 0) return;
+
+    const getSuiteTimestamp = (suite: (typeof testSuites)[number]) => {
+      const updated = suite.updatedDateTime
+        ? Date.parse(suite.updatedDateTime)
+        : Number.NaN;
+      if (!Number.isNaN(updated)) return updated;
+      const created = suite.createdDateTime
+        ? Date.parse(suite.createdDateTime)
+        : Number.NaN;
+      return Number.isNaN(created) ? 0 : created;
+    };
+
+    const latestSuite = testSuites.reduce((latest, suite) =>
+      getSuiteTimestamp(suite) > getSuiteTimestamp(latest)
+        ? suite
+        : latest,
+    );
+
+    navigate(`/traceability?suiteId=${latestSuite.id}`, { replace: true });
+  }, [projectId, suiteId, testSuites, navigate]);
+
+  useEffect(() => {
     if (!projectId || !suiteId) return;
     setData(null);
     setTestRunDetail(null);
