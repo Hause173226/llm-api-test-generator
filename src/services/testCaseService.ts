@@ -1,4 +1,5 @@
 import apiService from "./apiService";
+import testRunService, { TestRunDetailResponse } from "./testRunService";
 
 export interface TestCase {
   id: string;
@@ -16,6 +17,9 @@ export interface TestCase {
   assertions?: any[];
   testType?: string;
   priority?: string;
+  hasSrsContext?: boolean;
+  srsDocumentTitle?: string;
+  coveredRequirements?: Array<{ id?: string; code?: string; title?: string }>;
   isEnabled?: boolean;
   tags?: string[];
   request?: {
@@ -160,6 +164,11 @@ const normalizeTestCase = (item: any): TestCase => {
       jsonPathChecks: expectation?.jsonPathChecks || expectation?.JsonPathChecks,
       maxResponseTime: expectation?.maxResponseTime ?? expectation?.MaxResponseTime,
     },
+      // SRS traceability fields (populated for suggestions and approved test cases)
+      // These will be undefined when not returned by the backend.
+      hasSrsContext: item?.hasSrsContext ?? item?.HasSrsContext,
+      srsDocumentTitle: item?.srsDocumentTitle ?? item?.SrsDocumentTitle,
+      coveredRequirements: item?.coveredRequirements ?? item?.CoveredRequirements,
     variables: (item?.variables || item?.Variables || []).map((v: any) => ({
       variableName: v?.variableName || v?.VariableName,
       extractFrom: v?.extractFrom || v?.ExtractFrom,
@@ -396,14 +405,18 @@ const testCaseService = {
     return normalizeTestCase(response);
   },
 
-  // Run single test case
+  // Run single test case (optionally against a selected execution environment)
   runTestCase: async (
     testSuiteId: string,
     testCaseId: string,
-  ): Promise<any> => {
-    return await apiService.post(
-      `/test-suites/${testSuiteId}/test-cases/${testCaseId}/run`,
-    );
+    environmentId?: string,
+  ): Promise<TestRunDetailResponse> => {
+    return await testRunService.startTestRun({
+      testSuiteId,
+      environmentId: environmentId ?? undefined,
+      selectedTestCaseIds: [testCaseId],
+      recordRun: false,
+    });
   },
 };
 

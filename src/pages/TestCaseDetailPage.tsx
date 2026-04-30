@@ -23,12 +23,15 @@ import {
   Link2,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
+import Modal from "../components/ui/Modal";
 import { useTestCase } from "../hooks/useTestCase";
 import testSuiteLlmSuggestionService, {
   SuiteSuggestionModel,
 } from "../services/testSuiteLlmSuggestionService";
 import { cn } from "../lib/utils";
 import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
+import { useProject } from "../contexts/ProjectContext";
+import { useEnvironments } from "../hooks/useEnvironments";
 
 interface Assertion {
   id: string;
@@ -51,6 +54,10 @@ export default function TestCaseDetailPage() {
     "";
   const testCaseId = params.testCaseId || searchParams.get("testCaseId") || "";
   const hasShownMissingSuiteToastRef = useRef(false);
+  const editorRef = useRef<any>(null);
+  const editorResizeRef = useRef<any>(null);
+  const editorHeightRef = useRef(0);
+  const isSyncingEditorRef = useRef(false);
 
   const {
     testCase,
@@ -61,6 +68,14 @@ export default function TestCaseDetailPage() {
     runTestCase,
     refetch,
   } = useTestCase(testSuiteId, testCaseId, true);
+
+  const { selectedProject } = useProject();
+  const projectId = selectedProject?.id || "";
+  const { environments: executionEnvironments, loading: envLoading } =
+    useEnvironments(projectId);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<
+    string | undefined
+  >(undefined);
 
   const [suggestion, setSuggestion] = useState<SuiteSuggestionModel | null>(
     null,
@@ -73,8 +88,44 @@ export default function TestCaseDetailPage() {
   const [headers, setHeaders] = useState<Record<string, string>>({});
   const [assertions, setAssertions] = useState<Assertion[]>([]);
   const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editorHeight, setEditorHeight] = useState(220);
   const canEdit = Boolean(testCase);
+
+  const updateEditorHeight = (editorOverride?: any) => {
+    const editor = editorOverride ?? editorRef.current;
+    if (!editor) return;
+    const contentHeight = editor.getContentHeight();
+    if (!contentHeight || contentHeight === editorHeightRef.current) return;
+    editorHeightRef.current = contentHeight;
+    setEditorHeight(contentHeight);
+    editor.layout({
+      width: editor.getLayoutInfo().width,
+      height: contentHeight,
+    });
+  };
+
+  const syncEditorValue = (nextValue: string) => {
+    isSyncingEditorRef.current = true;
+    setRequestBody(nextValue);
+    if (editorRef.current) {
+      editorRef.current.setValue(nextValue);
+    }
+    setTimeout(() => {
+      isSyncingEditorRef.current = false;
+    }, 0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (editorResizeRef.current) {
+        editorResizeRef.current.dispose();
+        editorResizeRef.current = null;
+      }
+    };
+  }, []);
 
   const prettyJson = (raw: string): string => {
     try {
@@ -88,8 +139,63 @@ export default function TestCaseDetailPage() {
     return raw;
   };
 
+  const escapeHtml = (raw: string) =>
+    raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const renderJsonHighlighted = (input: string | object) => {
+    let pretty = "";
+    if (input === null || input === undefined) {
+      pretty = "";
+    } else if (typeof input === "object") {
+      try {
+        pretty = JSON.stringify(input, null, 2);
+      } catch {
+        pretty = String(input);
+      }
+    } else {
+      try {
+        const trimmed = String(input).trim();
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+          pretty = JSON.stringify(JSON.parse(trimmed), null, 2);
+        } else {
+          pretty = String(input);
+        }
+      } catch {
+        pretty = String(input);
+      }
+    }
+
+    const escaped = escapeHtml(pretty);
+
+    // Simple token highlighting for readability using inline styles with !important
+    let highlighted = escaped
+      // Keys: "key":
+      .replace(/"([^\"]+)"\s*:/g, '<span style="color:#22D3EE !important">"$1"</span>:')
+      // String values: : "value"
+      .replace(/:\s*"([^\n\"]*)"/g, ': <span style="color:#34D399 !important">"$1"</span>')
+      // Numbers
+      .replace(
+        /:\s*(-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+        ': <span style="color:#F59E0B !important">$1</span>',
+      )
+      // booleans and null
+      .replace(
+        /\b(true|false|null)\b/g,
+        '<span style="color:#D946EF !important">$1</span>',
+      );
+
+    return (
+      <pre className="whitespace-pre-wrap text-xs font-mono mt-1 bg-surface-container-low p-3 rounded break-words">
+        <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+      </pre>
+    );
+  };
+
   const handleFormatBody = () => {
     setRequestBody((prev) => prettyJson(prev));
+    if (canEdit) {
+      setIsDirty(true);
+    }
   };
 
   const parseHeadersToObject = (input: unknown): Record<string, string> => {
@@ -115,14 +221,40 @@ export default function TestCaseDetailPage() {
 
       setName(testCase.name || "");
       setDescription(testCase.description || "");
-      setRequestBody(
+
+      const parsedHeaders = parseHeadersToObject(
+        rawRequest.headers || testCase.headers,
+      );
+      setHeaders(parsedHeaders);
+
+      // Build full request JSON (same structure as suggestedRequest) so both views look consistent
+      const bodyRaw =
         typeof rawRequest.body === "string"
           ? rawRequest.body
           : testCase.requestBody
-            ? JSON.stringify(testCase.requestBody, null, 2)
-            : "{\n  \n}",
-      );
-      setHeaders(parseHeadersToObject(rawRequest.headers || testCase.headers));
+            ? JSON.stringify(testCase.requestBody)
+            : null;
+      const parseJsonSafe = (val: unknown, fallback: unknown = null) => {
+        if (!val) return fallback;
+        if (typeof val === "object") return val;
+        try {
+          return JSON.parse(val as string);
+        } catch {
+          return val;
+        }
+      };
+      const fullRequestDisplay = {
+        url: rawRequest.url || testCase.path || "",
+        body: bodyRaw || null,
+        headers: Object.keys(parsedHeaders).length > 0 ? parsedHeaders : null,
+        timeout: rawRequest.timeout ?? null,
+        bodyType: rawRequest.bodyType || "None",
+        httpMethod: rawRequest.httpMethod || testCase.method || "GET",
+        pathParams: parseJsonSafe(rawRequest.pathParams, {}),
+        queryParams: parseJsonSafe(rawRequest.queryParams, {}),
+      };
+      const fullRequestJson = JSON.stringify(fullRequestDisplay, null, 2);
+      syncEditorValue(fullRequestJson);
 
       if (testCase.assertions && Array.isArray(testCase.assertions)) {
         setAssertions(
@@ -144,8 +276,55 @@ export default function TestCaseDetailPage() {
           },
         ]);
       }
+
+      setIsDirty(false);
     }
   }, [testCase]);
+
+  // Restore persisted selected environment (per-project) or fall back to project default
+  useEffect(() => {
+    if (
+      !envLoading &&
+      executionEnvironments &&
+      executionEnvironments.length > 0
+    ) {
+      const key = projectId ? `manualTesting.selectedEnv.${projectId}` : null;
+      let persisted: string | null = null;
+      try {
+        if (key) persisted = localStorage.getItem(key);
+      } catch (_e) {
+        persisted = null;
+      }
+
+      if (persisted) {
+        const match = executionEnvironments.find(
+          (e: any) => e.id === persisted,
+        );
+        if (match) {
+          setSelectedEnvironmentId(persisted);
+          return;
+        }
+      }
+
+      const def = executionEnvironments.find((e: any) => e.isDefault);
+      setSelectedEnvironmentId((prev) => prev ?? def?.id ?? undefined);
+    }
+  }, [envLoading, executionEnvironments, projectId]);
+
+  // Persist selected environment per project so selection is remembered when returning
+  useEffect(() => {
+    const key = projectId ? `manualTesting.selectedEnv.${projectId}` : null;
+    if (!key) return;
+    try {
+      if (!selectedEnvironmentId) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, selectedEnvironmentId);
+      }
+    } catch (_e) {
+      // ignore storage errors
+    }
+  }, [selectedEnvironmentId, projectId]);
 
   const fetchSuggestionDetail = async () => {
     if (!testSuiteId || !testCaseId) return null;
@@ -176,13 +355,12 @@ export default function TestCaseDetailPage() {
       if (detail) {
         setName(detail.suggestedName || "");
         setDescription(detail.suggestedDescription || "");
-        setRequestBody(
-          prettyJson(
-            detail.suggestedRequest
-              ? detail.suggestedRequest
-              : detail.suggestedExpectation || "{\n  \n}",
-          ),
+        const suggestionJson = prettyJson(
+          detail.suggestedRequest
+            ? detail.suggestedRequest
+            : detail.suggestedExpectation || "{\n  \n}",
         );
+        syncEditorValue(suggestionJson);
         setHeaders({});
 
         setAssertions([
@@ -193,6 +371,7 @@ export default function TestCaseDetailPage() {
             value: 200,
           },
         ]);
+        setIsDirty(false);
       }
 
       return detail;
@@ -219,22 +398,133 @@ export default function TestCaseDetailPage() {
     }
   }, [testSuiteId, navigate]);
 
+  const getLogTypeForStatus = (
+    status?: string,
+  ): "info" | "success" | "error" => {
+    const normalized = (status || "").toLowerCase();
+    if (normalized === "passed" || normalized === "completed") return "success";
+    if (normalized === "failed" || normalized === "error") return "error";
+    if (normalized === "skipped") return "error";
+    return "info";
+  };
+
+  const getRunCaseResult = (result: any) => {
+    if (!result?.cases || !Array.isArray(result.cases)) return null;
+    return (
+      result.cases.find((item: any) => item.testCaseId === testCaseId) ||
+      result.cases[0]
+    );
+  };
+
   useEffect(() => {
-    if (runResult) {
+    if (!runResult) return;
+
+    const caseResult = getRunCaseResult(runResult);
+    if (caseResult) {
+      const statusLabel = caseResult.status || "Unknown";
+      const logType = getLogTypeForStatus(statusLabel);
+      const method = caseResult.httpMethod || testCase?.method || "REQUEST";
+      const url = caseResult.resolvedUrl || testCase?.path || "endpoint";
+      const httpStatus = caseResult.httpStatusCode ?? "N/A";
+      const duration = caseResult.durationMs ?? 0;
+
       addConsoleLog(
-        `${testCase?.method || "REQUEST"} ${testCase?.path || "endpoint"} - ${runResult.status || "N/A"} (${runResult.duration || 0}ms)`,
-        runResult.success ? "success" : "error",
+        `${method} ${url} - ${statusLabel} (${httpStatus}) (${duration}ms)`,
+        logType,
       );
-      if (runResult.assertions) {
-        runResult.assertions.forEach((assertion: any) => {
-          addConsoleLog(
-            `Assertion ${assertion.passed ? "Passed" : "Failed"}: ${assertion.message}`,
-            assertion.passed ? "success" : "error",
-          );
+
+      if (caseResult.skippedCause) {
+        addConsoleLog(`Skipped: ${caseResult.skippedCause}`, "error");
+      }
+
+      if (caseResult.failureReasons && caseResult.failureReasons.length > 0) {
+        caseResult.failureReasons.forEach((failure: any) => {
+          const message =
+            failure?.message || failure?.code || "Validation failed";
+          addConsoleLog(`Check failed: ${message}`, "error");
         });
       }
+
+      if (caseResult.warnings && caseResult.warnings.length > 0) {
+        caseResult.warnings.forEach((warning: any) => {
+          const message = warning?.message || warning?.code || "Warning";
+          addConsoleLog(`Warning: ${message}`, "info");
+        });
+      }
+
+      // Log response headers and body to the Execution Console
+      try {
+        const respHeaders =
+          (caseResult as any).responseHeaders ||
+          (caseResult as any).ResponseHeaders ||
+          null;
+        if (respHeaders && Object.keys(respHeaders).length > 0) {
+          try {
+            addConsoleLog(
+              `Response headers: ${JSON.stringify(respHeaders, null, 2)}`,
+              "info",
+            );
+          } catch {
+            addConsoleLog(`Response headers: ${String(respHeaders)}`, "info");
+          }
+        }
+
+        const respBodyRaw =
+          (caseResult as any).responseBodyPreview ||
+          (caseResult as any).ResponseBodyPreview ||
+          (caseResult as any).requestBody ||
+          "";
+
+        if (respBodyRaw) {
+          let prettyBody = respBodyRaw;
+          try {
+            if (typeof prettyBody === "string") {
+              const trimmed = prettyBody.trim();
+              if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+                prettyBody = JSON.stringify(JSON.parse(trimmed), null, 2);
+              }
+            } else {
+              prettyBody = JSON.stringify(prettyBody, null, 2);
+            }
+          } catch {
+            // keep raw
+          }
+
+          const MAX_LOG = 4000;
+          if (prettyBody && String(prettyBody).length > MAX_LOG) {
+            addConsoleLog(
+              `Response body (truncated ${String(prettyBody).length} chars): ${String(prettyBody).slice(0, MAX_LOG)}...`,
+              "info",
+            );
+          } else {
+            addConsoleLog(`Response body: ${String(prettyBody)}`, "info");
+          }
+        }
+      } catch (_e) {
+        // ignore any logging errors
+      }
+
+      addConsoleLog("Test execution complete", "info");
+
+      if (statusLabel.toLowerCase() === "passed") {
+        showSuccessToast("Test passed successfully!");
+      } else {
+        showErrorToast("Test failed. Check console for details.");
+      }
+      return;
     }
-  }, [runResult]);
+
+    const runStatus = runResult.run?.status || "unknown";
+    const runLogType = getLogTypeForStatus(runStatus);
+    addConsoleLog(`Test run ${runStatus}`, runLogType);
+    addConsoleLog("Test execution complete", "info");
+
+    if (runLogType === "success") {
+      showSuccessToast("Test passed successfully!");
+    } else {
+      showErrorToast("Test failed. Check console for details.");
+    }
+  }, [runResult, testCase?.method, testCase?.path, testCaseId]);
 
   const addConsoleLog = (
     message: string,
@@ -255,10 +545,12 @@ export default function TestCaseDetailPage() {
       value: 200,
     };
     setAssertions([...assertions, newAssertion]);
+    setIsDirty(true);
   };
 
   const removeAssertion = (id: string) => {
     setAssertions(assertions.filter((a) => a.id !== id));
+    setIsDirty(true);
   };
 
   const getAssertionIcon = (type: string) => {
@@ -291,10 +583,10 @@ export default function TestCaseDetailPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<boolean> => {
     if (!testCase) {
       showErrorToast("Cannot save: Not a persistent test case");
-      return;
+      return false;
     }
 
     try {
@@ -304,15 +596,30 @@ export default function TestCaseDetailPage() {
       const rawRequest = rawTestCase.request || {};
       const rawExpectation = rawTestCase.expectation || {};
 
-      // Validate JSON-like body while still allowing plain text content.
+      // Extract actual body from full-request JSON (if user edited the display format)
+      let bodyToSave = requestBody;
       try {
         const trimmed = requestBody.trim();
-        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-          JSON.parse(trimmed);
+        if (trimmed.startsWith("{")) {
+          const parsed = JSON.parse(trimmed);
+          // If this looks like a full request object (has url/httpMethod/bodyType), extract body
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            ("url" in parsed || "httpMethod" in parsed || "bodyType" in parsed)
+          ) {
+            const extractedBody = parsed.body;
+            bodyToSave =
+              extractedBody != null
+                ? typeof extractedBody === "string"
+                  ? extractedBody
+                  : JSON.stringify(extractedBody, null, 2)
+                : "";
+          }
         }
       } catch {
-        showErrorToast("Invalid JSON in request body");
-        return;
+        showErrorToast("Invalid JSON in request editor");
+        return false;
       }
 
       const statusAssertion = assertions.find(
@@ -340,7 +647,7 @@ export default function TestCaseDetailPage() {
           pathParams: rawRequest.pathParams || null,
           queryParams: rawRequest.queryParams || null,
           bodyType: rawRequest.bodyType || "None",
-          body: requestBody,
+          body: bodyToSave,
           timeout: rawRequest.timeout || 30000,
         },
         expectation: {
@@ -366,10 +673,13 @@ export default function TestCaseDetailPage() {
 
       if (success) {
         showSuccessToast("Test case saved successfully");
+        setIsDirty(false);
         refetch();
       }
+      return success;
     } catch (error) {
       console.error("Save error:", error);
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -385,30 +695,41 @@ export default function TestCaseDetailPage() {
     addConsoleLog("Initializing test runner...");
     addConsoleLog(`Connecting to ${testCase?.path || "endpoint"}...`);
 
-    const success = await runTestCase();
-
-    if (success && runResult) {
-      addConsoleLog(
-        `${testCase?.method} ${testCase?.path} - ${runResult.status || "N/A"} (${runResult.duration || 0}ms)`,
-        runResult.success ? "success" : "error",
+    if (selectedEnvironmentId) {
+      const env = executionEnvironments.find(
+        (e: any) => e.id === selectedEnvironmentId,
       );
+      if (env) addConsoleLog(`Using environment: ${env.name}`);
+    }
 
-      if (runResult.assertions) {
-        runResult.assertions.forEach((assertion: any) => {
-          addConsoleLog(
-            `Assertion ${assertion.passed ? "Passed" : "Failed"}: ${assertion.message}`,
-            assertion.passed ? "success" : "error",
-          );
-        });
-      }
+    const result = await runTestCase(selectedEnvironmentId);
+    if (!result) {
+      addConsoleLog(
+        "Test execution failed. Check errors for details.",
+        "error",
+      );
+    }
+  };
 
-      addConsoleLog("Test execution complete", "info");
+  const handleExecute = async () => {
+    if (!testCase) {
+      showErrorToast("Cannot run: Not a persistent test case");
+      return;
+    }
 
-      if (runResult.success) {
-        showSuccessToast("Test passed successfully!");
-      } else {
-        showErrorToast("Test failed. Check console for details.");
-      }
+    if (isDirty) {
+      setIsSaveConfirmOpen(true);
+      return;
+    }
+
+    await handleRun();
+  };
+
+  const handleConfirmSaveAndExecute = async () => {
+    setIsSaveConfirmOpen(false);
+    const saved = await handleSave();
+    if (saved) {
+      await handleRun();
     }
   };
 
@@ -469,6 +790,21 @@ export default function TestCaseDetailPage() {
           <div className="flex gap-3">
             {testCase ? (
               <>
+                <select
+                  value={selectedEnvironmentId ?? ""}
+                  onChange={(e) =>
+                    setSelectedEnvironmentId(e.target.value || undefined)
+                  }
+                  disabled={envLoading}
+                  className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-on-surface border-none"
+                >
+                  <option value="">Use default</option>
+                  {executionEnvironments?.map((env: any) => (
+                    <option key={env.id} value={env.id}>
+                      {env.name}
+                    </option>
+                  ))}
+                </select>
                 <button
                   onClick={handleSave}
                   disabled={isSaving || !testCase}
@@ -481,9 +817,9 @@ export default function TestCaseDetailPage() {
                   )}
                   {t("testCaseStudio.saveButton")}
                 </button>
-                {/* <button
-                  onClick={handleRun}
-                  disabled={running || !testCase}
+                <button
+                  onClick={handleExecute}
+                  disabled={running || isSaving || !testCase}
                   className="px-4 py-2 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {running ? (
@@ -492,7 +828,7 @@ export default function TestCaseDetailPage() {
                     <Play className="w-4 h-4" />
                   )}
                   {t("testCaseStudio.runButton")}
-                </button> */}
+                </button>
               </>
             ) : (
               <div className="px-3 py-1.5 rounded-md bg-amber-100 text-amber-800 text-sm font-semibold">
@@ -513,7 +849,10 @@ export default function TestCaseDetailPage() {
                 <input
                   className="w-full px-4 py-3 bg-surface-container-low dark:bg-slate-800 rounded-xl border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 font-semibold text-on-surface"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setIsDirty(true);
+                  }}
                   disabled={!canEdit}
                   type="text"
                   placeholder="Test case name"
@@ -615,26 +954,60 @@ export default function TestCaseDetailPage() {
                       <span className="font-semibold text-on-surface">
                         Method:
                       </span>{" "}
-                      {testCase.method}
+                      {(testCase as any).request?.httpMethod || testCase.method}
                     </p>
                     <p>
                       <span className="font-semibold text-on-surface">
                         Path:
                       </span>{" "}
-                      {testCase.path}
+                      {(testCase as any).request?.url || testCase.path}
                     </p>
                     <p>
                       <span className="font-semibold text-on-surface">
-                        Status:
+                        Body type:
                       </span>{" "}
-                      {testCase.expectedStatus}
+                      {(testCase as any).request?.bodyType || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-on-surface">
+                        Expected status:
+                      </span>{" "}
+                      {(testCase as any).expectation?.expectedStatus ||
+                        testCase.expectedStatus}
                     </p>
                     <p>
                       <span className="font-semibold text-on-surface">
                         Test type:
                       </span>{" "}
-                      {testCase.testType || "N/A"}
+                      {(testCase as any).testType || "N/A"}
                     </p>
+                    <p>
+                      <span className="font-semibold text-on-surface">
+                        Priority:
+                      </span>{" "}
+                      {(testCase as any).priority || "N/A"}
+                    </p>
+                    {/* SRS context if available */}
+                    {(testCase as any).srsDocumentTitle && (
+                      <>
+                        <p className="flex items-center gap-2">
+                          <span className="font-semibold text-on-surface">
+                            SRS context:
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                            SRS-linked
+                          </span>
+                        </p>
+                        <p>
+                          <span className="font-semibold text-on-surface">
+                            SRS document:
+                          </span>{" "}
+                          <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">
+                            {(testCase as any).srsDocumentTitle}
+                          </span>
+                        </p>
+                      </>
+                    )}
                   </>
                 ) : suggestion ? (
                   <>
@@ -645,12 +1018,6 @@ export default function TestCaseDetailPage() {
                       {suggestion.testType ||
                         suggestion.suggestionType ||
                         "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-on-surface">
-                        Endpoint ID:
-                      </span>{" "}
-                      {suggestion.endpointId || "N/A"}
                     </p>
                     <p className="flex items-center gap-2">
                       <span className="font-semibold text-on-surface">
@@ -728,141 +1095,272 @@ export default function TestCaseDetailPage() {
                       </span>{" "}
                       {suggestion.reviewStatus || "N/A"}
                     </p>
-                    <p>
-                      <span className="font-semibold text-on-surface">
-                        LLM model:
-                      </span>{" "}
-                      {suggestion.llmModel || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-on-surface">
-                        Applied test case ID:
-                      </span>{" "}
-                      {suggestion.appliedTestCaseId || "N/A"}
-                    </p>
+
                     <p>
                       <span className="font-semibold text-on-surface">
                         Created:
                       </span>{" "}
                       {suggestion.createdDateTime || "N/A"}
                     </p>
-                    <p>
-                      <span className="font-semibold text-on-surface">
-                        Updated:
-                      </span>{" "}
-                      {suggestion.updatedDateTime || "N/A"}
-                    </p>
-                    {suggestion.rowVersion && (
-                      <p>
-                        <span className="font-semibold text-on-surface">
-                          RowVersion:
-                        </span>{" "}
-                        {suggestion.rowVersion}
-                      </p>
-                    )}
-                    {suggestion.tokensUsed !== undefined && (
-                      <p>
-                        <span className="font-semibold text-on-surface">
-                          Tokens used:
-                        </span>{" "}
-                        {suggestion.tokensUsed}
-                      </p>
-                    )}
                   </>
                 ) : (
                   <p>No details available</p>
                 )}
               </div>
             </div>
+
+            {/* ── Evidence: Expected Checks card ── */}
+            {(() => {
+              const parseJsonSafe = <T,>(raw?: string | null): T | null => {
+                if (!raw) return null;
+                try {
+                  return JSON.parse(raw) as T;
+                } catch {
+                  return null;
+                }
+              };
+
+              const rawExp = testCase
+                ? (testCase as any).expectation
+                : suggestion?.suggestedExpectation
+                  ? parseJsonSafe<any>(suggestion.suggestedExpectation)
+                  : null;
+
+              if (!rawExp) return null;
+
+              const bodyContainsList = parseJsonSafe<string[]>(
+                rawExp.bodyContains,
+              );
+              const bodyNotContainsList = parseJsonSafe<string[]>(
+                rawExp.bodyNotContains,
+              );
+              const headerMap = parseJsonSafe<Record<string, string>>(
+                rawExp.headerChecks,
+              );
+              const jsonPathMap = parseJsonSafe<Record<string, string>>(
+                rawExp.jsonPathChecks,
+              );
+              const maxRespTime = rawExp.maxResponseTime;
+
+              const hasAny =
+                (bodyContainsList?.length ?? 0) > 0 ||
+                (bodyNotContainsList?.length ?? 0) > 0 ||
+                (headerMap && Object.keys(headerMap).length > 0) ||
+                (jsonPathMap && Object.keys(jsonPathMap).length > 0) ||
+                maxRespTime != null;
+
+              if (!hasAny) return null;
+
+              return (
+                <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800">
+                  <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
+                    Evidence — Expected Checks
+                  </h2>
+                  <div className="space-y-2">
+                    {bodyContainsList && bodyContainsList.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                          Body ∋
+                        </span>
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {bodyContainsList.map((s, i) => (
+                            <span
+                              key={i}
+                              className="font-mono bg-violet-500/10 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded text-[10px] break-all"
+                            >
+                              &quot;{s}&quot;
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {bodyNotContainsList && bodyNotContainsList.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                          Body ∌
+                        </span>
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {bodyNotContainsList.map((s, i) => (
+                            <span
+                              key={i}
+                              className="font-mono bg-orange-500/10 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded text-[10px] break-all"
+                            >
+                              &quot;{s}&quot;
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {jsonPathMap && Object.keys(jsonPathMap).length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                          JSONPath
+                        </span>
+                        <div className="flex flex-col gap-0.5 flex-1">
+                          {Object.entries(jsonPathMap).map(
+                            ([path, expected]) => (
+                              <div
+                                key={path}
+                                className="flex items-center gap-1 flex-wrap"
+                              >
+                                <span className="font-mono bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 rounded text-[10px]">
+                                  {path}
+                                </span>
+                                <span className="text-on-surface-variant text-[10px]">
+                                  =
+                                </span>
+                                <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">
+                                  {expected || "*"}
+                                </span>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {headerMap && Object.keys(headerMap).length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                          Headers
+                        </span>
+                        <div className="flex flex-col gap-0.5 flex-1">
+                          {Object.entries(headerMap).map(([k, v]) => (
+                            <span
+                              key={k}
+                              className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]"
+                            >
+                              {k}: {v}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {maxRespTime != null && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant">
+                          Resp Time
+                        </span>
+                        <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">
+                          max {maxRespTime}ms
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── Variables / Dependencies card ── */}
+            {(() => {
+              const vars = testCase
+                ? (testCase as any).variables
+                : suggestion?.suggestedVariables;
+
+              if (!vars || !Array.isArray(vars) || vars.length === 0)
+                return null;
+            })()}
           </div>
 
           {/* Right Panel */}
           <div className="lg:col-span-8 flex flex-col gap-6 overflow-hidden">
-
-            {/* ── SRS Evidence card ── shown only for SRS-backed suggestions */}
-            {suggestion?.hasSrsContext && (
-              <div className="shrink-0 rounded-2xl border border-emerald-300/50 dark:border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/30 overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-emerald-200/60 dark:border-emerald-700/30">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-widest">
-                      SRS Evidence
-                    </span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600/40">
-                    Generated from SRS
-                  </span>
-                </div>
-
-                {/* Source document */}
-                <div className="px-5 pt-3 pb-2 flex items-start gap-3">
-                  <FileText className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-0.5">
-                      Source document
-                    </p>
-                    <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200 font-mono truncate">
-                      {suggestion.srsDocumentTitle || "SRS Document"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Covered requirements */}
-                {((suggestion.coveredRequirements && suggestion.coveredRequirements.length > 0) ||
-                  (suggestion.coveredRequirementIds && suggestion.coveredRequirementIds.length > 0)) && (
-                  <div className="px-5 pb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Link2 className="w-3.5 h-3.5 text-emerald-500" />
-                      <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
-                        Requirements this test case covers
-                      </p>
+            {/* ── SRS Evidence card — show for suggestions OR approved test cases linked to SRS */}
+            {(suggestion?.hasSrsContext || (testCase as any)?.hasSrsContext) &&
+              (() => {
+                const isSuggestion = !!suggestion;
+                const srsTitle =
+                  suggestion?.srsDocumentTitle ||
+                  (testCase as any)?.srsDocumentTitle;
+                const coveredRequirements =
+                  suggestion?.coveredRequirements ||
+                  (testCase as any)?.coveredRequirements;
+                const coveredRequirementIds =
+                  suggestion?.coveredRequirementIds ||
+                  (testCase as any)?.coveredRequirementIds;
+                const hasReqs =
+                  (coveredRequirements && coveredRequirements.length > 0) ||
+                  (coveredRequirementIds && coveredRequirementIds.length > 0);
+                return (
+                  <div className="shrink-0 rounded-2xl border border-emerald-300/50 dark:border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/30 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-emerald-200/60 dark:border-emerald-700/30">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-widest">
+                          SRS Evidence
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600/40">
+                        {isSuggestion ? "Generated from SRS" : "SRS-linked"}
+                      </span>
                     </div>
-                    <div className="space-y-2">
-                      {suggestion.coveredRequirements && suggestion.coveredRequirements.length > 0
-                        ? suggestion.coveredRequirements.map((req) => (
-                            <div
-                              key={req.id}
-                              className="flex items-start gap-3 p-2.5 rounded-xl bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
-                            >
-                              <span className="shrink-0 mt-0.5 px-2 py-0.5 text-[9px] font-black font-mono rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40">
-                                {req.code}
-                              </span>
-                              <span className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
-                                {req.title}
-                              </span>
-                            </div>
-                          ))
-                        : suggestion.coveredRequirementIds!.map((reqId) => (
-                            <div
-                              key={reqId}
-                              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
-                            >
-                              <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
-                              <span className="text-[11px] font-mono text-emerald-800 dark:text-emerald-300 truncate">
-                                {reqId}
-                              </span>
-                            </div>
-                          ))}
-                    </div>
-                  </div>
-                )}
 
-                {/* No requirement data but has SRS context */}
-                {suggestion.hasSrsContext &&
-                  (!suggestion.coveredRequirements || suggestion.coveredRequirements.length === 0) &&
-                  (!suggestion.coveredRequirementIds || suggestion.coveredRequirementIds.length === 0) && (
-                  <div className="px-5 pb-4">
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 italic">
-                      This scenario was generated with full SRS context. Specific requirement mapping not available.
-                    </p>
+                    {/* Source document */}
+                    <div className="px-5 pt-3 pb-2 flex items-start gap-3">
+                      <FileText className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-0.5">
+                          Source document
+                        </p>
+                        <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200 font-mono truncate">
+                          {srsTitle || "SRS Document"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Covered requirements */}
+                    {hasReqs && (
+                      <div className="px-5 pb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Link2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
+                            Requirements this test case covers
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          {coveredRequirements && coveredRequirements.length > 0
+                            ? coveredRequirements.map((req: any) => (
+                                <div
+                                  key={req.id}
+                                  className="flex items-start gap-3 p-2.5 rounded-xl bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
+                                >
+                                  <span className="shrink-0 mt-0.5 px-2 py-0.5 text-[9px] font-black font-mono rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40">
+                                    {req.code}
+                                  </span>
+                                  <span className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                                    {req.title}
+                                  </span>
+                                </div>
+                              ))
+                            : coveredRequirementIds!.map((reqId: any) => (
+                                <div
+                                  key={reqId}
+                                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
+                                >
+                                  <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <span className="text-[11px] font-mono text-emerald-800 dark:text-emerald-300 truncate">
+                                    {reqId}
+                                  </span>
+                                </div>
+                              ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No requirement data but has SRS context */}
+                    {!hasReqs && (
+                      <div className="px-5 pb-4">
+                        <p className="text-xs text-emerald-700 dark:text-emerald-400 italic">
+                          This scenario was generated with full SRS context.
+                          Specific requirement mapping not available.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                );
+              })()}
 
             {/* Monaco Editor */}
-            <div className="flex-1 min-h-0 bg-slate-900 rounded-2xl overflow-hidden flex flex-col shadow-2xl ring-1 ring-slate-700/50">
+            <div className="shrink-0 bg-slate-900 rounded-2xl overflow-hidden flex flex-col shadow-2xl ring-1 ring-slate-700/50">
               {/* Title bar */}
               <div className="bg-slate-800/80 px-5 py-2.5 flex items-center justify-between border-b border-slate-700/60 shrink-0">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -907,12 +1405,36 @@ export default function TestCaseDetailPage() {
                 </div>
               </div>
               {/* Editor body */}
-              <div className="flex-1 min-h-0">
+              <div className="min-h-0">
                 <Editor
-                  height="100%"
+                  height={editorHeight}
                   defaultLanguage="json"
                   value={requestBody}
-                  onChange={(value) => canEdit && setRequestBody(value || "")}
+                  onMount={(editor) => {
+                    editorRef.current = editor;
+                    if (editorResizeRef.current) {
+                      editorResizeRef.current.dispose();
+                    }
+                    editorResizeRef.current = editor.onDidContentSizeChange(
+                      () => {
+                        updateEditorHeight(editor);
+                      },
+                    );
+                    // Set value immediately on mount so we never show stale initial state
+                    if (requestBody && requestBody !== "{\n  \n}") {
+                      isSyncingEditorRef.current = true;
+                      editor.setValue(requestBody);
+                      setTimeout(() => {
+                        isSyncingEditorRef.current = false;
+                      }, 0);
+                    }
+                    updateEditorHeight(editor);
+                  }}
+                  onChange={(value) => {
+                    if (!canEdit || isSyncingEditorRef.current) return;
+                    setRequestBody(value || "");
+                    setIsDirty(true);
+                  }}
                   theme="vs-dark"
                   options={{
                     minimap: { enabled: false },
@@ -935,7 +1457,7 @@ export default function TestCaseDetailPage() {
             </div>
 
             {/* Console Output */}
-            <div className="h-48 bg-slate-950 rounded-2xl p-6 font-mono text-xs overflow-y-auto no-scrollbar border border-slate-800">
+            <div className="h-100 bg-slate-950 rounded-2xl p-6 font-mono text-xs overflow-y-auto no-scrollbar border border-slate-800">
               <div className="flex items-center gap-2 mb-4 text-slate-500 uppercase tracking-widest font-bold">
                 <Terminal className="w-3 h-3" />
                 <span>{t("testCaseStudio.editor.consoleTitle")}</span>
@@ -947,19 +1469,88 @@ export default function TestCaseDetailPage() {
                   </p>
                 ) : (
                   consoleOutput.map((log, idx) => {
-                    const [message, type] = log.split("|||");
+                    const [message = "", type] = log.split("|||");
+                    const colorClass = cn(
+                      type === "success" && "text-emerald-400",
+                      type === "error" && "text-rose-400",
+                      type === "info" && "text-indigo-400",
+                      !type && "text-slate-400",
+                    );
+
+                    // Pretty-render response headers
+                    if (
+                      typeof message === "string" &&
+                      message.startsWith("Response headers:")
+                    ) {
+                      const payload = message
+                        .substring("Response headers:".length)
+                        .trim();
+                      // try to parse headers as JSON and colorize them
+                      try {
+                        const parsed = JSON.parse(payload);
+                        return (
+                          <div key={idx} className={colorClass}>
+                            <div className="font-semibold">
+                              Response headers
+                            </div>
+                            {renderJsonHighlighted(parsed)}
+                          </div>
+                        );
+                      } catch {
+                        return (
+                          <div key={idx} className={colorClass}>
+                            <div className="font-semibold">
+                              Response headers
+                            </div>
+                            <pre className="whitespace-pre-wrap text-xs font-mono mt-1 bg-surface-container-low p-3 rounded">
+                              {payload}
+                            </pre>
+                          </div>
+                        );
+                      }
+                    }
+
+                    // Pretty-render response body (handles truncated variant too)
+                    if (
+                      typeof message === "string" &&
+                      message.startsWith("Response body")
+                    ) {
+                      const idxColon = message.indexOf(":");
+                      const title =
+                        idxColon >= 0
+                          ? message.slice(0, idxColon)
+                          : "Response body";
+                      const payload =
+                        idxColon >= 0 ? message.slice(idxColon + 1).trim() : "";
+
+                      // Attempt to parse/pretty + highlight JSON body, falling back to raw text
+                      try {
+                        const parsed = JSON.parse(payload);
+                        return (
+                          <div key={idx} className={colorClass}>
+                            <div className="font-semibold">{title}</div>
+                            {renderJsonHighlighted(parsed)}
+                          </div>
+                        );
+                      } catch {
+                        return (
+                          <div key={idx} className={colorClass}>
+                            <div className="font-semibold">{title}</div>
+                            <pre className="whitespace-pre-wrap text-xs font-mono mt-1 bg-surface-container-low p-3 rounded break-words">
+                              {payload}
+                            </pre>
+                          </div>
+                        );
+                      }
+                    }
+
                     return (
-                      <p
+                      <div
                         key={idx}
-                        className={cn(
-                          type === "success" && "text-emerald-400",
-                          type === "error" && "text-rose-400",
-                          type === "info" && "text-indigo-400",
-                          !type && "text-slate-400",
-                        )}
+                        className={cn(colorClass, "whitespace-pre-wrap")}
                       >
                         {message}
-                      </p>
+                      </div>
                     );
                   })
                 )}
@@ -968,6 +1559,38 @@ export default function TestCaseDetailPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={isSaveConfirmOpen}
+        onClose={() => setIsSaveConfirmOpen(false)}
+        title={t("testCaseStudio.unsaved.title")}
+        className="max-w-md"
+        footer={
+          <div className="flex w-full items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSaveConfirmOpen(false)}
+              className="rounded-xl bg-surface-container-low px-4 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
+            >
+              {t("testCaseStudio.unsaved.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSaveAndExecute}
+              className={cn(
+                "rounded-xl px-4 py-2 text-sm font-semibold transition-colors",
+                "bg-indigo-600 hover:bg-indigo-700 text-white",
+              )}
+            >
+              {t("testCaseStudio.unsaved.confirm")}
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-on-surface-variant leading-relaxed">
+          {t("testCaseStudio.unsaved.message")}
+        </p>
+      </Modal>
     </MainLayout>
   );
 }

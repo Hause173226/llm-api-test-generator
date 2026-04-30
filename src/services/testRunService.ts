@@ -4,6 +4,8 @@ export interface TestRun {
   id: string;
   testSuiteId: string;
   projectId: string;
+  testSuiteName?: string;
+  environmentName?: string;
   status: "pending" | "running" | "completed" | "failed" | "cancelled";
   startedAt?: string;
   completedAt?: string;
@@ -147,6 +149,7 @@ export interface TestRunsResponse {
 interface BackendTestRun {
   id: string;
   testSuiteId: string;
+  testSuiteName?: string;
   projectId?: string;
   status: string;
   startedAt?: string;
@@ -157,6 +160,7 @@ interface BackendTestRun {
   skippedCount?: number;
   durationMs?: number;
   environmentId?: string;
+  environmentName?: string;
   triggeredBy?: string;
   createdAt?: string;
   createdDateTime?: string;
@@ -244,6 +248,7 @@ const normalizeStatus = (status?: string): TestRun["status"] => {
 const mapBackendRun = (item: BackendTestRun): TestRun => ({
   id: item.id,
   testSuiteId: item.testSuiteId,
+  testSuiteName: (item as any).testSuiteName ?? (item as any).TestSuiteName,
   projectId: item.projectId || "",
   status: normalizeStatus(item.status),
   startedAt: item.startedAt,
@@ -254,6 +259,7 @@ const mapBackendRun = (item: BackendTestRun): TestRun => ({
   skippedTests: item.skippedCount ?? 0,
   duration: item.durationMs,
   environmentId: item.environmentId,
+  environmentName: (item as any).environmentName ?? (item as any).EnvironmentName,
   triggeredBy: item.triggeredBy || "system",
   createdAt:
     item.createdDateTime ||
@@ -333,6 +339,19 @@ const mapBackendTestCaseRunDetail = (
     (detail as any).JsonPathChecksPassed,
   responseTimePassed:
     (detail as any).responseTimePassed ?? (detail as any).ResponseTimePassed,
+  // Expectation snapshots (map backend names if present)
+  expectedBodyContains:
+    (detail as any).expectedBodyContains ?? (detail as any).ExpectedBodyContains,
+  expectedBodyNotContains:
+    (detail as any).expectedBodyNotContains ?? (detail as any).ExpectedBodyNotContains,
+  expectedHeaderChecks:
+    (detail as any).expectedHeaderChecks ?? (detail as any).ExpectedHeaderChecks,
+  expectedJsonPathChecks:
+    (detail as any).expectedJsonPathChecks ?? (detail as any).ExpectedJsonPathChecks,
+  expectedMaxResponseTime:
+    (detail as any).expectedMaxResponseTime ?? (detail as any).ExpectedMaxResponseTime,
+  expectedResponse:
+    (detail as any).expectedResponse ?? (detail as any).ExpectedResponse,
 });
 
 const mapBackendRunDetail = (
@@ -398,6 +417,7 @@ export interface StartTestRunRequest {
   selectedTestCaseIds?: string[];
   strictValidation?: boolean;
   retryPolicy?: RetryPolicyRequest;
+  recordRun?: boolean;
 }
 
 const testRunService = {
@@ -432,6 +452,7 @@ const testRunService = {
         selectedTestCaseIds: data.selectedTestCaseIds,
         strictValidation: data.strictValidation,
         retryPolicy: data.retryPolicy ?? null,
+        recordRun: data.recordRun ?? true,
       },
     );
     return mapBackendRunDetail(response || {});

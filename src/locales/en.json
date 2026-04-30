@@ -537,6 +537,12 @@
     "subtitle": "Design and refine individual API test cases with real-time validation.",
     "saveButton": "Save Case",
     "runButton": "Run Test",
+    "unsaved": {
+      "title": "Unsaved changes",
+      "message": "You have unsaved changes. Save the test case before executing.",
+      "cancel": "Cancel",
+      "confirm": "Save and Execute"
+    },
     "caseNameLabel": "Test Case Name",
     "endpointTargetLabel": "Endpoint Target",
     "assertionsLabel": "Assertions",
