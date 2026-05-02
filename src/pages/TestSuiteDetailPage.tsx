@@ -51,8 +51,8 @@ type ProposalApiResponse = {
   ProposalId?: string;
   rowVersion?: string;
   RowVersion?: string;
-  status?: string;
-  Status?: string;
+  status?: number | string;
+  Status?: number | string;
   proposedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
   ProposedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
   userModifiedOrder?: Array<{ endpointId?: string; orderIndex?: number }>;
@@ -860,7 +860,7 @@ export default function TestSuiteDetailPage() {
           {
             specificationId: suite.apiSpecId,
             selectedEndpointIds: orderedIds,
-            source: "User", // Valid values: Ai, User, System
+            source: "User",
             reasoningNote: "Order updated by user",
           },
         );
@@ -871,12 +871,29 @@ export default function TestSuiteDetailPage() {
         const proposalRowVersion =
           newProposal?.rowVersion || newProposal?.RowVersion;
 
-        if (proposalId) {
-          // Step 2: Approve the newly created proposal
+        if (proposalId && proposalRowVersion) {
+          // Step 2: Reorder to enforce the user-defined order
+          const reordered = await apiService.put<ProposalApiResponse>(
+            `/test-suites/${suite.id}/order-proposals/${proposalId}/reorder`,
+            {
+              orderedEndpointIds: orderedIds,
+              rowVersion: proposalRowVersion,
+              reviewNotes: "Reordered after suite save",
+            },
+          );
+
+          const reorderedRowVersion =
+            reordered?.rowVersion || reordered?.RowVersion;
+
+          if (!reorderedRowVersion) {
+            throw new Error("Missing rowVersion after reorder.");
+          }
+
+          // Step 3: Approve the reordered proposal
           await apiService.post(
             `/test-suites/${suite.id}/order-proposals/${proposalId}/approve`,
             {
-              rowVersion: proposalRowVersion,
+              rowVersion: reorderedRowVersion,
               reviewNotes: "Auto-approved after order save",
             },
           );

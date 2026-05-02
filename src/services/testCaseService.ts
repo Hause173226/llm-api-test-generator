@@ -63,6 +63,12 @@ export interface TestCasesResponse {
   totalPages: number;
 }
 
+export interface TestCaseQueryOptions {
+  testType?: string;
+  includeDisabled?: boolean;
+  includeDeleted?: boolean;
+}
+
 export interface TestCaseRequestInput {
   httpMethod: string;
   url: string;
@@ -287,13 +293,28 @@ const testCaseService = {
   // Get all test cases for a test suite
   getTestCases: async (
     testSuiteId: string,
-    pageNumber: number = 1,
-    pageSize: number = 50,
+    pageNumber?: number,
+    pageSize?: number,
+    options?: TestCaseQueryOptions,
   ): Promise<TestCasesResponse> => {
+    const normalizedPageNumber = pageNumber ?? 1;
+    const normalizedPageSize = pageSize ?? 50;
+    const params: Record<string, string | number | boolean> = {};
+
+    if (options?.testType) params.testType = options.testType;
+    if (options?.includeDisabled !== undefined) {
+      params.includeDisabled = options.includeDisabled;
+    }
+    if (options?.includeDeleted !== undefined) {
+      params.includeDeleted = options.includeDeleted;
+    }
+    if (pageNumber !== undefined) params.pageNumber = pageNumber;
+    if (pageSize !== undefined) params.pageSize = pageSize;
+
     const response = await apiService.get<any>(
       `/test-suites/${testSuiteId}/test-cases`,
       {
-        params: { pageNumber, pageSize },
+        params,
       },
     );
 
@@ -302,8 +323,8 @@ const testCaseService = {
       return {
         items,
         totalCount: items.length,
-        pageNumber,
-        pageSize,
+        pageNumber: normalizedPageNumber,
+        pageSize: normalizedPageSize,
         totalPages: 1,
       };
     }
@@ -313,8 +334,9 @@ const testCaseService = {
       return {
         items,
         totalCount: response.totalCount ?? response.TotalCount ?? items.length,
-        pageNumber: response.pageNumber ?? response.PageNumber ?? pageNumber,
-        pageSize: response.pageSize ?? response.PageSize ?? pageSize,
+        pageNumber:
+          response.pageNumber ?? response.PageNumber ?? normalizedPageNumber,
+        pageSize: response.pageSize ?? response.PageSize ?? normalizedPageSize,
         totalPages: response.totalPages ?? response.TotalPages ?? 1,
       };
     }
@@ -324,8 +346,9 @@ const testCaseService = {
       return {
         items,
         totalCount: response.totalCount ?? response.TotalCount ?? items.length,
-        pageNumber: response.pageNumber ?? response.PageNumber ?? pageNumber,
-        pageSize: response.pageSize ?? response.PageSize ?? pageSize,
+        pageNumber:
+          response.pageNumber ?? response.PageNumber ?? normalizedPageNumber,
+        pageSize: response.pageSize ?? response.PageSize ?? normalizedPageSize,
         totalPages: response.totalPages ?? response.TotalPages ?? 1,
       };
     }
@@ -333,8 +356,8 @@ const testCaseService = {
     return {
       items: [],
       totalCount: 0,
-      pageNumber,
-      pageSize,
+      pageNumber: normalizedPageNumber,
+      pageSize: normalizedPageSize,
       totalPages: 0,
     };
   },

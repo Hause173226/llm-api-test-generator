@@ -44,12 +44,21 @@ export const useTestCases = (testSuiteId: string) => {
 
   const reorderTestCases = async (orderedIds: string[]): Promise<boolean> => {
     try {
-      await testCaseService.reorderTestCases(testSuiteId, orderedIds);
-      // Update local state to reflect new order
-      const reordered = orderedIds
-        .map(id => testCases.find(tc => tc.id === id))
-        .filter(Boolean) as TestCase[];
-      setTestCases(reordered);
+      const allResponse = await testCaseService.getTestCases(
+        testSuiteId,
+        undefined,
+        undefined,
+        { includeDisabled: true, includeDeleted: false },
+      );
+      const allIds = allResponse.items.map((tc) => tc.id);
+      const orderedUnique = Array.from(new Set(orderedIds)).filter((id) =>
+        allIds.includes(id),
+      );
+      const remaining = allIds.filter((id) => !orderedUnique.includes(id));
+      const fullOrder = [...orderedUnique, ...remaining];
+
+      await testCaseService.reorderTestCases(testSuiteId, fullOrder);
+      await fetchTestCases(pagination.pageNumber);
       return true;
     } catch (err) {
       handleError(err);
