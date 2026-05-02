@@ -132,14 +132,19 @@ class TestSuiteService {
     suiteId: string,
     data: ProposeOrderRequest,
   ): Promise<OrderProposalResponse> {
+    const payload: Record<string, any> = {
+      specificationId: data.specificationId,
+      selectedEndpointIds: data.selectedEndpointIds || [],
+      reasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
+    };
+
+    if (data.source) {
+      payload.source = data.source;
+    }
+
     return await apiService.post<OrderProposalResponse>(
       `/test-suites/${suiteId}/order-proposals`,
-      {
-        specificationId: data.specificationId,
-        selectedEndpointIds: data.selectedEndpointIds || [],
-        source: data.source || 'System',
-        reasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
-      },
+      payload,
     );
   }
 

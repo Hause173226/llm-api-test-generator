@@ -202,7 +202,6 @@ export default function TestSuitesPage() {
           const proposal = await testSuiteService.proposeOrder(newSuite.id, {
             specificationId: selectedSpecId,
             selectedEndpointIds,
-            source: "System",
             reasoningNote:
               "Auto-proposed from selected endpoints on suite creation",
           });
