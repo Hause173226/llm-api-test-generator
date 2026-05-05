@@ -35,7 +35,7 @@ import { useEnvironments } from "../hooks/useEnvironments";
 
 interface Assertion {
   id: string;
-  type: "status_code" | "response_body" | "response_time" | "header";
+  type: "status_code" | "response_body" | "response_time" | "header" | "body_contains" | "body_not_contains" | "json_path";
   field?: string;
   operator: string;
   value: any;
@@ -363,14 +363,82 @@ export default function TestCaseDetailPage() {
         syncEditorValue(suggestionJson);
         setHeaders({});
 
-        setAssertions([
-          {
+        // Parse suggestedExpectation to build full assertion list
+        const builtAssertions: Assertion[] = [];
+        try {
+          const exp = detail.suggestedExpectation
+            ? JSON.parse(detail.suggestedExpectation)
+            : null;
+          const statuses: number[] = Array.isArray(exp?.expectedStatus)
+            ? exp.expectedStatus
+            : exp?.expectedStatus != null
+              ? [Number(exp.expectedStatus)]
+              : [200];
+          statuses.forEach((code, i) => {
+            builtAssertions.push({
+              id: `assertion-status-${i}`,
+              type: "status_code",
+              operator: "equals",
+              value: code,
+            });
+          });
+          const bodyContains: string[] = Array.isArray(exp?.bodyContains)
+            ? exp.bodyContains
+            : [];
+          bodyContains.forEach((text, i) => {
+            builtAssertions.push({
+              id: `assertion-bc-${i}`,
+              type: "body_contains",
+              operator: "contains",
+              value: text,
+            });
+          });
+          const bodyNotContains: string[] = Array.isArray(exp?.bodyNotContains)
+            ? exp.bodyNotContains
+            : [];
+          bodyNotContains.forEach((text, i) => {
+            builtAssertions.push({
+              id: `assertion-bnc-${i}`,
+              type: "body_not_contains",
+              operator: "not_contains",
+              value: text,
+            });
+          });
+          const jsonPathChecks: Record<string, string> =
+            exp?.jsonPathChecks && typeof exp.jsonPathChecks === "object"
+              ? exp.jsonPathChecks
+              : {};
+          Object.entries(jsonPathChecks).forEach(([path, expected], i) => {
+            builtAssertions.push({
+              id: `assertion-jp-${i}`,
+              type: "json_path",
+              field: path,
+              operator: "equals",
+              value: expected,
+            });
+          });
+          if (exp?.maxResponseTime) {
+            builtAssertions.push({
+              id: "assertion-rt",
+              type: "response_time",
+              operator: "less_than",
+              value: exp.maxResponseTime,
+            });
+          }
+        } catch {
+          builtAssertions.push({
             id: "assertion-1",
             type: "status_code",
             operator: "equals",
             value: 200,
-          },
-        ]);
+          });
+        }
+        setAssertions(builtAssertions.length > 0 ? builtAssertions : [{
+          id: "assertion-1",
+          type: "status_code",
+          operator: "equals",
+          value: 200,
+        }]);
         setIsDirty(false);
       }
 
@@ -558,6 +626,9 @@ export default function TestCaseDetailPage() {
       case "status_code":
         return ShieldCheck;
       case "response_body":
+      case "body_contains":
+      case "body_not_contains":
+      case "json_path":
         return Database;
       case "response_time":
         return Terminal;
@@ -574,6 +645,12 @@ export default function TestCaseDetailPage() {
         return `Status ${assertion.operator} ${assertion.value}`;
       case "response_body":
         return `Body.${assertion.field} ${assertion.operator} ${assertion.value}`;
+      case "body_contains":
+        return `Body contains "${assertion.value}"`;
+      case "body_not_contains":
+        return `Body NOT contains "${assertion.value}"`;
+      case "json_path":
+        return `${assertion.field} = ${assertion.value}`;
       case "response_time":
         return `Response time < ${assertion.value}ms`;
       case "header":
@@ -891,56 +968,7 @@ export default function TestCaseDetailPage() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                    {t("testCaseStudio.assertionsLabel")}
-                  </label>
-                  <button
-                    onClick={addAssertion}
-                    disabled={!canEdit}
-                    className="text-primary dark:text-indigo-400 hover:underline text-[10px] font-bold uppercase tracking-widest flex items-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" />{" "}
-                    {t("testCaseStudio.addNewAssertion")}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {assertions.map((assertion) => {
-                    const Icon = getAssertionIcon(assertion.type);
-                    return (
-                      <div
-                        key={assertion.id}
-                        className="flex items-center justify-between p-3 bg-surface-container-low dark:bg-slate-800 rounded-xl group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className="w-4 h-4 text-primary dark:text-indigo-400" />
-                          <div>
-                            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">
-                              {assertion.type.replace("_", " ")}
-                            </p>
-                            <p className="text-xs font-bold text-on-surface">
-                              {getAssertionLabel(assertion)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-on-surface-variant">
-                            <Copy className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => removeAssertion(assertion.id)}
-                            disabled={!canEdit}
-                            className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-error dark:text-rose-400"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+          
             </div>
 
             <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800">
@@ -1128,21 +1156,44 @@ export default function TestCaseDetailPage() {
 
               if (!rawExp) return null;
 
-              const bodyContainsList = parseJsonSafe<string[]>(
-                rawExp.bodyContains,
-              );
-              const bodyNotContainsList = parseJsonSafe<string[]>(
-                rawExp.bodyNotContains,
-              );
-              const headerMap = parseJsonSafe<Record<string, string>>(
-                rawExp.headerChecks,
-              );
-              const jsonPathMap = parseJsonSafe<Record<string, string>>(
-                rawExp.jsonPathChecks,
-              );
+              // rawExp fields can be either already-parsed values (suggestion mode, where
+              // suggestedExpectation is parsed into an object) or JSON strings (test-case
+              // mode, where expectation fields are stored as serialized JSON in the DB).
+              // parseOrUse handles both transparently.
+              const parseOrUseList = (val: any): string[] | null => {
+                if (Array.isArray(val)) return val.length > 0 ? val : null;
+                if (typeof val === "string") return parseJsonSafe<string[]>(val);
+                return null;
+              };
+              const parseOrUseMap = (val: any): Record<string, string> | null => {
+                if (val && typeof val === "object" && !Array.isArray(val))
+                  return Object.keys(val).length > 0 ? val : null;
+                if (typeof val === "string")
+                  return parseJsonSafe<Record<string, string>>(val);
+                return null;
+              };
+              const parseOrUseStatusList = (val: any): number[] | null => {
+                if (Array.isArray(val)) return val.length > 0 ? val : null;
+                if (typeof val === "string") {
+                  // Could be "[200,201]" or plain "200"
+                  const parsed = parseJsonSafe<number[]>(val);
+                  if (parsed) return parsed;
+                  const n = Number(val);
+                  return isNaN(n) ? null : [n];
+                }
+                if (typeof val === "number") return [val];
+                return null;
+              };
+
+              const expectedStatusList = parseOrUseStatusList(rawExp.expectedStatus);
+              const bodyContainsList = parseOrUseList(rawExp.bodyContains);
+              const bodyNotContainsList = parseOrUseList(rawExp.bodyNotContains);
+              const headerMap = parseOrUseMap(rawExp.headerChecks);
+              const jsonPathMap = parseOrUseMap(rawExp.jsonPathChecks);
               const maxRespTime = rawExp.maxResponseTime;
 
               const hasAny =
+                (expectedStatusList?.length ?? 0) > 0 ||
                 (bodyContainsList?.length ?? 0) > 0 ||
                 (bodyNotContainsList?.length ?? 0) > 0 ||
                 (headerMap && Object.keys(headerMap).length > 0) ||
@@ -1157,6 +1208,29 @@ export default function TestCaseDetailPage() {
                     Evidence — Expected Checks
                   </h2>
                   <div className="space-y-2">
+                    {expectedStatusList && expectedStatusList.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                          Status
+                        </span>
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {expectedStatusList.map((code, i) => (
+                            <span
+                              key={i}
+                              className={`font-mono px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                code >= 200 && code < 300
+                                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                  : code >= 400
+                                    ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                    : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                              }`}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {bodyContainsList && bodyContainsList.length > 0 && (
                       <div className="flex items-start gap-2">
                         <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">

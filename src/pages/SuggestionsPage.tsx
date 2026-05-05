@@ -1211,10 +1211,11 @@ export default function SuggestionsPage() {
                                                           "JSONPATH",
                                                         ),
                                                     );
-                                                  const pass =
-                                                    !failureForPath &&
-                                                    testCase.jsonPathChecksPassed !==
-                                                      false;
+                                                  // A path passes when there is no specific failure for it.
+                                                  // Do NOT use jsonPathChecksPassed here — that flag reflects
+                                                  // whether ALL paths passed; using it would incorrectly mark
+                                                  // individually-passing paths as X when any sibling fails.
+                                                  const pass = !failureForPath;
                                                   return (
                                                     <div
                                                       key={path}
