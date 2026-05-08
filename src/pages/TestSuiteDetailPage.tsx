@@ -45,6 +45,7 @@ import testSuiteLlmSuggestionService, {
 } from "../services/testSuiteLlmSuggestionService";
 import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel";
 import Modal from "../components/ui/Modal";
+import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 type ProposalApiResponse = {
   proposalId?: string;
@@ -111,6 +112,7 @@ export default function TestSuiteDetailPage() {
   const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const isGeneratingSuggestionsRef = React.useRef(false);
   const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
   const [pendingGeneration, setPendingGeneration] = useState<{
     id: string;
@@ -119,6 +121,12 @@ export default function TestSuiteDetailPage() {
   const [forceOpenSuggestions, setForceOpenSuggestions] = useState(false);
   const [isBulkReviewingSuggestions, setIsBulkReviewingSuggestions] =
     useState(false);
+  const [overlayState, setOverlayState] = useState({
+    isVisible: false,
+    title: "",
+    message: "",
+    stepLabel: "",
+  });
   const [isBulkRestoringSuggestions, setIsBulkRestoringSuggestions] =
     useState(false);
   const [isBulkApprovingSuggestions, setIsBulkApprovingSuggestions] =
@@ -446,6 +454,54 @@ export default function TestSuiteDetailPage() {
     isLoading,
     forceOpenSuggestions,
     pendingGeneration,
+  ]);
+
+  // Auto-navigate to Step 3 whenever the user is on the suggestions tab,
+  // all suggestions are reviewed (0 pending), and test cases exist.
+  // This covers: (a) last approval just happened, (b) user re-opens the tab
+  // when everything is already approved.
+  useEffect(() => {
+    if (activeTab !== "suggestions") return;
+    if (isLoading || isLoadingSuggestions) return;
+    if (overlayState.isVisible) return; // already transitioning
+
+    const hasPending = allSuggestions.some(
+      (s) => String(s.reviewStatus || "").toLowerCase() === "pending",
+    );
+    const hasCases =
+      testCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
+
+    if (!hasPending && hasCases && allSuggestions.length > 0) {
+      // All suggestions are reviewed — release the pin so navigation proceeds,
+      // even if the user had previously pinned this tab manually.
+      setIsTabPinned(false);
+      setOverlayState({
+        isVisible: true,
+        title: "Moving to Step 3: Test Cases",
+        message: "All suggestions reviewed. Preparing your test cases...",
+        stepLabel: "Step 2 → Step 3",
+      });
+      const timer = setTimeout(() => {
+        setActiveTab("testcases");
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", "testcases");
+        setSearchParams(params, { replace: true });
+        setOverlayState({
+          isVisible: false,
+          title: "",
+          message: "",
+          stepLabel: "",
+        });
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    activeTab,
+    isLoading,
+    isLoadingSuggestions,
+    allSuggestions,
+    testCases,
+    suite,
   ]);
 
   const changeTab = (tab: SuiteTab) => {
@@ -902,6 +958,7 @@ export default function TestSuiteDetailPage() {
 
           // Launch generation in background so the form submit spinner can clear
           const launchGeneration = async () => {
+            if (!beginSuggestionGeneration("auto")) return;
             const nextIndex = (generationRuns?.length || 0) + 1;
             let run: LocalGenerationRun | undefined;
             try {
@@ -975,6 +1032,7 @@ export default function TestSuiteDetailPage() {
             } finally {
               setIsGeneratingSuggestions(false);
               setForceOpenSuggestions(false);
+              endSuggestionGeneration();
             }
           };
 
@@ -1103,11 +1161,28 @@ export default function TestSuiteDetailPage() {
     return active;
   };
 
+  const beginSuggestionGeneration = (source: "manual" | "auto") => {
+    if (isGeneratingSuggestionsRef.current) {
+      if (source === "manual") {
+        showInfoToast("LLM suggestions are already generating.");
+      }
+      return false;
+    }
+    isGeneratingSuggestionsRef.current = true;
+    return true;
+  };
+
+  const endSuggestionGeneration = () => {
+    isGeneratingSuggestionsRef.current = false;
+  };
+
   const handleGenerateSuggestions = async (forceRefresh = false) => {
     if (!suite || !suiteId || !suite.apiSpecId) {
       showErrorToast("Selected test suite does not have an API specification.");
       return;
     }
+
+    if (!beginSuggestionGeneration("manual")) return;
 
     const nextIndex = (generationRuns?.length || 0) + 1;
     let run: LocalGenerationRun | undefined;
@@ -1192,6 +1267,7 @@ export default function TestSuiteDetailPage() {
     } finally {
       setIsGeneratingSuggestions(false);
       setForceOpenSuggestions(false);
+      endSuggestionGeneration();
     }
   };
 
@@ -1241,11 +1317,24 @@ export default function TestSuiteDetailPage() {
       nextTestCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
 
     if (!hasPending && hasCases) {
-      // Dùng setActiveTab trực tiếp để bypass check hasAnyTestCases cũ trong changeTab
-      setActiveTab("testcases");
-      const params = new URLSearchParams(searchParams);
-      params.set("tab", "testcases");
-      setSearchParams(params, { replace: true });
+      setOverlayState({
+        isVisible: true,
+        title: "Moving to Step 3: Test Cases",
+        message: "All suggestions reviewed. Preparing your test cases...",
+        stepLabel: "Step 2 → Step 3",
+      });
+      setTimeout(() => {
+        setActiveTab("testcases");
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", "testcases");
+        setSearchParams(params, { replace: true });
+        setOverlayState({
+          isVisible: false,
+          title: "",
+          message: "",
+          stepLabel: "",
+        });
+      }, 1200);
     }
   };
 
@@ -2055,6 +2144,13 @@ export default function TestSuiteDetailPage() {
       return;
     }
 
+    setOverlayState({
+      isVisible: true,
+      title: "Preparing Execution Run",
+      message: "Loading test cases for execution...",
+      stepLabel: "Step 3 → Execute",
+    });
+
     const params = new URLSearchParams();
     if (projectId) {
       params.set("projectId", projectId);
@@ -2064,7 +2160,10 @@ export default function TestSuiteDetailPage() {
       params.set("generatedAt", item.generatedAt);
     }
     params.set("testCaseIds", item.testCaseIds.join(","));
-    navigate(`/test-suites/${suiteId}/generation-run?${params.toString()}`);
+
+    setTimeout(() => {
+      navigate(`/test-suites/${suiteId}/generation-run?${params.toString()}`);
+    }, 800);
   };
 
   if (isLoading) {
@@ -2340,6 +2439,12 @@ export default function TestSuiteDetailPage() {
         </div>
       </Modal>
 
+      <StepTransitionOverlay
+        isVisible={overlayState.isVisible}
+        title={overlayState.title}
+        message={overlayState.message}
+        stepLabel={overlayState.stepLabel}
+      />
       <MainLayout
         title={suite?.name || "Test Suite Details"}
         breadcrumbs={breadcrumbs}
@@ -2579,22 +2684,17 @@ export default function TestSuiteDetailPage() {
                     {pendingGeneration && (
                       <div
                         key={pendingGeneration.id}
-                        className="rounded-lg border border-outline-variant/10 dark:border-slate-800 p-3 bg-surface-container-low dark:bg-slate-800/50"
+                        className="rounded-lg border-2 bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 p-4 transition-colors"
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-on-surface">
-                              {pendingGeneration.label}
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                              Generating suggestions...
                             </p>
-                            <p className="text-xs text-on-surface-variant">
-                              Generating…
+                            <p className="text-xs text-indigo-500 dark:text-indigo-400">
+                              Suggestions will appear here when complete.
                             </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-xs text-on-surface-variant font-semibold uppercase">
-                              Latest
-                            </span>
                           </div>
                         </div>
                       </div>

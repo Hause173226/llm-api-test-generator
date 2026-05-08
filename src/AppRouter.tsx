@@ -18,6 +18,7 @@ import TestSuitesPage from "./pages/TestSuitesPage";
 import TestSuiteDetailPage from "./pages/TestSuiteDetailPage";
 import GeneratingTestCasesPage from "./pages/GeneratingTestCasesPage";
 import GenerationRunExecutePage from "./pages/GenerationRunExecutePage";
+import ExecutionWatchPage from "./pages/ExecutionWatchPage";
 import TestCasesHubPage from "./pages/TestCasesHubPage";
 import SrsDocumentsPage from "./pages/SrsDocumentsPage";
 import TraceabilityPage from "./pages/TraceabilityPage";
@@ -133,6 +134,22 @@ export default function AppRouter() {
           element={
             <ProtectedRoute>
               <GenerationRunExecutePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-suites/:suiteId/runs/start-watch"
+          element={
+            <ProtectedRoute>
+              <ExecutionWatchPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-suites/:suiteId/runs/:runId/watch"
+          element={
+            <ProtectedRoute>
+              <ExecutionWatchPage />
             </ProtectedRoute>
           }
         />

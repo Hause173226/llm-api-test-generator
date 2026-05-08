@@ -54,6 +54,8 @@ function createEnvironmentFromForm(form: EnvironmentFormData): Environment {
     name: form.name,
     baseUrl: form.baseUrl,
     variables,
+    headers: form.headers,
+    authConfig: form.authConfig,
     isDefault: form.isDefault,
     isActive: false,
     createdAt: now,

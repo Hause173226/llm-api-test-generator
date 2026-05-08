@@ -502,25 +502,12 @@ export default function GenerationRunExecutePage() {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      await testRunService.startTestRun({
-        testSuiteId: suiteId,
-        environmentId: selectedEnvironmentId,
-        selectedTestCaseIds: targetIds,
-      });
-
-      showSuccessToast(
-        mode === "all"
-          ? `Started run for all ${targetIds.length} test case(s)`
-          : `Started run for ${targetIds.length} selected test case(s)`,
-      );
-      navigate(buildRunsUrl());
-    } catch (err) {
-      handleError(err);
-    } finally {
-      setIsSubmitting(false);
-    }
+    const params = new URLSearchParams();
+    if (projectId) params.set("projectId", projectId);
+    if (suiteId) params.set("suiteId", suiteId);
+    params.set("pendingEnvironmentId", selectedEnvironmentId);
+    params.set("pendingTestCaseIds", targetIds.join(","));
+    navigate(`/runs?${params.toString()}`);
   };
 
   useEffect(() => {
@@ -1002,7 +989,15 @@ export default function GenerationRunExecutePage() {
                     <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
                       {environments.length === 0 && !isLoading && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
-                          No execution environment found. <button type="button" className="underline font-semibold" onClick={() => setIsEnvModalOpen(true)}>Create one</button> to run tests.
+                          No execution environment found.{" "}
+                          <button
+                            type="button"
+                            className="underline font-semibold"
+                            onClick={() => setIsEnvModalOpen(true)}
+                          >
+                            Create one
+                          </button>{" "}
+                          to run tests.
                         </p>
                       )}
                       <button

@@ -35,7 +35,14 @@ import { useEnvironments } from "../hooks/useEnvironments";
 
 interface Assertion {
   id: string;
-  type: "status_code" | "response_body" | "response_time" | "header" | "body_contains" | "body_not_contains" | "json_path";
+  type:
+    | "status_code"
+    | "response_body"
+    | "response_time"
+    | "header"
+    | "body_contains"
+    | "body_not_contains"
+    | "json_path";
   field?: string;
   operator: string;
   value: any;
@@ -170,9 +177,15 @@ export default function TestCaseDetailPage() {
     // Simple token highlighting for readability using inline styles with !important
     let highlighted = escaped
       // Keys: "key":
-      .replace(/"([^\"]+)"\s*:/g, '<span style="color:#22D3EE !important">"$1"</span>:')
+      .replace(
+        /"([^\"]+)"\s*:/g,
+        '<span style="color:#22D3EE !important">"$1"</span>:',
+      )
       // String values: : "value"
-      .replace(/:\s*"([^\n\"]*)"/g, ': <span style="color:#34D399 !important">"$1"</span>')
+      .replace(
+        /:\s*"([^\n\"]*)"/g,
+        ': <span style="color:#34D399 !important">"$1"</span>',
+      )
       // Numbers
       .replace(
         /:\s*(-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
@@ -433,12 +446,18 @@ export default function TestCaseDetailPage() {
             value: 200,
           });
         }
-        setAssertions(builtAssertions.length > 0 ? builtAssertions : [{
-          id: "assertion-1",
-          type: "status_code",
-          operator: "equals",
-          value: 200,
-        }]);
+        setAssertions(
+          builtAssertions.length > 0
+            ? builtAssertions
+            : [
+                {
+                  id: "assertion-1",
+                  type: "status_code",
+                  operator: "equals",
+                  value: 200,
+                },
+              ],
+        );
         setIsDirty(false);
       }
 
@@ -857,11 +876,23 @@ export default function TestCaseDetailPage() {
               <h1 className="text-4xl font-bold tracking-tight text-on-surface mb-2">
                 {suggestion ? "LLM Suggestion" : t("testCaseStudio.title")}
               </h1>
-              <p className="text-sm text-on-surface-variant">
-                {suggestion
-                  ? "Viewing LLM suggestion details"
-                  : t("testCaseStudio.subtitle")}
-              </p>
+              {(testCase?.name || suggestion?.suggestedName) && (
+                <p className="text-base font-semibold text-on-surface mb-1">
+                  {testCase?.name || suggestion?.suggestedName}
+                </p>
+              )}
+              {(testCase?.description || suggestion?.suggestedDescription) && (
+                <p className="text-sm text-on-surface-variant">
+                  {testCase?.description || suggestion?.suggestedDescription}
+                </p>
+              )}
+              {!testCase?.description && !suggestion?.suggestedDescription && (
+                <p className="text-sm text-on-surface-variant">
+                  {suggestion
+                    ? "Viewing LLM suggestion details"
+                    : t("testCaseStudio.subtitle")}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex gap-3">
@@ -967,8 +998,6 @@ export default function TestCaseDetailPage() {
                   </span>
                 </div>
               </div>
-
-          
             </div>
 
             <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800">
@@ -1162,10 +1191,13 @@ export default function TestCaseDetailPage() {
               // parseOrUse handles both transparently.
               const parseOrUseList = (val: any): string[] | null => {
                 if (Array.isArray(val)) return val.length > 0 ? val : null;
-                if (typeof val === "string") return parseJsonSafe<string[]>(val);
+                if (typeof val === "string")
+                  return parseJsonSafe<string[]>(val);
                 return null;
               };
-              const parseOrUseMap = (val: any): Record<string, string> | null => {
+              const parseOrUseMap = (
+                val: any,
+              ): Record<string, string> | null => {
                 if (val && typeof val === "object" && !Array.isArray(val))
                   return Object.keys(val).length > 0 ? val : null;
                 if (typeof val === "string")
@@ -1185,9 +1217,13 @@ export default function TestCaseDetailPage() {
                 return null;
               };
 
-              const expectedStatusList = parseOrUseStatusList(rawExp.expectedStatus);
+              const expectedStatusList = parseOrUseStatusList(
+                rawExp.expectedStatus,
+              );
               const bodyContainsList = parseOrUseList(rawExp.bodyContains);
-              const bodyNotContainsList = parseOrUseList(rawExp.bodyNotContains);
+              const bodyNotContainsList = parseOrUseList(
+                rawExp.bodyNotContains,
+              );
               const headerMap = parseOrUseMap(rawExp.headerChecks);
               const jsonPathMap = parseOrUseMap(rawExp.jsonPathChecks);
               const maxRespTime = rawExp.maxResponseTime;

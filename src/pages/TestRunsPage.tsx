@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -84,6 +84,56 @@ export default function TestRunsPage() {
   );
 
   const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize));
+
+  // ── Pending run (triggered when navigated from execute page) ─────────
+  const [pendingRun, setPendingRun] = useState<{
+    status: "running" | "done";
+  } | null>(null);
+  const pendingRunStarted = useRef(false);
+
+  useEffect(() => {
+    if (pendingRunStarted.current) return;
+    const envId = searchParams.get("pendingEnvironmentId");
+    const tcIds = searchParams.get("pendingTestCaseIds");
+    const suiteForRun = searchParams.get("suiteId") || activeSuiteId;
+    if (!envId || !suiteForRun) return;
+
+    pendingRunStarted.current = true;
+
+    // Remove pending params from URL so back-navigation won't re-trigger
+    const next = new URLSearchParams(searchParams);
+    next.delete("pendingEnvironmentId");
+    next.delete("pendingTestCaseIds");
+    navigate(`/runs?${next.toString()}`, { replace: true });
+
+    if (suiteForRun !== activeSuiteId) setActiveSuiteId(suiteForRun);
+
+    setPendingRun({ status: "running" });
+    const ids = tcIds
+      ? tcIds
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean)
+      : undefined;
+
+    testRunService
+      .startTestRun({
+        testSuiteId: suiteForRun,
+        environmentId: envId,
+        selectedTestCaseIds: ids?.length ? ids : undefined,
+      })
+      .then(() => {
+        setPendingRun({ status: "done" });
+        setCurrentPage(1);
+        refetch();
+        setTimeout(() => setPendingRun(null), 3000);
+      })
+      .catch((err) => {
+        showErrorToast(handleError(err));
+        setPendingRun(null);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!activeSuiteId && testSuites.length > 0) {
@@ -531,6 +581,41 @@ export default function TestRunsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10 dark:divide-slate-800">
+                {pendingRun && (
+                  <tr
+                    className={cn(
+                      "border-b-2 transition-colors",
+                      pendingRun.status === "running"
+                        ? "bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800"
+                        : "bg-emerald-50/60 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
+                    )}
+                  >
+                    <td colSpan={6} className="px-8 py-4">
+                      <div className="flex items-center gap-3">
+                        {pendingRun.status === "running" ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <div>
+                              <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                                Running test cases...
+                              </p>
+                              <p className="text-xs text-indigo-500 dark:text-indigo-400">
+                                Results will appear here when complete.
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                              Test run completed! Results loaded below.
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {isLoading ? (
                   <tr>
                     <td colSpan={6} className="px-8 py-12 text-center">
@@ -772,6 +857,11 @@ export default function TestRunsPage() {
                                                     <p className="text-sm font-semibold text-on-surface truncate">
                                                       {testCase.name}
                                                     </p>
+                                                    {testCase.description && (
+                                                      <p className="w-full text-xs text-on-surface-variant truncate">
+                                                        {testCase.description}
+                                                      </p>
+                                                    )}
                                                     {/* Retry / Replay badge */}
                                                     {retryCount > 0 && (
                                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 shrink-0">
