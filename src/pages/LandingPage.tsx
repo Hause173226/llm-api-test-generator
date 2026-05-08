@@ -84,8 +84,16 @@ export default function LandingPage() {
             <button
               onClick={() => setIsDark(!isDark)}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
-              aria-label={isDark ? t("common.switchToLightMode") : t("common.switchToDarkMode")}
-              title={isDark ? t("common.switchToLightMode") : t("common.switchToDarkMode")}
+              aria-label={
+                isDark
+                  ? t("common.switchToLightMode")
+                  : t("common.switchToDarkMode")
+              }
+              title={
+                isDark
+                  ? t("common.switchToLightMode")
+                  : t("common.switchToDarkMode")
+              }
             >
               {isDark ? (
                 <Sun className="w-5 h-5" />
@@ -123,13 +131,15 @@ export default function LandingPage() {
       <section className="relative pt-24 pb-16 overflow-hidden bg-white dark:bg-slate-950">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-indigo-500/8 dark:bg-indigo-500/10 rounded-full blur-[120px] -z-10 pointer-events-none" />
 
-        <div className="max-w-5xl mx-auto px-6 flex flex-col items-center text-center space-y-10">
+        <div className="max-w-5xl mx-auto px-6 flex flex-col items-center text-center space-y-10 mt-20">
           {/* Text */}
           <div className="space-y-6 max-w-3xl">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-slate-900 dark:text-white leading-[0.9]">
               <Trans i18nKey="landing.hero.title">
                 Autonomous API Testing{" "}
-                <span className="text-indigo-600 dark:text-indigo-400">Powered by Intelligence.</span>
+                <span className="text-indigo-600 dark:text-indigo-400">
+                  Powered by Intelligence.
+                </span>
               </Trans>
             </h1>
             <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 font-medium leading-relaxed">

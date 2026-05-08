@@ -602,9 +602,18 @@ export default function SuggestionReviewPanel({
       </div>
 
       {isLoadingSuggestions ? (
-        <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-on-surface-variant flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Loading LLM suggestions...
+        <div className="rounded-lg border-2 bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 p-4 transition-colors">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                Loading LLM suggestions...
+              </p>
+              <p className="text-xs text-indigo-500 dark:text-indigo-400">
+                Suggestions will appear here when complete.
+              </p>
+            </div>
+          </div>
         </div>
       ) : null}
 

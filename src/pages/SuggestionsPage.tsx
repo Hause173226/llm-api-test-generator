@@ -763,7 +763,12 @@ export default function SuggestionsPage() {
                   <p className="text-lg font-bold text-on-surface">
                     {testCase.name}
                   </p>
-                  <p className="text-on-surface-variant mt-1">
+                  {testCase.description && (
+                    <p className="text-sm text-on-surface-variant mt-0.5">
+                      {testCase.description}
+                    </p>
+                  )}
+                  <p className="text-sm text-primary/80 dark:text-indigo-400 mt-1">
                     {testCase.resolvedUrl || t("suggestions.noUrl")}
                   </p>
 
@@ -1028,8 +1033,17 @@ export default function SuggestionsPage() {
                                                       {" "}
                                                       ={" "}
                                                     </span>
-                                                    <span className="font-mono text-emerald-700 dark:text-emerald-300">
-                                                      {expected || "*"}
+                                                    <span className="font-mono text-emerald-700 dark:text-emerald-300 break-all">
+                                                      {!expected
+                                                        ? "*"
+                                                        : expected.length > 60
+                                                          ? expected.slice(
+                                                              0,
+                                                              32,
+                                                            ) +
+                                                            "…" +
+                                                            expected.slice(-16)
+                                                          : expected}
                                                     </span>
                                                   </div>
                                                 ),
@@ -1221,7 +1235,7 @@ export default function SuggestionsPage() {
                                                       key={path}
                                                       className="flex items-center gap-2"
                                                     >
-                                                      <div className="text-[10px] flex-1">
+                                                      <div className="text-[10px] flex-1 min-w-0">
                                                         <span className="font-mono text-cyan-700 dark:text-cyan-300">
                                                           {path}
                                                         </span>
@@ -1231,7 +1245,7 @@ export default function SuggestionsPage() {
                                                               {" "}
                                                               ={" "}
                                                             </span>
-                                                            <span className="font-mono text-rose-700 dark:text-rose-300">
+                                                            <span className="font-mono text-rose-700 dark:text-rose-300 break-all whitespace-pre-wrap">
                                                               {
                                                                 failureForPath.actual
                                                               }

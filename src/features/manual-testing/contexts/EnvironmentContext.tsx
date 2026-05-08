@@ -67,6 +67,8 @@ const mapApiEnvironmentToContext = (
       enabled: true,
     })),
     baseUrl: apiEnvironment.baseUrl || "",
+    headers: apiEnvironment.headers || {},
+    authConfig: apiEnvironment.authConfig ?? null,
     isDefault: apiEnvironment.isDefault === true,
     rowVersion: apiEnvironment.rowVersion,
     isActive: apiEnvironment.isActive ?? true,

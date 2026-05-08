@@ -39,6 +39,7 @@ export interface TestCaseRunDetail {
   testCaseId: string;
   endpointId?: string;
   name: string;
+  description?: string;
   testType?: string;
   orderIndex: number;
   status: string;
@@ -279,6 +280,7 @@ const mapBackendTestCaseRunDetail = (
   testCaseId: (detail as any).testCaseId || (detail as any).TestCaseId || "",
   endpointId: (detail as any).endpointId || (detail as any).EndpointId,
   name: (detail as any).name || (detail as any).Name || "Unnamed test case",
+  description: (detail as any).description || (detail as any).Description || undefined,
   testType: (detail as any).testType || (detail as any).TestType,
   orderIndex: (detail as any).orderIndex ?? (detail as any).OrderIndex ?? 0,
   status: (detail as any).status || (detail as any).Status || "Unknown",
