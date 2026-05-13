@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Network,
   ArrowRight,
@@ -84,10 +84,12 @@ const isPendingStatus = (status: unknown): boolean => {
 export default function TestOrderGatePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const requestedSuiteId = searchParams.get("suiteId") || "";
   const queryProjectId = searchParams.get("projectId") || "";
   const { selectedProject } = useProject();
   const projectId = selectedProject?.id || queryProjectId;
+  const lastProjectIdRef = useRef<string | null>(null);
   const { testSuites, isLoading: isLoadingSuites } = useTestSuites(projectId);
   const suites = Array.isArray(testSuites) ? testSuites : [];
   const [selectedSuiteId, setSelectedSuiteId] = useState<string>("");
@@ -112,6 +114,23 @@ export default function TestOrderGatePage() {
   }, [suites, requestedSuiteId, selectedSuiteId]);
 
   const [localOrder, setLocalOrder] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      navigate("/test-order-gate", { replace: true });
+      setSelectedSuiteId("");
+      setSuiteDetail(null);
+      setSuiteEndpoints([]);
+      setLocalOrder([]);
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate]);
 
   // Load suite endpoints by selected endpoint ids in suite scope.
   React.useEffect(() => {

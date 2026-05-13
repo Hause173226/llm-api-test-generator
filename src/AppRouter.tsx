@@ -1,6 +1,8 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import PersistentRoutes from "./components/routing/PersistentRoutes";
+import { useProject } from "./contexts/ProjectContext";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -39,9 +41,12 @@ import PaymentResultPage from "./pages/PaymentResultPage";
 import PaymentCancelPage from "./pages/PaymentCancelPage";
 
 export default function AppRouter() {
+  const { selectedProject } = useProject();
+  const projectKey = selectedProject?.id || "no-project";
+
   return (
     <BrowserRouter>
-      <Routes>
+      <PersistentRoutes key={projectKey}>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/product" element={<ProductPage />} />
@@ -256,7 +261,7 @@ export default function AppRouter() {
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      </PersistentRoutes>
     </BrowserRouter>
   );
 }

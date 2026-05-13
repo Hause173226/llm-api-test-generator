@@ -78,6 +78,7 @@ export default function TestCaseDetailPage() {
 
   const { selectedProject } = useProject();
   const projectId = selectedProject?.id || "";
+  const lastProjectIdRef = useRef<string | null>(null);
   const { environments: executionEnvironments, loading: envLoading } =
     useEnvironments(projectId);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<
@@ -100,6 +101,21 @@ export default function TestCaseDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [editorHeight, setEditorHeight] = useState(220);
   const canEdit = Boolean(testCase);
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      if (testSuiteId || testCaseId) {
+        navigate("/test-suites", { replace: true });
+      }
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate, testSuiteId, testCaseId]);
 
   const updateEditorHeight = (editorOverride?: any) => {
     const editor = editorOverride ?? editorRef.current;

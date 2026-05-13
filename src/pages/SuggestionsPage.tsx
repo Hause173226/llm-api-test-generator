@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -54,6 +54,7 @@ export default function SuggestionsPage() {
   const suiteIdFromQuery = searchParams.get("suiteId") || "";
   const runIdFromQuery = searchParams.get("runId") || "";
   const selectedProjectId = selectedProject?.id || "";
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const [selectedSuiteId, setSelectedSuiteId] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
@@ -71,6 +72,29 @@ export default function SuggestionsPage() {
   const [isLoadingRuns, setIsLoadingRuns] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      lastProjectIdRef.current = selectedProjectId || null;
+      return;
+    }
+
+    if (
+      lastProjectIdRef.current &&
+      lastProjectIdRef.current !== selectedProjectId
+    ) {
+      navigate("/suggestions", { replace: true });
+      setSelectedSuiteId("");
+      setSelectedRunId("");
+      setRuns([]);
+      setRunDetail(null);
+      setRunDetailsUnavailable(false);
+      setExplanationsByCaseId({});
+      setLoadingExplanationByCaseId({});
+    }
+
+    lastProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId, navigate]);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");

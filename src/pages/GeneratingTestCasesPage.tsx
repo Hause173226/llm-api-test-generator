@@ -4,6 +4,7 @@ import { Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { apiService } from "../services/apiService";
 import { handleError, showErrorToast } from "../utils/errorHandler";
+import { useProject } from "../contexts/ProjectContext";
 
 interface GenerationJobStatus {
   jobId: string;
@@ -27,6 +28,9 @@ interface ApiState {
 export default function GeneratingTestCasesPage() {
   const navigate = useNavigate();
   const { suiteId } = useParams<{ suiteId: string }>();
+  const { selectedProject } = useProject();
+  const projectId = selectedProject?.id || "";
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const [happyPathState, setHappyPathState] = useState<ApiState>({
     status: "idle",
@@ -58,6 +62,21 @@ export default function GeneratingTestCasesPage() {
 
     navigate("/test-suites");
   };
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      if (suiteId) {
+        navigate("/test-suites", { replace: true });
+      }
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate, suiteId]);
 
   useEffect(() => {
     if (!suiteId) {
