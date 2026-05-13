@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Layers,
@@ -16,17 +16,37 @@ import { useTranslation } from "react-i18next";
 import { projectService } from "../services";
 import { handleError } from "../utils/errorHandler";
 import { cn } from "../lib/utils";
+import { useProject } from "../contexts/ProjectContext";
 
 export default function ProjectDetailedViewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { selectedProject } = useProject();
+  const selectedProjectId = selectedProject?.id || "";
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const [project, setProject] = useState<any>(null);
   const [testSuites, setTestSuites] = useState<any[]>([]);
   const [hasEndpoints, setHasEndpoints] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      lastProjectIdRef.current = selectedProjectId || null;
+      return;
+    }
+
+    if (
+      lastProjectIdRef.current &&
+      lastProjectIdRef.current !== selectedProjectId
+    ) {
+      navigate("/projects", { replace: true });
+    }
+
+    lastProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId, navigate]);
 
   const getActiveSpecSummary = (projectData: any) =>
     projectData?.activeSpecSummary || projectData?.ActiveSpecSummary || null;

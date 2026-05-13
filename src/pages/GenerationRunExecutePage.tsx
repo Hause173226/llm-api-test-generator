@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -66,6 +66,23 @@ export default function GenerationRunExecutePage() {
         .filter(Boolean),
     [rawIds],
   );
+
+  const lastProjectIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      if (suiteId) {
+        navigate("/test-suites", { replace: true });
+      }
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate, suiteId]);
 
   const [suiteName, setSuiteName] = useState("");
   const [testCases, setTestCases] = useState<TestCase[]>([]);

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
+  ArrowLeft,
   Menu,
   Sparkles,
   Moon,
@@ -14,6 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
+import { getSectionBackTarget } from "../../utils/navHistory";
 
 export interface BreadcrumbItem {
   label: string;
@@ -86,6 +88,10 @@ export default function TopAppBar({
     }
   };
 
+  const currentLocation = `${location.pathname}${location.search}`;
+  const backTarget = getSectionBackTarget(location.pathname, location.search);
+  const canGoBack = Boolean(backTarget && backTarget !== currentLocation);
+
   return (
     <header
       className={cn(
@@ -93,6 +99,16 @@ export default function TopAppBar({
       )}
     >
       <div className="flex items-center gap-4">
+        {canGoBack && (
+          <button
+            onClick={() => navigate(backTarget!)}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+            title="Back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          
+        )}
         <button
           onClick={onToggleSidebar}
           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors group cursor-pointer"

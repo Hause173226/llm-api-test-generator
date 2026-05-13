@@ -562,73 +562,73 @@ export default function SrsDocumentsPage() {
   return (
     <MainLayout title="SRS Documents" breadcrumbs={breadcrumbs}>
       <div className="space-y-8 pb-8">
-        <section className="relative overflow-hidden rounded-[2rem] border border-outline-variant/10 bg-gradient-to-br from-indigo-600 via-slate-900 to-slate-950 text-white shadow-2xl shadow-indigo-950/20">
-          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.8),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(99,102,241,0.6),_transparent_28%)]" />
-          <div className="relative p-6 md:p-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div className="max-w-3xl space-y-4">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight">
-                  Import, analyze, refine, and trace requirements.
-                </h1>
-                <p className="mt-3 text-white/80 text-base md:text-lg max-w-2xl leading-relaxed">
-                  Build SRS documents, trigger LLM analysis, resolve
-                  ambiguities, and review traceability from a single modern
-                  workflow.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 text-sm text-white/85">
-                <span className="rounded-full bg-white/10 px-3 py-1.5">
-                  TextInput / FileUpload / Url
-                </span>
-                <span className="rounded-full bg-white/10 px-3 py-1.5">
-                  Async analysis jobs
-                </span>
-                <span className="rounded-full bg-white/10 px-3 py-1.5">
-                  Clarification review gate
-                </span>
-                <span className="rounded-full bg-white/10 px-3 py-1.5">
-                  Traceability matrix
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 min-w-[280px]">
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-xs uppercase tracking-widest text-white/60">
-                  Documents
-                </p>
-                <p className="mt-2 text-3xl font-black">{documents.length}</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-xs uppercase tracking-widest text-white/60">
-                  Requirements
-                </p>
-                <p className="mt-2 text-3xl font-black">
-                  {requirements.length}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-xs uppercase tracking-widest text-white/60">
-                  Reviewed
-                </p>
-                <p className="mt-2 text-3xl font-black">
-                  {requirements.filter((item) => item.isReviewed).length}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-xs uppercase tracking-widest text-white/60">
-                  Critical Qs
-                </p>
-                <p className="mt-2 text-3xl font-black">
-                  {
-                    Object.values(clarifications)
-                      .flat()
-                      .filter((item) => item.isCritical).length
-                  }
-                </p>
-              </div>
-            </div>
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-bold tracking-tight text-on-surface">
+              SRS Documents
+            </h1>
+            <p className="text-on-surface-variant">
+              Manage SRS documents, run analysis, and review requirements.
+            </p>
           </div>
-        </section>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => loadDocuments(true)}
+              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCreateOpen(true)}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              New SRS
+            </button>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
+            <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
+              Documents
+            </p>
+            <p className="mt-2 text-3xl font-black text-on-surface">
+              {documents.length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
+            <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
+              Requirements
+            </p>
+            <p className="mt-2 text-3xl font-black text-on-surface">
+              {requirements.length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
+            <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
+              Reviewed
+            </p>
+            <p className="mt-2 text-3xl font-black text-on-surface">
+              {requirements.filter((item) => item.isReviewed).length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
+            <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
+              Critical Qs
+            </p>
+            <p className="mt-2 text-3xl font-black text-on-surface">
+              {
+                Object.values(clarifications)
+                  .flat()
+                  .filter((item) => item.isCritical).length
+              }
+            </p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="rounded-3xl border border-outline-variant/10 bg-surface-container-lowest p-4 shadow-sm">
@@ -640,23 +640,6 @@ export default function SrsDocumentsPage() {
                 <p className="text-xs text-on-surface-variant">
                   Select a document to continue
                 </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => loadDocuments(true)}
-                  className="rounded-xl border border-outline-variant/10 bg-surface-container-low px-3 py-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(true)}
-                  className="rounded-xl bg-indigo-600 px-3 py-2 text-white flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  New
-                </button>
               </div>
             </div>
 

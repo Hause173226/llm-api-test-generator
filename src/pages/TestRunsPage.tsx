@@ -49,6 +49,7 @@ export default function TestRunsPage() {
   const [searchParams] = useSearchParams();
   const { selectedProject } = useProject();
   const projectId = selectedProject?.id ?? "";
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -90,6 +91,24 @@ export default function TestRunsPage() {
     status: "running" | "done";
   } | null>(null);
   const pendingRunStarted = useRef(false);
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      navigate("/runs", { replace: true });
+      setActiveSuiteId("");
+      setExpandedRunId(null);
+      setExpandedCaseByRunId({});
+      setRunDetailsById({});
+      setLoadingRunDetailsById({});
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate]);
 
   useEffect(() => {
     if (pendingRunStarted.current) return;

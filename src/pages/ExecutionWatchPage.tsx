@@ -10,6 +10,7 @@ import {
 import MainLayout from "../components/layout/MainLayout";
 import testRunService, { TestRun } from "../services/testRunService";
 import { showErrorToast } from "../utils/errorHandler";
+import { useProject } from "../contexts/ProjectContext";
 
 const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 min
@@ -29,8 +30,9 @@ export default function ExecutionWatchPage() {
   }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { selectedProject } = useProject();
 
-  const projectId = searchParams.get("projectId") || "";
+  const projectId = selectedProject?.id || searchParams.get("projectId") || "";
   // "start-watch" mode params
   const environmentId = searchParams.get("environmentId") || "";
   const testCaseIdsParam = searchParams.get("testCaseIds") || "";
@@ -47,10 +49,26 @@ export default function ExecutionWatchPage() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [dots, setDots] = useState(".");
 
+  const lastProjectIdRef = useRef<string | null>(null);
   const startTimeRef = useRef(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dotsRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      if (suiteId) {
+        navigate("/test-suites", { replace: true });
+      }
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate, suiteId]);
 
   // Animated dots
   useEffect(() => {

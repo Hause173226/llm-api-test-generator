@@ -3,6 +3,7 @@ import {
   useParams,
   useNavigate,
   useSearchParams,
+  useLocation,
   Link,
 } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -86,12 +87,39 @@ type GenerationItem = {
 export default function TestSuiteDetailPage() {
   const { suiteId } = useParams<{ suiteId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { selectedProject } = useProject();
   const { t } = useTranslation();
 
   const projectId = selectedProject?.id || searchParams.get("projectId") || "";
   const tabFromQuery = (searchParams.get("tab") || "details").toLowerCase();
+
+  useEffect(() => {
+    isRouteActiveRef.current =
+      location.pathname === `/test-suites/${suiteId}`;
+  }, [location.pathname, suiteId]);
+
+  const SUPPRESS_NOT_FOUND_WINDOW_MS = 8000;
+  const suppressNotFoundToastUntilRef = React.useRef(0);
+  const lastProjectIdRef = React.useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      suppressNotFoundToastUntilRef.current =
+        Date.now() + SUPPRESS_NOT_FOUND_WINDOW_MS;
+      if (suiteId) {
+        navigate("/test-suites", { replace: true });
+      }
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate, suiteId]);
 
   const [suite, setSuite] = useState<any>(null);
   const [endpoints, setEndpoints] = useState<any[]>([]);
@@ -113,6 +141,7 @@ export default function TestSuiteDetailPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const isGeneratingSuggestionsRef = React.useRef(false);
+  const isRouteActiveRef = React.useRef(true);
   const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
   const [pendingGeneration, setPendingGeneration] = useState<{
     id: string;
@@ -216,37 +245,43 @@ export default function TestSuiteDetailPage() {
         : [];
 
       // Cleanup strategy:
-      // - If there exist any completed runs (have suggestionIds), drop
-      //   runs without suggestionIds because they are superseded.
-      // - Otherwise keep pending runs only if they are recent (avoid
-      //   showing very old "Generating..." markers). This prevents the
-      //   timeline from being stuck on an old pending run.
+      // - Always keep completed runs.
+      // - Keep the newest pending run if it is recent so the loading
+      //   state survives navigation (e.g. user switches tabs).
+      // - Otherwise, keep only recent pending runs to avoid stale
+      //   "Generating..." markers.
       const PENDING_CLEANUP_MS = 30 * 60 * 1000; // 30 minutes
       const now = Date.now();
 
-      const hasCompletedRun = items.some(
-        (r) =>
-          Array.isArray((r as any).suggestionIds) &&
-          (r as any).suggestionIds.length > 0,
-      );
+      const isCompletedRun = (run: LocalGenerationRun) =>
+        Array.isArray((run as any).suggestionIds) &&
+        (run as any).suggestionIds.length > 0;
 
-      let cleaned: LocalGenerationRun[];
-      if (hasCompletedRun) {
-        cleaned = items.filter(
-          (r) =>
-            Array.isArray((r as any).suggestionIds) &&
-            (r as any).suggestionIds.length > 0,
-        );
+      const isRecentPendingRun = (run: LocalGenerationRun) => {
+        const time = new Date(run.generatedAt).getTime();
+        if (!Number.isFinite(time)) return false;
+        return now - time <= PENDING_CLEANUP_MS;
+      };
+
+      const completedRuns = items.filter(isCompletedRun);
+      const pendingRuns = items.filter((r) => !isCompletedRun(r));
+
+      let cleaned: LocalGenerationRun[] = [];
+      if (completedRuns.length > 0) {
+        const latestPending = [...pendingRuns]
+          .sort(
+            (a, b) =>
+              new Date(a.generatedAt).getTime() -
+              new Date(b.generatedAt).getTime(),
+          )
+          .pop();
+
+        cleaned =
+          latestPending && isRecentPendingRun(latestPending)
+            ? [...completedRuns, latestPending]
+            : [...completedRuns];
       } else {
-        cleaned = items.filter((r) => {
-          const isPending = !(
-            Array.isArray((r as any).suggestionIds) &&
-            (r as any).suggestionIds.length > 0
-          );
-          if (!isPending) return true;
-          const age = now - new Date(r.generatedAt).getTime();
-          return age <= PENDING_CLEANUP_MS;
-        });
+        cleaned = pendingRuns.filter(isRecentPendingRun);
       }
 
       const sorted = cleaned.sort(
@@ -657,6 +692,7 @@ export default function TestSuiteDetailPage() {
 
   const fetchData = async () => {
     if (!suiteId || !projectId) return;
+    if (!isRouteActiveRef.current) return;
 
     try {
       setIsLoading(true);
@@ -811,7 +847,18 @@ export default function TestSuiteDetailPage() {
 
       setHasApprovedOrderOnce(approvedOrderDetected || hasLoadedSuggestions);
     } catch (err) {
-      setError(handleError(err));
+      const statusCode =
+        (err as any)?.status ||
+        (err as any)?.response?.status ||
+        (err as any)?.statusCode;
+      const isNotFound = statusCode === 404;
+      const isActivePath =
+        window.location.pathname === `/test-suites/${suiteId}`;
+      const suppressNotFoundToast =
+        Date.now() < suppressNotFoundToastUntilRef.current;
+      const suppressToast =
+        !isActivePath || (isNotFound && suppressNotFoundToast);
+      setError(handleError(err, undefined, suppressToast));
     } finally {
       setIsLoading(false);
     }
@@ -1109,7 +1156,7 @@ export default function TestSuiteDetailPage() {
       setTestCases(items);
       return items;
     } catch (err) {
-      handleError(err);
+      handleError(err, undefined, !isRouteActiveRef.current);
       return [];
     } finally {
       setIsLoadingTestCases(false);
@@ -1126,7 +1173,7 @@ export default function TestSuiteDetailPage() {
       setAllSuggestions(result);
       return result;
     } catch (err) {
-      handleError(err);
+      handleError(err, undefined, !isRouteActiveRef.current);
       return [];
     } finally {
       setIsLoadingSuggestions(false);
@@ -1147,7 +1194,7 @@ export default function TestSuiteDetailPage() {
       setArchivedSuggestions(result);
       return result;
     } catch (err) {
-      handleError(err);
+      handleError(err, undefined, !isRouteActiveRef.current);
       setArchivedSuggestions([]);
       return [];
     }
@@ -2451,15 +2498,9 @@ export default function TestSuiteDetailPage() {
       >
         <div className="space-y-8">
           {/* Header */}
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-            <div className="space-y-2">
-              <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mb-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="text-sm font-semibold">Back</span>
-              </button>
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mt-4">
+            <div className="space-y-2 ">
+             
               <h1 className="text-4xl font-bold tracking-tight text-on-surface">
                 {suite.name}
               </h1>

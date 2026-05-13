@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
@@ -26,9 +26,11 @@ import { useProject } from "../../contexts/ProjectContext";
 import { projectService } from "../../services";
 import { filterProjectsByWorkspaceMode } from "../../services/projectService";
 import SavedRequestsPanel from "../../features/manual-testing/components/SavedRequestsPanel";
+import { getNavSectionKey } from "../../utils/navHistory";
 
 export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { selectedProject, setSelectedProject, clearSelectedProject } =
     useProject();
@@ -128,6 +130,11 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       console.log("Sidebar - Cleaned ID:", cleanId);
     }
 
+    if (cleanId === selectedProject?.id) {
+      setIsProjectDropdownOpen(false);
+      return;
+    }
+
     setSelectedProject({
       id: cleanId,
       name: project.name,
@@ -135,6 +142,19 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       isActive: project.isActive,
     });
     setIsProjectDropdownOpen(false);
+
+    try {
+      sessionStorage.removeItem("nav-last-locations");
+      sessionStorage.removeItem("nav-section-history");
+    } catch {
+      // ignore storage errors
+    }
+
+    const sectionKey = getNavSectionKey(location.pathname);
+    const target = sectionKey || "/dashboard";
+    if (location.pathname !== target) {
+      navigate(target, { replace: true });
+    }
   };
 
   const navItems = [
@@ -186,7 +206,39 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       return true;
     }
 
+    if (basePath === "/runs" && currentPath.startsWith("/suggestions")) {
+      return true;
+    }
+
     return false;
+  };
+
+  const getNavTarget = (basePath: string) => {
+    try {
+      const raw = sessionStorage.getItem("nav-last-locations");
+      if (!raw) return basePath;
+      const parsed = JSON.parse(raw || "{}");
+      const stored = parsed?.[basePath];
+      if (!stored || typeof stored !== "string") return basePath;
+
+      if (basePath === "/projects") {
+        if (stored.startsWith("/project/") || stored.startsWith("/projects")) {
+          return stored;
+        }
+        return basePath;
+      }
+
+      if (basePath === "/runs") {
+        if (stored.startsWith("/runs") || stored.startsWith("/suggestions")) {
+          return stored;
+        }
+        return basePath;
+      }
+
+      return stored.startsWith(basePath) ? stored : basePath;
+    } catch {
+      return basePath;
+    }
   };
 
   if (isManualRoute) {
@@ -395,7 +447,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar font-sans text-sm font-medium tracking-tight">
         {navItems.map((item) => {
           const isActive = isPathActive(item.path);
-          const linkTo = item.path;
+          const linkTo = getNavTarget(item.path);
 
           return (
             <Link

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "../components/layout/MainLayout";
 import { useProject } from "../contexts/ProjectContext";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Plus,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { cn } from "../lib/utils";
@@ -306,11 +307,27 @@ export default function TraceabilityPage() {
   const suiteId = searchParams.get("suiteId") || "";
   const testRunId = searchParams.get("testRunId") || "";
   const projectId = selectedProject?.id || "";
+  const lastProjectIdRef = useRef<string | null>(null);
   const breadcrumbs = useProjectBreadcrumbs("Traceability");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [testRunDetail, setTestRunDetail] = useState<any>(null);
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      navigate("/traceability", { replace: true });
+      setData(null);
+      setTestRunDetail(null);
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate]);
 
   const { testSuites, isLoading: suitesLoading } = useTestSuites(projectId);
   const [suiteTestCases, setSuiteTestCases] = useState<any[]>([]);
@@ -464,48 +481,53 @@ export default function TraceabilityPage() {
   return (
     <MainLayout title="Traceability" breadcrumbs={breadcrumbs}>
       <div className="space-y-6 pb-8">
-        {/* Header */}
-        <section className="rounded-4xl border border-outline-variant/10 bg-linear-to-br from-emerald-600 via-slate-900 to-slate-950 text-white p-6 md:p-8 shadow-2xl shadow-emerald-950/20">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="w-6 h-6 shrink-0" />
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-white/60">
-                  Coverage report
-                </p>
-                <h1 className="text-2xl md:text-3xl font-black">
-                  Requirement to Test Case Traceability
-                </h1>
-              </div>
-            </div>
-
-            {/* Suite selector */}
-            <div className="shrink-0">
-              <select
-                className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur px-4 py-2.5 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 min-w-55"
-                value={suiteId}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) navigate(`/traceability?suiteId=${val}`);
-                  else navigate("/traceability");
-                }}
-              >
-                <option value="" className="text-slate-900">
-                  — Chọn test suite —
-                </option>
-                {testSuites.map((suite: any) => (
-                  <option
-                    key={suite.id}
-                    value={suite.id}
-                    className="text-slate-900"
-                  >
-                    {suite.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-bold tracking-tight text-on-surface">
+              Traceability
+            </h1>
+            <p className="text-on-surface-variant">
+              Requirement-to-test-case coverage and validation status.
+            </p>
           </div>
-        </section>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => reloadTraceability()}
+              disabled={!suiteId || loading}
+              className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+          </div>
+        </header>
+
+        <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col md:flex-row md:items-center gap-4 shadow-sm">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-on-surface-variant" />
+            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+              Test Suite
+            </span>
+          </div>
+          <select
+            className="flex-1 max-w-md px-4 py-2 bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-sm text-on-surface font-medium"
+            value={suiteId}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val) navigate(`/traceability?suiteId=${val}`);
+              else navigate("/traceability");
+            }}
+            disabled={suitesLoading}
+          >
+            <option value="">Select test suite...</option>
+            {testSuites.map((suite: any) => (
+              <option key={suite.id} value={suite.id}>
+                {suite.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* No suite selected */}
         {!suiteId && (
