@@ -1,10 +1,12 @@
-import apiService from './apiService';
+import apiService from "./apiService";
 
 export interface TestRun {
   id: string;
   testSuiteId: string;
   projectId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  testSuiteName?: string;
+  environmentName?: string;
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
   startedAt?: string;
   completedAt?: string;
   totalTests: number;
@@ -25,7 +27,7 @@ export interface TestRun {
 export interface TestRunResult {
   testCaseId: string;
   testCaseName: string;
-  status: 'passed' | 'failed' | 'skipped';
+  status: "passed" | "failed" | "skipped";
   duration: number;
   error?: string;
   actualResponse?: any;
@@ -37,6 +39,7 @@ export interface TestCaseRunDetail {
   testCaseId: string;
   endpointId?: string;
   name: string;
+  description?: string;
   testType?: string;
   orderIndex: number;
   status: string;
@@ -52,10 +55,17 @@ export interface TestCaseRunDetail {
   requestHeaders: Record<string, string>;
   responseHeaders: Record<string, string>;
   responseBodyPreview?: string;
-  failureReasons: Array<{ code?: string; message?: string }>;
+  warnings?: ValidationWarningModel[];
+  hasWarnings?: boolean;
+  checksPerformed?: number;
+  checksSkipped?: number;
+  failureReasons: ValidationFailureModel[];
   extractedVariables: Record<string, string>;
   dependencyIds: string[];
   skippedBecauseDependencyIds: string[];
+  skippedCause?: string | null;
+  executionAttempt?: number;
+  totalAttempts?: number;
   statusCodeMatched?: boolean;
   schemaMatched?: boolean;
   headerChecksPassed?: boolean;
@@ -63,6 +73,12 @@ export interface TestCaseRunDetail {
   bodyNotContainsPassed?: boolean;
   jsonPathChecksPassed?: boolean;
   responseTimePassed?: boolean;
+  // Expectation snapshots — for FE Evidence panel
+  expectedBodyContains?: string;
+  expectedBodyNotContains?: string;
+  expectedHeaderChecks?: string;
+  expectedJsonPathChecks?: string;
+  expectedMaxResponseTime?: number;
 }
 
 export interface TestRunDetailResponse {
@@ -71,6 +87,8 @@ export interface TestRunDetailResponse {
   executedAt?: string;
   resolvedEnvironmentName?: string;
   cases: TestCaseRunDetail[];
+  attempts?: TestCaseExecutionAttemptModel[];
+  attemptChildrenMap?: Record<string, string[]>;
 }
 
 export interface AssertionResult {
@@ -79,6 +97,46 @@ export interface AssertionResult {
   actual: any;
   passed: boolean;
   message?: string;
+}
+
+export interface ValidationFailureModel {
+  code?: string;
+  message: string;
+  target?: string;
+  expected?: string;
+  actual?: string;
+}
+
+export interface ValidationWarningModel {
+  code?: string;
+  message: string;
+  target?: string;
+}
+
+export interface TestRunRetryPolicyModel {
+  maxRetryAttempts: number;
+  retryFailedDependencies: boolean;
+  rerunSkippedCases: boolean;
+}
+
+export interface TestCaseExecutionAttemptModel {
+  executionAttemptId: string;
+  parentAttemptId: string | null;
+  testRunId: string;
+  testCaseId: string;
+  attemptNumber: number;
+  status: string;
+  retryReason: string | null;
+  skippedCause: string | null;
+  dependencyRootCause: string | null;
+  dependencyRootCauseIds: string[];
+  replayedSkippedCaseIds: string[];
+  isReplay: boolean;
+  startedAt: string;
+  completedAt?: string;
+  durationMs: number;
+  failureReasons: ValidationFailureModel[];
+  retryPolicy: TestRunRetryPolicyModel;
 }
 
 export interface TestRunsResponse {
@@ -92,6 +150,7 @@ export interface TestRunsResponse {
 interface BackendTestRun {
   id: string;
   testSuiteId: string;
+  testSuiteName?: string;
   projectId?: string;
   status: string;
   startedAt?: string;
@@ -102,6 +161,7 @@ interface BackendTestRun {
   skippedCount?: number;
   durationMs?: number;
   environmentId?: string;
+  environmentName?: string;
   triggeredBy?: string;
   createdAt?: string;
   createdDateTime?: string;
@@ -140,10 +200,17 @@ interface BackendTestCaseRunDetail {
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
   responseBodyPreview?: string;
-  failureReasons?: Array<{ code?: string; message?: string }>;
+  warnings?: Array<{ code?: string; message?: string; target?: string }>;
+  hasWarnings?: boolean;
+  checksPerformed?: number;
+  checksSkipped?: number;
+  failureReasons?: Array<{ code?: string; message?: string; target?: string; expected?: string; actual?: string }>;
   extractedVariables?: Record<string, string>;
   dependencyIds?: string[];
   skippedBecauseDependencyIds?: string[];
+  skippedCause?: string | null;
+  executionAttempt?: number;
+  totalAttempts?: number;
   statusCodeMatched?: boolean;
   schemaMatched?: boolean;
   headerChecksPassed?: boolean;
@@ -159,20 +226,31 @@ interface BackendTestRunDetail {
   executedAt?: string;
   resolvedEnvironmentName?: string;
   cases?: BackendTestCaseRunDetail[];
+  attempts?: any[];
+  attemptChildrenMap?: Record<string, string[]>;
 }
 
-const normalizeStatus = (status?: string): TestRun['status'] => {
-  const value = (status || '').toLowerCase();
-  if (value === 'completed' || value === 'running' || value === 'pending' || value === 'failed' || value === 'cancelled') {
+const normalizeStatus = (status?: string): TestRun["status"] => {
+  const value = (status || "").toLowerCase();
+  if (
+    value === "completed" ||
+    value === "running" ||
+    value === "pending" ||
+    value === "failed" ||
+    value === "cancelled"
+  ) {
     return value;
   }
-  return 'failed';
+  // BE TestRunResultModel returns 'Passed'/'Failed'/'Running' (PascalCase)
+  if (value === "passed") return "completed";
+  return "failed";
 };
 
 const mapBackendRun = (item: BackendTestRun): TestRun => ({
   id: item.id,
   testSuiteId: item.testSuiteId,
-  projectId: item.projectId || '',
+  testSuiteName: (item as any).testSuiteName ?? (item as any).TestSuiteName,
+  projectId: item.projectId || "",
   status: normalizeStatus(item.status),
   startedAt: item.startedAt,
   completedAt: item.completedAt,
@@ -182,8 +260,13 @@ const mapBackendRun = (item: BackendTestRun): TestRun => ({
   skippedTests: item.skippedCount ?? 0,
   duration: item.durationMs,
   environmentId: item.environmentId,
-  triggeredBy: item.triggeredBy || 'system',
-  createdAt: item.createdDateTime || item.createdAt || item.startedAt || new Date().toISOString(),
+  environmentName: (item as any).environmentName ?? (item as any).EnvironmentName,
+  triggeredBy: item.triggeredBy || "system",
+  createdAt:
+    item.createdDateTime ||
+    item.createdAt ||
+    item.startedAt ||
+    new Date().toISOString(),
   updatedAt: item.updatedDateTime,
   runNumber: item.runNumber,
   resultsExpireAt: item.resultsExpireAt,
@@ -194,13 +277,15 @@ const mapBackendRun = (item: BackendTestRun): TestRun => ({
 const mapBackendTestCaseRunDetail = (
   detail: BackendTestCaseRunDetail,
 ): TestCaseRunDetail => ({
-  testCaseId: (detail as any).testCaseId || (detail as any).TestCaseId || '',
+  testCaseId: (detail as any).testCaseId || (detail as any).TestCaseId || "",
   endpointId: (detail as any).endpointId || (detail as any).EndpointId,
-  name: (detail as any).name || (detail as any).Name || 'Unnamed test case',
+  name: (detail as any).name || (detail as any).Name || "Unnamed test case",
+  description: (detail as any).description || (detail as any).Description || undefined,
   testType: (detail as any).testType || (detail as any).TestType,
   orderIndex: (detail as any).orderIndex ?? (detail as any).OrderIndex ?? 0,
-  status: (detail as any).status || (detail as any).Status || 'Unknown',
-  httpStatusCode: (detail as any).httpStatusCode ?? (detail as any).HttpStatusCode,
+  status: (detail as any).status || (detail as any).Status || "Unknown",
+  httpStatusCode:
+    (detail as any).httpStatusCode ?? (detail as any).HttpStatusCode,
   durationMs: (detail as any).durationMs ?? (detail as any).DurationMs ?? 0,
   resolvedUrl: (detail as any).resolvedUrl || (detail as any).ResolvedUrl,
   httpMethod: (detail as any).httpMethod || (detail as any).HttpMethod,
@@ -208,29 +293,72 @@ const mapBackendTestCaseRunDetail = (
   requestBody: (detail as any).requestBody || (detail as any).RequestBody,
   queryParams: (detail as any).queryParams || (detail as any).QueryParams || {},
   timeoutMs: (detail as any).timeoutMs ?? (detail as any).TimeoutMs,
-  expectedStatus: (detail as any).expectedStatus || (detail as any).ExpectedStatus,
-  requestHeaders: (detail as any).requestHeaders || (detail as any).RequestHeaders || {},
-  responseHeaders: (detail as any).responseHeaders || (detail as any).ResponseHeaders || {},
-  responseBodyPreview: (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,
-  failureReasons: (detail as any).failureReasons || (detail as any).FailureReasons || [],
-  extractedVariables: (detail as any).extractedVariables || (detail as any).ExtractedVariables || {},
-  dependencyIds: (detail as any).dependencyIds || (detail as any).DependencyIds || [],
+  expectedStatus:
+    (detail as any).expectedStatus || (detail as any).ExpectedStatus,
+  requestHeaders:
+    (detail as any).requestHeaders || (detail as any).RequestHeaders || {},
+  responseHeaders:
+    (detail as any).responseHeaders || (detail as any).ResponseHeaders || {},
+  responseBodyPreview:
+    (detail as any).responseBodyPreview || (detail as any).ResponseBodyPreview,
+  warnings: (detail as any).warnings || (detail as any).Warnings,
+  hasWarnings:
+    (detail as any).hasWarnings ??
+    (detail as any).HasWarnings ??
+    ((detail as any).warnings?.length > 0 || (detail as any).Warnings?.length > 0),
+  checksPerformed: (detail as any).checksPerformed ?? (detail as any).ChecksPerformed,
+  checksSkipped: (detail as any).checksSkipped ?? (detail as any).ChecksSkipped,
+  failureReasons:
+    (detail as any).failureReasons || (detail as any).FailureReasons || [],
+  extractedVariables:
+    (detail as any).extractedVariables ||
+    (detail as any).ExtractedVariables ||
+    {},
+  dependencyIds:
+    (detail as any).dependencyIds || (detail as any).DependencyIds || [],
   skippedBecauseDependencyIds:
     (detail as any).skippedBecauseDependencyIds ||
     (detail as any).SkippedBecauseDependencyIds ||
     [],
-  statusCodeMatched: (detail as any).statusCodeMatched ?? (detail as any).StatusCodeMatched,
+  skippedCause:
+    (detail as any).skippedCause ?? (detail as any).SkippedCause ?? null,
+  executionAttempt:
+    (detail as any).executionAttempt ?? (detail as any).ExecutionAttempt,
+  totalAttempts:
+    (detail as any).totalAttempts ?? (detail as any).TotalAttempts,
+  statusCodeMatched:
+    (detail as any).statusCodeMatched ?? (detail as any).StatusCodeMatched,
   schemaMatched: (detail as any).schemaMatched ?? (detail as any).SchemaMatched,
-  headerChecksPassed: (detail as any).headerChecksPassed ?? (detail as any).HeaderChecksPassed,
-  bodyContainsPassed: (detail as any).bodyContainsPassed ?? (detail as any).BodyContainsPassed,
+  headerChecksPassed:
+    (detail as any).headerChecksPassed ?? (detail as any).HeaderChecksPassed,
+  bodyContainsPassed:
+    (detail as any).bodyContainsPassed ?? (detail as any).BodyContainsPassed,
   bodyNotContainsPassed:
-    (detail as any).bodyNotContainsPassed ?? (detail as any).BodyNotContainsPassed,
+    (detail as any).bodyNotContainsPassed ??
+    (detail as any).BodyNotContainsPassed,
   jsonPathChecksPassed:
-    (detail as any).jsonPathChecksPassed ?? (detail as any).JsonPathChecksPassed,
-  responseTimePassed: (detail as any).responseTimePassed ?? (detail as any).ResponseTimePassed,
+    (detail as any).jsonPathChecksPassed ??
+    (detail as any).JsonPathChecksPassed,
+  responseTimePassed:
+    (detail as any).responseTimePassed ?? (detail as any).ResponseTimePassed,
+  // Expectation snapshots (map backend names if present)
+  expectedBodyContains:
+    (detail as any).expectedBodyContains ?? (detail as any).ExpectedBodyContains,
+  expectedBodyNotContains:
+    (detail as any).expectedBodyNotContains ?? (detail as any).ExpectedBodyNotContains,
+  expectedHeaderChecks:
+    (detail as any).expectedHeaderChecks ?? (detail as any).ExpectedHeaderChecks,
+  expectedJsonPathChecks:
+    (detail as any).expectedJsonPathChecks ?? (detail as any).ExpectedJsonPathChecks,
+  expectedMaxResponseTime:
+    (detail as any).expectedMaxResponseTime ?? (detail as any).ExpectedMaxResponseTime,
+  expectedResponse:
+    (detail as any).expectedResponse ?? (detail as any).ExpectedResponse,
 });
 
-const mapBackendRunDetail = (response: BackendTestRunDetail): TestRunDetailResponse => ({
+const mapBackendRunDetail = (
+  response: BackendTestRunDetail,
+): TestRunDetailResponse => ({
   run: (response as any)?.run
     ? mapBackendRun((response as any).run)
     : (response as any)?.Run
@@ -247,6 +375,11 @@ const mapBackendRunDetail = (response: BackendTestRunDetail): TestRunDetailRespo
     : Array.isArray((response as any)?.Cases)
       ? (response as any).Cases.map(mapBackendTestCaseRunDetail)
       : [],
+  attempts: (response as any)?.attempts ?? (response as any)?.Attempts ?? [],
+  attemptChildrenMap:
+    (response as any)?.attemptChildrenMap ??
+    (response as any)?.AttemptChildrenMap ??
+    {},
 });
 
 const mapBackendPagedRuns = (
@@ -274,62 +407,60 @@ const mapBackendPagedRuns = (
   };
 };
 
+export interface RetryPolicyRequest {
+  maxRetryAttempts?: number;
+  retryFailedDependencies?: boolean;
+  rerunSkippedCases?: boolean;
+}
+
 export interface StartTestRunRequest {
   testSuiteId: string;
   environmentId?: string;
-  selectedTestCaseIds?: string[]; // Optional: run specific test cases only
+  selectedTestCaseIds?: string[];
+  strictValidation?: boolean;
+  retryPolicy?: RetryPolicyRequest;
+  recordRun?: boolean;
 }
 
 const testRunService = {
-  // Get all test runs for a project
-  getTestRuns: async (
-    projectId: string,
-    pageNumber: number = 1,
-    pageSize: number = 20,
-    status?: string
-  ): Promise<TestRunsResponse> => {
-    const params: any = { pageNumber, pageSize };
-    if (status) params.status = status;
+  // ===== STABLE CONTRACT (FE-07/08 suite-level) =====
 
-    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(`/projects/${projectId}/test-runs`, { params });
-    return mapBackendPagedRuns(response, pageNumber, pageSize);
-  },
-
-  // Get test runs for a specific test suite
+  // Get test runs for a specific test suite (primary API)
   getTestRunsByTestSuite: async (
     testSuiteId: string,
     pageNumber: number = 1,
     pageSize: number = 20,
-    status?: string
+    status?: string,
   ): Promise<TestRunsResponse> => {
     const params: any = { pageNumber, pageSize };
     if (status) params.status = status;
 
-    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(`/test-suites/${testSuiteId}/test-runs`, {
-      params,
-    });
+    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(
+      `/test-suites/${testSuiteId}/test-runs`,
+      {
+        params,
+      },
+    );
     return mapBackendPagedRuns(response, pageNumber, pageSize);
   },
 
-  // Get test run by ID
-  getTestRunById: async (testRunId: string): Promise<TestRun> => {
-    return await apiService.get<TestRun>(`/test-runs/${testRunId}`);
+  // Start a new test run (suite-level)
+  // BE returns TestRunResultModel (HTTP 201) which maps to TestRunDetailResponse.
+  startTestRun: async (data: StartTestRunRequest): Promise<TestRunDetailResponse> => {
+    const response = await apiService.post<BackendTestRunDetail>(
+      `/test-suites/${data.testSuiteId}/test-runs`,
+      {
+        environmentId: data.environmentId,
+        selectedTestCaseIds: data.selectedTestCaseIds,
+        strictValidation: data.strictValidation,
+        retryPolicy: data.retryPolicy ?? null,
+        recordRun: data.recordRun ?? true,
+      },
+    );
+    return mapBackendRunDetail(response || {});
   },
 
-  // Start a new test run
-  startTestRun: async (data: StartTestRunRequest): Promise<TestRun> => {
-    return await apiService.post<TestRun>(`/test-suites/${data.testSuiteId}/test-runs`, {
-      environmentId: data.environmentId,
-      selectedTestCaseIds: data.selectedTestCaseIds,
-    });
-  },
-
-  // Cancel a running test run
-  cancelTestRun: async (testRunId: string): Promise<void> => {
-    await apiService.post(`/test-runs/${testRunId}/cancel`);
-  },
-
-  // Get test run results
+  // Get test run results (suite-level)
   getTestRunResults: async (
     testSuiteId: string,
     testRunId: string,
@@ -340,21 +471,54 @@ const testRunService = {
     return mapBackendRunDetail(response || {});
   },
 
-  // Get test run statistics
-  getTestRunStats: async (projectId: string, days: number = 30): Promise<any> => {
+  // Get single test run detail (suite-level)
+  getTestRunById: async (
+    testSuiteId: string,
+    testRunId: string,
+  ): Promise<TestRun> => {
+    const response = await apiService.get<BackendTestRun>(
+      `/test-suites/${testSuiteId}/test-runs/${testRunId}`,
+    );
+    return mapBackendRun(response);
+  },
+
+  // ===== LEGACY / FALLBACK (kept until backend confirms removal) =====
+
+  /** @deprecated Use getTestRunsByTestSuite instead. Legacy project-level route. */
+  getTestRuns: async (
+    projectId: string,
+    pageNumber: number = 1,
+    pageSize: number = 20,
+    status?: string,
+  ): Promise<TestRunsResponse> => {
+    const params: any = { pageNumber, pageSize };
+    if (status) params.status = status;
+
+    const response = await apiService.get<BackendPagedRuns | BackendTestRun[]>(
+      `/projects/${projectId}/test-runs`,
+      { params },
+    );
+    return mapBackendPagedRuns(response, pageNumber, pageSize);
+  },
+
+  /** @deprecated Legacy stats route, may not exist in handoff. */
+  getTestRunStats: async (
+    projectId: string,
+    days: number = 30,
+  ): Promise<any> => {
     return await apiService.get(`/projects/${projectId}/test-runs/stats`, {
       params: { days },
     });
   },
 
-  // Retry failed test cases
-  retryFailedTests: async (testRunId: string): Promise<TestRun> => {
-    return await apiService.post<TestRun>(`/test-runs/${testRunId}/retry-failed`);
-  },
-
-  // Export test run results
-  exportTestRunResults: async (testRunId: string, format: 'json' | 'csv' | 'html'): Promise<Blob> => {
-    return await apiService.downloadFile(`/test-runs/${testRunId}/export?format=${format}`);
+  /** @deprecated Legacy export route. */
+  exportTestRunResults: async (
+    testRunId: string,
+    format: "json" | "csv" | "html",
+  ): Promise<Blob> => {
+    return await apiService.downloadFile(
+      `/test-runs/${testRunId}/export?format=${format}`,
+    );
   },
 };
 

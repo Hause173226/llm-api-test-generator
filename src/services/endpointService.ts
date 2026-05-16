@@ -1,15 +1,20 @@
-import apiService from './apiService';
+import apiService from "./apiService";
 
 export interface Endpoint {
   id: string;
   projectId: string;
+  apiSpecId?: string;
   path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  httpMethod?: string; // API contract field name
+  operationId?: string;
+  summary?: string;
   description?: string;
   parameters?: any[];
   requestBody?: any;
   responses?: any;
   tags?: string[];
+  isDeprecated?: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -30,9 +35,9 @@ const endpointService = {
     specId: string,
     pageNumber: number = 1,
     pageSize: number = 20,
-    searchTerm: string = '',
+    searchTerm: string = "",
     method?: string,
-    tag?: string
+    tag?: string,
   ): Promise<EndpointsResponse> => {
     const params: any = { pageNumber, pageSize };
     if (searchTerm) params.searchTerm = searchTerm;
@@ -42,25 +47,31 @@ const endpointService = {
     // Backend returns array directly, not paginated response
     const rawItems = await apiService.get<any[]>(
       `/projects/${projectId}/specifications/${specId}/endpoints`,
-      { params }
+      { params },
     );
-    
+
     // Map Backend response to Frontend format
-    const items: Endpoint[] = Array.isArray(rawItems) ? rawItems.map((item: any) => ({
-      id: item.id,
-      projectId: projectId,
-      path: item.path || '',
-      method: item.httpMethod || 'GET',
-      description: item.description || item.summary || '',
-      parameters: item.parameters || [],
-      requestBody: item.requestBody,
-      responses: item.responses,
-      tags: item.tags ? (typeof item.tags === 'string' ? JSON.parse(item.tags) : item.tags) : [],
-      isActive: !item.isDeprecated,
-      createdAt: item.createdDateTime || new Date().toISOString(),
-      updatedAt: item.updatedDateTime || new Date().toISOString(),
-    })) : [];
-    
+    const items: Endpoint[] = Array.isArray(rawItems)
+      ? rawItems.map((item: any) => ({
+          id: item.id,
+          projectId: projectId,
+          path: item.path || "",
+          method: item.httpMethod || "GET",
+          description: item.description || item.summary || "",
+          parameters: item.parameters || [],
+          requestBody: item.requestBody,
+          responses: item.responses,
+          tags: item.tags
+            ? typeof item.tags === "string"
+              ? JSON.parse(item.tags)
+              : item.tags
+            : [],
+          isActive: !item.isDeprecated,
+          createdAt: item.createdDateTime || new Date().toISOString(),
+          updatedAt: item.updatedDateTime || new Date().toISOString(),
+        }))
+      : [];
+
     // Convert to paginated response format
     return {
       items,
@@ -72,49 +83,82 @@ const endpointService = {
   },
 
   // Get endpoint by ID
-  getEndpointById: async (projectId: string, specId: string, endpointId: string): Promise<Endpoint> => {
+  getEndpointById: async (
+    projectId: string,
+    specId: string,
+    endpointId: string,
+  ): Promise<Endpoint> => {
     return await apiService.get<Endpoint>(
-      `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}`
+      `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}`,
     );
   },
 
   // Create endpoint manually
-  createEndpoint: async (projectId: string, specId: string, data: Partial<Endpoint>): Promise<Endpoint> => {
+  // FE-03 contract: required fields are httpMethod + path
+  createEndpoint: async (
+    projectId: string,
+    specId: string,
+    data: Partial<Endpoint>,
+  ): Promise<Endpoint> => {
+    const apiPayload = {
+      ...data,
+      httpMethod: data.method || data.httpMethod,
+    };
+    // Remove FE-only 'method' key so we don't confuse backend
+    delete (apiPayload as any).method;
+
     return await apiService.post<Endpoint>(
       `/projects/${projectId}/specifications/${specId}/endpoints`,
-      data
+      apiPayload,
     );
   },
 
   // Update endpoint
+  // FE-03 contract: required fields are httpMethod + path
   updateEndpoint: async (
     projectId: string,
     specId: string,
     endpointId: string,
-    data: Partial<Endpoint>
+    data: Partial<Endpoint>,
   ): Promise<Endpoint> => {
+    const apiPayload = {
+      ...data,
+      httpMethod: data.method || data.httpMethod,
+    };
+    delete (apiPayload as any).method;
+
     return await apiService.put<Endpoint>(
       `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}`,
-      data
+      apiPayload,
     );
   },
 
   // Delete endpoint
-  deleteEndpoint: async (projectId: string, specId: string, endpointId: string): Promise<void> => {
-    await apiService.delete(`/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}`);
+  deleteEndpoint: async (
+    projectId: string,
+    specId: string,
+    endpointId: string,
+  ): Promise<void> => {
+    await apiService.delete(
+      `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}`,
+    );
   },
 
   // Get endpoint statistics
-  getEndpointStats: async (projectId: string, specId: string, endpointId: string): Promise<any> => {
+  getEndpointStats: async (
+    projectId: string,
+    specId: string,
+    endpointId: string,
+  ): Promise<any> => {
     return await apiService.get(
-      `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}/stats`
+      `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}/stats`,
     );
   },
 
   // Get all unique tags
   getTags: async (projectId: string, specId: string): Promise<string[]> => {
     return await apiService.get<string[]>(
-      `/projects/${projectId}/specifications/${specId}/endpoints/tags`
+      `/projects/${projectId}/specifications/${specId}/endpoints/tags`,
     );
   },
 };

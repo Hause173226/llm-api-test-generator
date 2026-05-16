@@ -202,7 +202,6 @@ export default function TestSuitesPage() {
           const proposal = await testSuiteService.proposeOrder(newSuite.id, {
             specificationId: selectedSpecId,
             selectedEndpointIds,
-            source: "System",
             reasoningNote:
               "Auto-proposed from selected endpoints on suite creation",
           });
@@ -317,7 +316,28 @@ export default function TestSuitesPage() {
     if (projectId) {
       params.set("projectId", projectId);
     }
-    params.set("tab", "testcases");
+
+    let restoredTab: string | null = null;
+    try {
+      const raw = localStorage.getItem(`suite-ui-state:${suite.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw || "{}");
+        const stored = String(parsed?.activeTab || "").toLowerCase();
+        if (
+          stored === "details" ||
+          stored === "suggestions" ||
+          stored === "testcases"
+        ) {
+          restoredTab = stored;
+        }
+      }
+    } catch {
+      restoredTab = null;
+    }
+
+    if (restoredTab) {
+      params.set("tab", restoredTab);
+    }
 
     const target = params.toString()
       ? `/test-suites/${suite.id}?${params.toString()}`
@@ -684,11 +704,13 @@ export default function TestSuitesPage() {
                 <option value="">
                   {t("testSuites.modal.specPlaceholder")}
                 </option>
-                {specifications.map((spec) => (
-                  <option key={spec.id} value={spec.id}>
-                    {spec.name}
-                  </option>
-                ))}
+                {specifications
+                  .filter((spec) => spec.parseStatus === "Success")
+                  .map((spec) => (
+                    <option key={spec.id} value={spec.id}>
+                      {spec.name}
+                    </option>
+                  ))}
               </select>
             )}
           </div>

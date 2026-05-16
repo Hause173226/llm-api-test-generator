@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
@@ -19,20 +19,27 @@ import {
   ChevronDown,
   FolderOpen,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useProject } from "../../contexts/ProjectContext";
 import { projectService } from "../../services";
+import { filterProjectsByWorkspaceMode } from "../../services/projectService";
+import SavedRequestsPanel from "../../features/manual-testing/components/SavedRequestsPanel";
+import { getNavSectionKey } from "../../utils/navHistory";
 
 export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { selectedProject, setSelectedProject, clearSelectedProject } =
     useProject();
+  const isManualRoute = location.pathname.startsWith("/manual-testing");
 
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const hasFetchedRef = useRef(false);
 
   const getProjectCreatedAt = (project: any): number => {
     const rawDate =
@@ -49,7 +56,11 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       setIsLoadingProjects(true);
       const data = await projectService.getProjects(1, 50);
       const projectList = data.items || [];
-      setProjects(projectList);
+      const automatedProjects = filterProjectsByWorkspaceMode(
+        projectList,
+        "Automated",
+      );
+      setProjects(automatedProjects);
 
       const hasPersistedSelection = !!localStorage.getItem("selectedProject");
       let shouldAutoSelectNewest = !selectedProject && !hasPersistedSelection;
@@ -59,6 +70,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
         const projectExists = projectList.some(
           (p: any) => p.id === selectedProject.id,
         );
+        const isManualProject = selectedProject.workspaceMode === "Manual";
         if (!projectExists) {
           console.warn(
             "Selected project no longer exists, clearing selection",
@@ -66,11 +78,14 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
           );
           clearSelectedProject();
           shouldAutoSelectNewest = true;
+        } else if (isManualProject) {
+          clearSelectedProject();
+          shouldAutoSelectNewest = true;
         }
       }
 
-      if (shouldAutoSelectNewest && projectList.length > 0) {
-        const newestProject = [...projectList].sort(
+      if (shouldAutoSelectNewest && automatedProjects.length > 0) {
+        const newestProject = [...automatedProjects].sort(
           (a, b) => getProjectCreatedAt(b) - getProjectCreatedAt(a),
         )[0];
 
@@ -87,15 +102,22 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
 
   // Lazy-fetch projects when dropdown opens to avoid duplicate global fetches.
   useEffect(() => {
-    if (isProjectDropdownOpen && projects.length === 0 && !isLoadingProjects) {
+    if (
+      isProjectDropdownOpen &&
+      projects.length === 0 &&
+      !isLoadingProjects &&
+      !hasFetchedRef.current
+    ) {
+      hasFetchedRef.current = true;
       fetchProjects();
     }
-  }, [
-    isProjectDropdownOpen,
-    projects.length,
-    isLoadingProjects,
-    fetchProjects,
-  ]);
+
+    // Reset flag when dropdown closes
+    if (!isProjectDropdownOpen) {
+      hasFetchedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isProjectDropdownOpen, projects.length, isLoadingProjects]);
 
   const handleSelectProject = (project: any) => {
     console.log("Sidebar - Selecting project:", project);
@@ -108,6 +130,11 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       console.log("Sidebar - Cleaned ID:", cleanId);
     }
 
+    if (cleanId === selectedProject?.id) {
+      setIsProjectDropdownOpen(false);
+      return;
+    }
+
     setSelectedProject({
       id: cleanId,
       name: project.name,
@@ -115,6 +142,19 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       isActive: project.isActive,
     });
     setIsProjectDropdownOpen(false);
+
+    try {
+      sessionStorage.removeItem("nav-last-locations");
+      sessionStorage.removeItem("nav-section-history");
+    } catch {
+      // ignore storage errors
+    }
+
+    const sectionKey = getNavSectionKey(location.pathname);
+    const target = sectionKey || "/dashboard";
+    if (location.pathname !== target) {
+      navigate(target, { replace: true });
+    }
   };
 
   const navItems = [
@@ -135,8 +175,10 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       path: "/endpoints",
     },
     { icon: Layers, label: t("common.testSuites"), path: "/test-suites" },
+    { icon: FileText, label: "SRS Documents", path: "/srs-documents" },
+    { icon: ShieldCheck, label: "Traceability", path: "/traceability" },
     { icon: PlayCircle, label: t("common.testExecutionRuns"), path: "/runs" },
-   
+
     { icon: Settings2, label: t("common.environments"), path: "/environments" },
     { icon: BarChart3, label: t("common.reports"), path: "/reports" },
     {
@@ -164,8 +206,147 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       return true;
     }
 
+    if (basePath === "/runs" && currentPath.startsWith("/suggestions")) {
+      return true;
+    }
+
     return false;
   };
+
+  const getNavTarget = (basePath: string) => {
+    try {
+      const raw = sessionStorage.getItem("nav-last-locations");
+      if (!raw) return basePath;
+      const parsed = JSON.parse(raw || "{}");
+      const stored = parsed?.[basePath];
+      if (!stored || typeof stored !== "string") return basePath;
+
+      if (basePath === "/projects") {
+        if (stored.startsWith("/project/") || stored.startsWith("/projects")) {
+          return stored;
+        }
+        return basePath;
+      }
+
+      if (basePath === "/runs") {
+        if (stored.startsWith("/runs") || stored.startsWith("/suggestions")) {
+          return stored;
+        }
+        return basePath;
+      }
+
+      return stored.startsWith(basePath) ? stored : basePath;
+    } catch {
+      return basePath;
+    }
+  };
+
+  if (isManualRoute) {
+    return (
+      <aside
+        className={cn(
+          "fixed left-0 top-0 h-screen flex flex-col p-4 z-40 bg-slate-50 dark:bg-slate-900 border-r border-slate-200/50 dark:border-slate-800 transition-all duration-300 ease-in-out",
+          isCollapsed ? "w-20" : "w-72",
+        )}
+      >
+        <div
+          className={cn(
+            "mb-4 px-4 py-2 flex items-center",
+            isCollapsed ? "justify-center" : "justify-start",
+          )}
+        >
+          <div className="w-10 h-10 bg-indigo-700 dark:bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 shrink-0">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          {!isCollapsed && (
+            <span className="ml-3 text-xl font-bold tracking-tighter text-indigo-700 dark:text-indigo-400 whitespace-nowrap overflow-hidden animate-in fade-in duration-500">
+              TestFlow AI
+            </span>
+          )}
+        </div>
+
+        {!isCollapsed && (
+          <div className="px-2 pb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Manual Workspace
+          </div>
+        )}
+
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pr-1 pb-3">
+          {isCollapsed ? (
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center leading-tight">
+                Manual
+                <br />
+                Workspace
+              </span>
+            </div>
+          ) : (
+            <div className="pr-1 pb-4">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-sm">
+                <SavedRequestsPanel />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-2 mt-1 flex flex-col gap-1 border-t border-slate-200/70 dark:border-slate-800">
+          <Link
+            to="/settings"
+            className={cn(
+              "flex items-center px-3 py-2 rounded-lg transition-all duration-200",
+              isCollapsed ? "justify-center" : "justify-start gap-2.5",
+              location.pathname === "/settings"
+                ? "text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-800 font-semibold border-r-4 border-indigo-600 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50",
+            )}
+            title={isCollapsed ? t("common.accountSettings") : ""}
+          >
+            <Settings
+              className={cn(
+                "w-4 h-4 shrink-0",
+                location.pathname === "/settings"
+                  ? "text-indigo-600 dark:text-indigo-400"
+                  : "text-slate-400 dark:text-slate-500",
+              )}
+            />
+            {!isCollapsed && (
+              <span className="text-sm whitespace-nowrap overflow-hidden animate-in fade-in duration-500">
+                {t("common.accountSettings")}
+              </span>
+            )}
+          </Link>
+          <Link
+            to="/help"
+            className={cn(
+              "flex items-center px-3 py-2 rounded-lg transition-all duration-200",
+              isCollapsed ? "justify-center" : "justify-start gap-2.5",
+              location.pathname === "/help"
+                ? "text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-800 font-semibold border-r-4 border-indigo-600 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50",
+            )}
+            title={isCollapsed ? t("common.help") : ""}
+          >
+            <HelpCircle
+              className={cn(
+                "w-4 h-4 shrink-0",
+                location.pathname === "/help"
+                  ? "text-indigo-600 dark:text-indigo-400"
+                  : "text-slate-400 dark:text-slate-500",
+              )}
+            />
+            {!isCollapsed && (
+              <span className="text-sm whitespace-nowrap overflow-hidden animate-in fade-in duration-500">
+                {t("common.help")}
+              </span>
+            )}
+          </Link>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -266,10 +447,12 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar font-sans text-sm font-medium tracking-tight">
         {navItems.map((item) => {
           const isActive = isPathActive(item.path);
+          const linkTo = getNavTarget(item.path);
+
           return (
             <Link
               key={item.path}
-              to={item.path}
+              to={linkTo}
               className={cn(
                 "flex items-center px-4 py-3 rounded-lg transition-all duration-200",
                 isCollapsed ? "justify-center" : "justify-start gap-3",

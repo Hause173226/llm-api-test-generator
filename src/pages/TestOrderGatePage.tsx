@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Network,
   ArrowRight,
@@ -19,28 +19,77 @@ import { useTestSuites } from "../hooks/useTestSuites";
 import { useProject } from "../contexts/ProjectContext";
 import { apiService } from "../services/apiService";
 
+type ProposalOrderItem = {
+  endpointId?: string;
+  orderIndex?: number;
+};
+
 type ProposalApiResponse = {
   proposalId?: string;
   ProposalId?: string;
   rowVersion?: string;
   RowVersion?: string;
-  status?: string;
-  Status?: string;
+  // ProposalStatus is responseFormat: integer per contract
+  // 0=Pending, 1=Approved, 2=Rejected, 3=ModifiedAndApproved, 4=Superseded, 5=Applied, 6=Expired
+  status?: number | string;
+  Status?: number | string;
+  proposedOrder?: ProposalOrderItem[];
+  ProposedOrder?: ProposalOrderItem[];
+  userModifiedOrder?: ProposalOrderItem[];
+  UserModifiedOrder?: ProposalOrderItem[];
+  appliedOrder?: ProposalOrderItem[];
+  AppliedOrder?: ProposalOrderItem[];
 };
 import { testSuiteService } from "../services/testSuiteService";
 import endpointService from "../services/endpointService";
-import { handleError } from "../utils/errorHandler";
-import toast from "react-hot-toast";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
 import Skeleton from "../components/ui/Skeleton";
 import NoProjectSelected from "../components/common/NoProjectSelected";
+
+const normalizeOrder = (items?: ProposalOrderItem[]): string[] =>
+  (items || [])
+    .filter((item) => Boolean(item?.endpointId))
+    .sort(
+      (a, b) =>
+        (a.orderIndex ?? Number.MAX_SAFE_INTEGER) -
+        (b.orderIndex ?? Number.MAX_SAFE_INTEGER),
+    )
+    .map((item) => item.endpointId as string);
+
+const resolveProposalOrder = (proposal?: ProposalApiResponse): string[] => {
+  if (!proposal) return [];
+
+  const applied = normalizeOrder(
+    proposal.appliedOrder || proposal.AppliedOrder,
+  );
+  if (applied.length > 0) return applied;
+
+  const modified = normalizeOrder(
+    proposal.userModifiedOrder || proposal.UserModifiedOrder,
+  );
+  if (modified.length > 0) return modified;
+
+  return normalizeOrder(proposal.proposedOrder || proposal.ProposedOrder);
+};
+
+const isPendingStatus = (status: unknown): boolean => {
+  if (status === 0) return true;
+  if (typeof status === "string") {
+    const normalized = status.trim().toLowerCase();
+    return normalized === "pending" || normalized === "0";
+  }
+  return false;
+};
 
 export default function TestOrderGatePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const requestedSuiteId = searchParams.get("suiteId") || "";
   const queryProjectId = searchParams.get("projectId") || "";
   const { selectedProject } = useProject();
   const projectId = selectedProject?.id || queryProjectId;
+  const lastProjectIdRef = useRef<string | null>(null);
   const { testSuites, isLoading: isLoadingSuites } = useTestSuites(projectId);
   const suites = Array.isArray(testSuites) ? testSuites : [];
   const [selectedSuiteId, setSelectedSuiteId] = useState<string>("");
@@ -65,6 +114,23 @@ export default function TestOrderGatePage() {
   }, [suites, requestedSuiteId, selectedSuiteId]);
 
   const [localOrder, setLocalOrder] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
+
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      navigate("/test-order-gate", { replace: true });
+      setSelectedSuiteId("");
+      setSuiteDetail(null);
+      setSuiteEndpoints([]);
+      setLocalOrder([]);
+    }
+
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate]);
 
   // Load suite endpoints by selected endpoint ids in suite scope.
   React.useEffect(() => {
@@ -101,7 +167,24 @@ export default function TestOrderGatePage() {
         const allEndpoints = Array.isArray(response?.items)
           ? response.items
           : [];
-        const ordered = detail.selectedEndpointIds
+        let orderedEndpointIds: string[] = detail.selectedEndpointIds || [];
+
+        try {
+          const latestProposal = await apiService.get<ProposalApiResponse>(
+            `/test-suites/${selectedSuiteId}/order-proposals/latest`,
+          );
+          const proposalOrder = resolveProposalOrder(latestProposal);
+          if (proposalOrder.length > 0) {
+            orderedEndpointIds = proposalOrder;
+          }
+        } catch (proposalErr) {
+          console.warn(
+            "Failed to load latest order proposal, fallback to suite selectedEndpointIds.",
+            proposalErr,
+          );
+        }
+
+        const ordered = orderedEndpointIds
           .map((id: string) => allEndpoints.find((ep: any) => ep.id === id))
           .filter(Boolean);
 
@@ -125,24 +208,30 @@ export default function TestOrderGatePage() {
     }
 
     try {
-      const latestProposal = await apiService.get<ProposalApiResponse>(
-        `/test-suites/${selectedSuiteId}/order-proposals/latest`,
-      );
+      let proposalId: string | undefined;
+      let proposalRowVersion: string | undefined;
+      let proposalStatus: unknown;
 
-      let proposalId = latestProposal?.proposalId || latestProposal?.ProposalId;
-      let proposalRowVersion =
-        latestProposal?.rowVersion || latestProposal?.RowVersion;
-      const proposalStatus =
-        latestProposal?.status || latestProposal?.Status || "";
+      try {
+        const latestProposal = await apiService.get<ProposalApiResponse>(
+          `/test-suites/${selectedSuiteId}/order-proposals/latest`,
+        );
+        proposalId = latestProposal?.proposalId || latestProposal?.ProposalId;
+        proposalRowVersion =
+          latestProposal?.rowVersion || latestProposal?.RowVersion;
+        proposalStatus = latestProposal?.status ?? latestProposal?.Status;
+      } catch (proposalErr) {
+        console.warn("Failed to load latest order proposal:", proposalErr);
+      }
 
-      if (!proposalId) {
+      if (!proposalId || !proposalRowVersion || !isPendingStatus(proposalStatus)) {
         const createdProposal = await apiService.post<ProposalApiResponse>(
           `/test-suites/${selectedSuiteId}/order-proposals`,
           {
-            SpecificationId: suiteDetail.apiSpecId,
-            SelectedEndpointIds: localOrder,
-            Source: "User",
-            ReasoningNote: "Created from Test Order Gate",
+            specificationId: suiteDetail.apiSpecId,
+            selectedEndpointIds: localOrder,
+            source: "User",
+            reasoningNote: "Created from Test Order Gate",
           },
         );
 
@@ -151,33 +240,33 @@ export default function TestOrderGatePage() {
           createdProposal?.rowVersion || createdProposal?.RowVersion;
       }
 
-      if (!proposalId) {
-        throw new Error("Cannot resolve proposalId for reorder operation.");
+      if (!proposalId || !proposalRowVersion) {
+        throw new Error("Cannot resolve proposal for reorder operation.");
       }
 
       const reordered = await apiService.put<ProposalApiResponse>(
         `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/reorder`,
         {
-          OrderedEndpointIds: localOrder,
-          RowVersion: proposalRowVersion,
-          ReviewNotes: "Reordered from Test Order Gate",
+          orderedEndpointIds: localOrder,
+          rowVersion: proposalRowVersion,
+          reviewNotes: "Reordered from Test Order Gate",
         },
       );
 
-      const reorderedStatus =
-        reordered?.status || reordered?.Status || proposalStatus;
       const reorderedRowVersion =
         reordered?.rowVersion || reordered?.RowVersion;
 
-      if (String(reorderedStatus).toLowerCase() !== "approved") {
-        await apiService.post(
-          `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/approve`,
-          {
-            RowVersion: reorderedRowVersion,
-            ReviewNotes: "Approved after reorder from Test Order Gate",
-          },
-        );
+      if (!reorderedRowVersion) {
+        throw new Error("Missing rowVersion after reorder.");
       }
+
+      await apiService.post(
+        `/test-suites/${selectedSuiteId}/order-proposals/${proposalId}/approve`,
+        {
+          rowVersion: reorderedRowVersion,
+          reviewNotes: "Approved after reorder from Test Order Gate",
+        },
+      );
 
       // Refresh suite detail to keep local state in sync.
       const refreshed = await testSuiteService.getTestSuiteDetail(
@@ -186,7 +275,7 @@ export default function TestOrderGatePage() {
       );
       setSuiteDetail(refreshed);
 
-      toast.success(t("testOrderGate.success.saved"));
+      showSuccessToast(t("testOrderGate.success.saved"));
     } catch (err) {
       handleError(err);
     }

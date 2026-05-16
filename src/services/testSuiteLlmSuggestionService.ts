@@ -4,12 +4,25 @@ export interface SuiteSuggestionQuery {
   reviewStatus?: string;
   testType?: string;
   endpointId?: string;
+  includeDeleted?: boolean;
 }
 
 export interface SuiteSuggestionModel {
   id: string;
   testSuiteId: string;
   endpointId?: string;
+  /** HTTP method resolved from suggestedRequest (e.g. "GET", "POST"). Avoids raw UUID display. */
+  endpointMethod?: string;
+  /** Endpoint path resolved from suggestedRequest (e.g. "/api/auth/register"). */
+  endpointPath?: string;
+  /** True if the suggestion was generated while an SRS document was linked to its TestSuite. */
+  hasSrsContext?: boolean;
+  /** Title of the SRS document used at generation time. */
+  srsDocumentTitle?: string;
+  /** UUIDs of SRS requirements this suggestion covers (as reported by the LLM). */
+  coveredRequirementIds?: string[];
+  /** Resolved code + title for each covered requirement. */
+  coveredRequirements?: Array<{ id: string; code: string; title: string }>;
   cacheKey?: string | null;
   displayOrder?: number;
   suggestionType?: string;
@@ -36,6 +49,9 @@ export interface SuiteSuggestionModel {
   appliedTestCaseId?: string;
   llmModel?: string;
   tokensUsed?: number;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+  deletedById?: string | null;
   createdDateTime?: string;
   updatedDateTime?: string;
   rowVersion?: string;
@@ -96,6 +112,7 @@ const buildQueryString = (query?: SuiteSuggestionQuery) => {
   if (query.reviewStatus) params.set("reviewStatus", query.reviewStatus);
   if (query.testType) params.set("testType", query.testType);
   if (query.endpointId) params.set("endpointId", query.endpointId);
+  if (query.includeDeleted !== undefined) params.set("includeDeleted", String(query.includeDeleted));
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
@@ -170,6 +187,25 @@ const testSuiteLlmSuggestionService = {
   ): Promise<any> {
     return await apiService.post<any>(
       `/test-suites/${suiteId}/llm-suggestions/bulk-review`,
+      payload,
+    );
+  },
+
+  async bulkRestore(
+    suiteId: string,
+    payload: { suggestionIds: string[] },
+  ): Promise<any> {
+    return await apiService.post<any>(
+      `/test-suites/${suiteId}/llm-suggestions/bulk-restore`,
+      payload,
+    );
+  },
+  async bulkApprove(
+    suiteId: string,
+    payload: { suggestionIds: string[] },
+  ): Promise<any> {
+    return await apiService.post<any>(
+      `/test-suites/${suiteId}/llm-suggestions/bulk-approve`,
       payload,
     );
   },

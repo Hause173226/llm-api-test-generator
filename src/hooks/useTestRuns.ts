@@ -1,12 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
-import { testRunService, TestRun, TestRunsResponse, StartTestRunRequest } from '../services';
-import { handleError } from '../utils/errorHandler';
+import { useState, useEffect, useCallback } from "react";
+import {
+  testRunService,
+  TestRun,
+  TestRunsResponse,
+  StartTestRunRequest,
+} from "../services";
+import { handleError } from "../utils/errorHandler";
 
 export function useTestRuns(
   testSuiteId: string,
   pageNumber: number = 1,
   pageSize: number = 20,
-  status?: string
+  status?: string,
 ) {
   const [testRuns, setTestRuns] = useState<TestRun[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -26,12 +31,13 @@ export function useTestRuns(
     try {
       setIsLoading(true);
       setError(null);
-      const response: TestRunsResponse = await testRunService.getTestRunsByTestSuite(
-        testSuiteId,
-        pageNumber,
-        pageSize,
-        status
-      );
+      const response: TestRunsResponse =
+        await testRunService.getTestRunsByTestSuite(
+          testSuiteId,
+          pageNumber,
+          pageSize,
+          status,
+        );
       setTestRuns(response.items);
       setTotalCount(response.totalCount);
       setTotalPages(response.totalPages);
@@ -57,26 +63,14 @@ export function useTestRuns(
     }
   };
 
-  const cancelTestRun = async (testRunId: string) => {
-    try {
-      await testRunService.cancelTestRun(testRunId);
-      await fetchTestRuns(); // Refresh list
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  const retryFailedTests = async (testRunId: string) => {
-    try {
-      const newRun = await testRunService.retryFailedTests(testRunId);
-      await fetchTestRuns(); // Refresh list
-      return newRun;
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  const exportResults = async (testRunId: string, format: 'json' | 'csv' | 'html') => {
+  /** @deprecated Backend route does not exist. Use FE-10 report download instead. */
+  const exportResults = async (
+    testRunId: string,
+    format: "json" | "csv" | "html",
+  ) => {
+    console.warn(
+      "[useTestRuns] exportResults is deprecated — backend route does not exist. Use report download (FE-10) instead.",
+    );
     try {
       return await testRunService.exportTestRunResults(testRunId, format);
     } catch (err) {
@@ -92,25 +86,23 @@ export function useTestRuns(
     error,
     refetch: fetchTestRuns,
     startTestRun,
-    cancelTestRun,
-    retryFailedTests,
     exportResults,
   };
 }
 
 // Hook for single test run details
-export function useTestRun(testRunId: string) {
+export function useTestRun(testSuiteId: string, testRunId: string) {
   const [testRun, setTestRun] = useState<TestRun | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTestRun = useCallback(async () => {
-    if (!testRunId) return;
+    if (!testSuiteId || !testRunId) return;
 
     try {
       setIsLoading(true);
       setError(null);
-      const data = await testRunService.getTestRunById(testRunId);
+      const data = await testRunService.getTestRunById(testSuiteId, testRunId);
       setTestRun(data);
     } catch (err) {
       const errorMessage = handleError(err);
@@ -118,7 +110,7 @@ export function useTestRun(testRunId: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [testRunId]);
+  }, [testSuiteId, testRunId]);
 
   useEffect(() => {
     fetchTestRun();

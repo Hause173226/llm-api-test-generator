@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
+  ArrowLeft,
   Menu,
   Sparkles,
   Moon,
@@ -14,6 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
+import { getSectionBackTarget } from "../../utils/navHistory";
 
 export interface BreadcrumbItem {
   label: string;
@@ -34,6 +36,7 @@ export default function TopAppBar({
   breadcrumbs,
 }: TopAppBarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(
@@ -85,6 +88,10 @@ export default function TopAppBar({
     }
   };
 
+  const currentLocation = `${location.pathname}${location.search}`;
+  const backTarget = getSectionBackTarget(location.pathname, location.search);
+  const canGoBack = Boolean(backTarget && backTarget !== currentLocation);
+
   return (
     <header
       className={cn(
@@ -92,6 +99,16 @@ export default function TopAppBar({
       )}
     >
       <div className="flex items-center gap-4">
+        {canGoBack && (
+          <button
+            onClick={() => navigate(backTarget!)}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+            title="Back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          
+        )}
         <button
           onClick={onToggleSidebar}
           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors group cursor-pointer"
@@ -172,6 +189,26 @@ export default function TopAppBar({
           </button>
         </div>
 
+        {/* Quick switch between Manual <-> Automated testing */}
+        <div className="hidden sm:flex items-center">
+          <button
+            onClick={() => {
+              const isManual = location.pathname.startsWith("/manual-testing");
+              if (isManual) {
+                navigate("/dashboard");
+                return;
+              }
+              navigate("/manual-testing");
+            }}
+            title="Switch testing mode"
+            className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm font-bold text-slate-700 dark:text-slate-300"
+          >
+            {location.pathname.startsWith("/manual-testing")
+              ? "Go to Automated"
+              : "Go to Manual"}
+          </button>
+        </div>
+
         <div ref={userMenuRef} className="relative">
           <button
             onClick={() => setIsUserMenuOpen((prev) => !prev)}
@@ -182,7 +219,8 @@ export default function TopAppBar({
                 {user?.fullName}
               </p>
               <p className="text-[10px] text-on-surface-variant tracking-wider uppercase font-bold mt-1">
-                {user?.roles?.[0] || t("common.softwareStudent")}
+                {/* {user?.roles?.[0] || t("common.softwareStudent")} */}
+                USER
               </p>
             </div>
             <div className="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-sm">

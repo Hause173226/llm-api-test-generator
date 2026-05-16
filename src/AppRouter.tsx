@@ -1,6 +1,8 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import PersistentRoutes from "./components/routing/PersistentRoutes";
+import { useProject } from "./contexts/ProjectContext";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -18,8 +20,12 @@ import TestSuitesPage from "./pages/TestSuitesPage";
 import TestSuiteDetailPage from "./pages/TestSuiteDetailPage";
 import GeneratingTestCasesPage from "./pages/GeneratingTestCasesPage";
 import GenerationRunExecutePage from "./pages/GenerationRunExecutePage";
+import ExecutionWatchPage from "./pages/ExecutionWatchPage";
 import TestCasesHubPage from "./pages/TestCasesHubPage";
-import TestCaseStudioPage from "./pages/TestCaseStudioPage";
+import SrsDocumentsPage from "./pages/SrsDocumentsPage";
+import TraceabilityPage from "./pages/TraceabilityPage";
+
+import TestCaseDetailPage from "./pages/TestCaseDetailPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
 import EnvironmentsPage from "./pages/EnvironmentsPage";
 import TestRunsPage from "./pages/TestRunsPage";
@@ -29,11 +35,18 @@ import AccountSettingsPage from "./pages/AccountSettingsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import HelpPage from "./pages/HelpPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ManualTestingPage from "./pages/ManualTestingPage";
+import ChooseTestingPage from "./pages/ChooseTestingPage";
+import PaymentResultPage from "./pages/PaymentResultPage";
+import PaymentCancelPage from "./pages/PaymentCancelPage";
 
 export default function AppRouter() {
+  const { selectedProject } = useProject();
+  const projectKey = selectedProject?.id || "no-project";
+
   return (
     <BrowserRouter>
-      <Routes>
+      <PersistentRoutes key={projectKey}>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/product" element={<ProductPage />} />
@@ -44,6 +57,9 @@ export default function AppRouter() {
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        {/* PayOS payment return pages – public (no auth required after redirect) */}
+        <Route path="/payment/result" element={<PaymentResultPage />} />
+        <Route path="/payment/cancel" element={<PaymentCancelPage />} />
 
         {/* Protected Routes */}
         <Route
@@ -75,6 +91,14 @@ export default function AppRouter() {
           element={
             <ProtectedRoute>
               <SpecificationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/srs-documents"
+          element={
+            <ProtectedRoute>
+              <SrsDocumentsPage />
             </ProtectedRoute>
           }
         />
@@ -119,13 +143,30 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/test-suites/:suiteId/test-cases/:testCaseId"
+          path="/test-suites/:suiteId/runs/start-watch"
           element={
             <ProtectedRoute>
-              <TestCaseStudioPage />
+              <ExecutionWatchPage />
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/test-suites/:suiteId/runs/:runId/watch"
+          element={
+            <ProtectedRoute>
+              <ExecutionWatchPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-suites/:suiteId/test-cases/:testCaseId"
+          element={
+            <ProtectedRoute>
+              <TestCaseDetailPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/studio"
           element={
@@ -190,9 +231,37 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/manual-testing"
+          element={
+            <ProtectedRoute>
+              <ManualTestingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/traceability"
+          element={
+            <ProtectedRoute>
+              <TraceabilityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/choose-testing"
+          element={
+            <ProtectedRoute>
+              <ChooseTestingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-order-gate"
+          element={<Navigate to="/suggestions" replace />}
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      </PersistentRoutes>
     </BrowserRouter>
   );
 }

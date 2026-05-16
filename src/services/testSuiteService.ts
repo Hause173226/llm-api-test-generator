@@ -1,15 +1,35 @@
 import { apiService } from './apiService';
 
 // Types
+// BE returns TestSuiteScopeModel enums as numbers. Map them here.
+const GENERATION_TYPE_MAP: Record<number, string> = { 0: 'Auto', 1: 'Manual', 2: 'LLMAssisted' };
+const SUITE_STATUS_MAP: Record<number, string> = { 0: 'Draft', 1: 'Ready', 2: 'Archived' };
+const APPROVAL_STATUS_MAP: Record<number, string> = { 0: 'NotApplicable', 1: 'PendingReview', 2: 'Approved', 3: 'Rejected', 4: 'ModifiedAndApproved' };
+
+function normalizeEnum(value: any, map: Record<number, string>): string {
+  if (typeof value === 'number' && map[value] !== undefined) return map[value];
+  if (typeof value === 'string') return value;
+  return String(value);
+}
+
+function normalizeTestSuite<T extends Record<string, any>>(suite: T): T {
+  return {
+    ...suite,
+    generationType: normalizeEnum(suite.generationType, GENERATION_TYPE_MAP),
+    status: normalizeEnum(suite.status, SUITE_STATUS_MAP),
+    approvalStatus: normalizeEnum(suite.approvalStatus, APPROVAL_STATUS_MAP),
+  };
+}
+
 export interface TestSuite {
   id: string;
   projectId: string;
   apiSpecId?: string;
   name: string;
   description?: string;
-  generationType: 'Auto' | 'Manual';
-  status: 'Draft' | 'Active' | 'Archived';
-  approvalStatus: 'Pending' | 'Approved' | 'Rejected';
+  generationType: 'Auto' | 'Manual' | 'LLMAssisted';
+  status: 'Draft' | 'Ready' | 'Archived';
+  approvalStatus: 'NotApplicable' | 'PendingReview' | 'Approved' | 'Rejected' | 'ModifiedAndApproved';
   selectedEndpointIds: string[];
   endpointBusinessContexts: Record<string, string>;
   globalBusinessRules?: string;
@@ -24,9 +44,9 @@ export interface TestSuite {
 export interface CreateTestSuiteRequest {
   name: string;
   description?: string;
-  apiSpecId: string;
-  generationType?: 'Auto' | 'Manual';
-  selectedEndpointIds: string[];
+  apiSpecId?: string;
+  generationType?: 'Auto' | 'Manual' | 'LLMAssisted';
+  selectedEndpointIds?: string[];
   endpointBusinessContexts?: Record<string, string>;
   globalBusinessRules?: string;
   rowVersion?: string;
@@ -75,49 +95,56 @@ class TestSuiteService {
       `/projects/${projectId}/test-suites`
     );
     // Backend returns array directly, not paginated response
-    return Array.isArray(response) ? response : [];
+    const items = Array.isArray(response) ? response : [];
+    return items.map(normalizeTestSuite);
   }
 
   async getTestSuiteDetail(projectId: string, suiteId: string): Promise<TestSuite> {
     const response = await apiService.get<TestSuite>(
       `/projects/${projectId}/test-suites/${suiteId}`
     );
-    return response;
+    return normalizeTestSuite(response);
   }
 
   async createTestSuite(
     projectId: string,
     data: CreateTestSuiteRequest
   ): Promise<TestSuite> {
-    // Backend expects PascalCase
+    // Backend uses camelCase (JsonStringEnumConverter)
     const payload = {
-      Name: data.name,
-      Description: data.description || '',
-      ApiSpecId: data.apiSpecId,
-      GenerationType: data.generationType || 'Auto',
-      SelectedEndpointIds: data.selectedEndpointIds,
-      EndpointBusinessContexts: data.endpointBusinessContexts || {},
-      GlobalBusinessRules: data.globalBusinessRules || '',
+      name: data.name,
+      description: data.description || '',
+      apiSpecId: data.apiSpecId,
+      generationType: data.generationType || 'Auto',
+      selectedEndpointIds: data.selectedEndpointIds || [],
+      endpointBusinessContexts: data.endpointBusinessContexts || {},
+      globalBusinessRules: data.globalBusinessRules || '',
     };
-    
-    return await apiService.post<TestSuite>(
+
+    const response = await apiService.post<TestSuite>(
       `/projects/${projectId}/test-suites`,
       payload
     );
+    return normalizeTestSuite(response);
   }
 
   async proposeOrder(
     suiteId: string,
     data: ProposeOrderRequest,
   ): Promise<OrderProposalResponse> {
+    const payload: Record<string, any> = {
+      specificationId: data.specificationId,
+      selectedEndpointIds: data.selectedEndpointIds || [],
+      reasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
+    };
+
+    if (data.source) {
+      payload.source = data.source;
+    }
+
     return await apiService.post<OrderProposalResponse>(
       `/test-suites/${suiteId}/order-proposals`,
-      {
-        SpecificationId: data.specificationId,
-        SelectedEndpointIds: data.selectedEndpointIds || [],
-        Source: data.source || 'System',
-        ReasoningNote: data.reasoningNote || 'Auto-generated after suite creation',
-      },
+      payload,
     );
   }
 
@@ -130,10 +157,22 @@ class TestSuiteService {
     return await apiService.post<OrderProposalResponse>(
       `/test-suites/${suiteId}/order-proposals/${proposalId}/approve`,
       {
-        RowVersion: rowVersion,
-        ReviewNotes: reviewNotes,
+        rowVersion: rowVersion,
+        reviewNotes: reviewNotes,
       },
     );
+  }
+
+  /**
+   * Check the order gate status before generation or LLM suggestion preview.
+   * Returns whether the gate is passed (approved order exists).
+   */
+  async getOrderGateStatus(suiteId: string): Promise<{
+    isGatePassed: boolean;
+    activeProposalStatus?: number | null;
+    message?: string;
+  }> {
+    return await apiService.get(`/test-suites/${suiteId}/order-gate-status`);
   }
 
   async generateTestSuite(
@@ -151,18 +190,17 @@ class TestSuiteService {
     suiteId: string,
     data: Partial<CreateTestSuiteRequest>
   ): Promise<TestSuite> {
-    // Backend expects PascalCase
     const payload = {
-      Name: data.name,
-      Description: data.description || '',
-      ApiSpecId: data.apiSpecId,
-      GenerationType: data.generationType || 'Auto',
-      SelectedEndpointIds: data.selectedEndpointIds || [],
-      EndpointBusinessContexts: data.endpointBusinessContexts || {},
-      GlobalBusinessRules: data.globalBusinessRules || '',
-      RowVersion: data.rowVersion,
+      name: data.name,
+      description: data.description || '',
+      apiSpecId: data.apiSpecId,
+      generationType: data.generationType || 'Auto',
+      selectedEndpointIds: data.selectedEndpointIds || [],
+      endpointBusinessContexts: data.endpointBusinessContexts || {},
+      globalBusinessRules: data.globalBusinessRules || '',
+      rowVersion: data.rowVersion,
     };
-    
+
     return await apiService.put<TestSuite>(
       `/projects/${projectId}/test-suites/${suiteId}`,
       payload

@@ -1,7 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  Filter,
+  RefreshCw,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { cn } from "../lib/utils";
@@ -24,9 +30,18 @@ interface FailureExplanationModel {
   testSuiteId: string;
   testRunId: string;
   testCaseId: string;
+  endpointId?: string | null;
   summaryVi?: string;
   possibleCauses?: string[];
   suggestedNextActions?: string[];
+  confidence?: string;
+  source?: string;
+  provider?: string;
+  model?: string;
+  tokensUsed?: number;
+  latencyMs?: number;
+  generatedAt?: string;
+  failureCodes?: string[];
 }
 
 export default function SuggestionsPage() {
@@ -39,6 +54,7 @@ export default function SuggestionsPage() {
   const suiteIdFromQuery = searchParams.get("suiteId") || "";
   const runIdFromQuery = searchParams.get("runId") || "";
   const selectedProjectId = selectedProject?.id || "";
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const [selectedSuiteId, setSelectedSuiteId] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
@@ -56,6 +72,35 @@ export default function SuggestionsPage() {
   const [isLoadingRuns, setIsLoadingRuns] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      lastProjectIdRef.current = selectedProjectId || null;
+      return;
+    }
+
+    if (
+      lastProjectIdRef.current &&
+      lastProjectIdRef.current !== selectedProjectId
+    ) {
+      navigate("/suggestions", { replace: true });
+      setSelectedSuiteId("");
+      setSelectedRunId("");
+      setRuns([]);
+      setRunDetail(null);
+      setRunDetailsUnavailable(false);
+      setExplanationsByCaseId({});
+      setLoadingExplanationByCaseId({});
+    }
+
+    lastProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId, navigate]);
+
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterTestType, setFilterTestType] = useState("");
+  const [filterEndpoint, setFilterEndpoint] = useState("");
 
   const { testSuites, isLoading: isLoadingSuites } =
     useTestSuites(selectedProjectId);
@@ -117,7 +162,8 @@ export default function SuggestionsPage() {
 
       if (items.length > 0) {
         // Ưu tiên: 1) preferRunId (từ URL), 2) state hiện tại, 3) localStorage, 4) run mới nhất
-        const storedRunId = localStorage.getItem(`suggestions_runId:${suiteId}`) || "";
+        const storedRunId =
+          localStorage.getItem(`suggestions_runId:${suiteId}`) || "";
         const currentRunId = preferRunId || storedRunId;
         const preferredRun = items.some((run) => run.id === currentRunId)
           ? currentRunId
@@ -164,7 +210,7 @@ export default function SuggestionsPage() {
       setRunDetail(detail);
       setRunDetailsUnavailable(
         (detail?.resultsSource || "").toLowerCase() === "unavailable" &&
-        (detail?.cases?.length || 0) === 0,
+          (detail?.cases?.length || 0) === 0,
       );
       setExplanationsByCaseId({});
     } catch (err) {
@@ -278,6 +324,76 @@ export default function SuggestionsPage() {
   const failedCases = (runDetail?.cases || []).filter(
     (testCase) => normalizeStatus(testCase.status) === "failed",
   );
+
+  // Unique filter options from current run
+  const uniqueStatuses = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of runDetail?.cases || []) {
+      if (c.status) set.add(c.status);
+    }
+    return Array.from(set).sort();
+  }, [runDetail]);
+
+  const uniqueTestTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of runDetail?.cases || []) {
+      if (c.testType) set.add(c.testType);
+    }
+    return Array.from(set).sort();
+  }, [runDetail]);
+
+  const uniqueEndpoints = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of runDetail?.cases || []) {
+      const url = c.resolvedUrl || "";
+      let path = url;
+      try {
+        path = new URL(url).pathname;
+      } catch {
+        /* keep as-is */
+      }
+      const ep = c.httpMethod ? `${c.httpMethod} ${path}` : path;
+      if (ep.trim()) set.add(ep);
+    }
+    return Array.from(set).sort();
+  }, [runDetail]);
+
+  const filteredCases = useMemo(() => {
+    let result = runDetail?.cases || [];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.resolvedUrl || "").toLowerCase().includes(q),
+      );
+    }
+
+    if (filterStatus) {
+      result = result.filter((c) => c.status === filterStatus);
+    }
+
+    if (filterTestType) {
+      result = result.filter((c) => c.testType === filterTestType);
+    }
+
+    if (filterEndpoint) {
+      result = result.filter((c) => {
+        const url = c.resolvedUrl || "";
+        let path = url;
+        try {
+          path = new URL(url).pathname;
+        } catch {
+          /* keep as-is */
+        }
+        const ep = c.httpMethod ? `${c.httpMethod} ${path}` : path;
+        return ep === filterEndpoint;
+      });
+    }
+
+    return result;
+  }, [runDetail, searchQuery, filterStatus, filterTestType, filterEndpoint]);
 
   const getCheckStateClass = (value?: boolean) => {
     if (value === true) {
@@ -410,7 +526,10 @@ export default function SuggestionsPage() {
               onChange={(e) => {
                 setSelectedRunId(e.target.value);
                 if (selectedSuiteId && e.target.value) {
-                  localStorage.setItem(`suggestions_runId:${selectedSuiteId}`, e.target.value);
+                  localStorage.setItem(
+                    `suggestions_runId:${selectedSuiteId}`,
+                    e.target.value,
+                  );
                 }
               }}
               disabled={!selectedSuiteId || isLoadingRuns}
@@ -553,7 +672,96 @@ export default function SuggestionsPage() {
               </div>
             )}
 
-            {runDetail.cases.map((testCase) => {
+            {/* Filter Bar */}
+            <div className="bg-surface-container-lowest dark:bg-slate-900/90 p-4 rounded-2xl border border-outline-variant/10 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Filter className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
+                <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
+                  Test Case Filters
+                </span>
+                {(searchQuery ||
+                  filterStatus ||
+                  filterTestType ||
+                  filterEndpoint) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setFilterStatus("");
+                      setFilterTestType("");
+                      setFilterEndpoint("");
+                    }}
+                    className="ml-auto text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by test case name or URL..."
+                  className="w-full pl-9 pr-4 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all placeholder:text-on-surface-variant/60"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                >
+                  <option value="">All statuses</option>
+                  {uniqueStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterTestType}
+                  onChange={(e) => setFilterTestType(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                >
+                  <option value="">All test types</option>
+                  {uniqueTestTypes.map((tt) => (
+                    <option key={tt} value={tt}>
+                      {tt}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterEndpoint}
+                  onChange={(e) => setFilterEndpoint(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                >
+                  <option value="">All endpoints</option>
+                  {uniqueEndpoints.map((ep) => (
+                    <option key={ep} value={ep}>
+                      {ep}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {(searchQuery ||
+                filterStatus ||
+                filterTestType ||
+                filterEndpoint) && (
+                <p className="text-xs text-on-surface-variant mt-2">
+                  Showing {filteredCases.length} of{" "}
+                  {runDetail?.cases?.length || 0} test cases
+                </p>
+              )}
+            </div>
+
+            {filteredCases.map((testCase) => {
               const explanation = explanationsByCaseId[testCase.testCaseId];
               const loadingExplanation =
                 !!loadingExplanationByCaseId[testCase.testCaseId];
@@ -579,7 +787,12 @@ export default function SuggestionsPage() {
                   <p className="text-lg font-bold text-on-surface">
                     {testCase.name}
                   </p>
-                  <p className="text-on-surface-variant mt-1">
+                  {testCase.description && (
+                    <p className="text-sm text-on-surface-variant mt-0.5">
+                      {testCase.description}
+                    </p>
+                  )}
+                  <p className="text-sm text-primary/80 dark:text-indigo-400 mt-1">
                     {testCase.resolvedUrl || t("suggestions.noUrl")}
                   </p>
 
@@ -587,279 +800,784 @@ export default function SuggestionsPage() {
                     <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-on-surface">
                       {t("suggestions.executionDetails")}
                     </summary>
-                    <div className="px-4 pb-4 pt-1 space-y-4 text-sm">
-                      <div className="rounded-lg px-3 py-2 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
-                        <span className="font-semibold">
-                          {t("suggestions.executionMode")}:
-                        </span>{" "}
-                        {getExecutionModeLabel(testCase.testType)}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
-                          <span className="font-semibold">
-                            {t("suggestions.orderIndex")}:{" "}
-                          </span>
-                          <span>{testCase.orderIndex}</span>
+                    <div className="px-4 pb-4 pt-1 space-y-6 text-sm">
+                      {/* 1. REQUEST INPUT */}
+                      <div className="rounded-xl border border-outline-variant/20 dark:border-slate-600 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-slate-800 dark:to-slate-700 border-b border-outline-variant/10 dark:border-slate-600">
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-900 dark:text-cyan-200 flex items-center gap-2">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            Request Input
+                          </h3>
                         </div>
-                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
-                          <span className="font-semibold">
-                            {t("suggestions.httpMethod")}:{" "}
-                          </span>
-                          <span>
-                            {testCase.httpMethod || t("suggestions.none")}
-                          </span>
-                        </div>
-                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
-                          <span className="font-semibold">
-                            {t("suggestions.bodyType")}:{" "}
-                          </span>
-                          <span>
-                            {testCase.bodyType || t("suggestions.none")}
-                          </span>
-                        </div>
-                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
-                          <span className="font-semibold">
-                            {t("suggestions.timeoutMs")}:{" "}
-                          </span>
-                          <span>
-                            {typeof testCase.timeoutMs === "number"
-                              ? `${testCase.timeoutMs} ms`
-                              : t("suggestions.none")}
-                          </span>
-                        </div>
-                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant lg:col-span-2">
-                          <span className="font-semibold">
-                            {t("suggestions.expectedStatus")}:{" "}
-                          </span>
-                          <span>
-                            {testCase.expectedStatus || t("suggestions.none")}
-                          </span>
-                        </div>
-                        <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
-                          <span className="font-semibold">
-                            {t("suggestions.durationMs")}:{" "}
-                          </span>
-                          <span>{testCase.durationMs} ms</span>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg px-3 py-2",
-                            getCheckStateClass(testCase.statusCodeMatched),
-                          )}
-                        >
-                          <span className="font-semibold">
-                            {t("suggestions.statusCodeCheck")}:
-                          </span>
-                          <span>
-                            {getCheckStateLabel(testCase.statusCodeMatched)}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg px-3 py-2",
-                            getCheckStateClass(testCase.schemaMatched),
-                          )}
-                        >
-                          <span className="font-semibold">
-                            {t("suggestions.schemaCheck")}:
-                          </span>
-                          <span>
-                            {getCheckStateLabel(testCase.schemaMatched)}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg px-3 py-2",
-                            getCheckStateClass(testCase.headerChecksPassed),
-                          )}
-                        >
-                          <span className="font-semibold">
-                            {t("suggestions.headerChecks")}:
-                          </span>
-                          <span>
-                            {getCheckStateLabel(testCase.headerChecksPassed)}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg px-3 py-2",
-                            getCheckStateClass(testCase.bodyContainsPassed),
-                          )}
-                        >
-                          <span className="font-semibold">
-                            {t("suggestions.bodyContainsCheck")}:
-                          </span>
-                          <span>
-                            {getCheckStateLabel(testCase.bodyContainsPassed)}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg px-3 py-2",
-                            getCheckStateClass(testCase.bodyNotContainsPassed),
-                          )}
-                        >
-                          <span className="font-semibold">
-                            {t("suggestions.bodyNotContainsCheck")}:
-                          </span>
-                          <span>
-                            {getCheckStateLabel(testCase.bodyNotContainsPassed)}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg px-3 py-2",
-                            getCheckStateClass(testCase.jsonPathChecksPassed),
-                          )}
-                        >
-                          <span className="font-semibold">
-                            {t("suggestions.jsonPathCheck")}:
-                          </span>
-                          <span>
-                            {getCheckStateLabel(testCase.jsonPathChecksPassed)}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg px-3 py-2",
-                            getCheckStateClass(testCase.responseTimePassed),
-                          )}
-                        >
-                          <span className="font-semibold">
-                            {t("suggestions.responseTimeCheck")}:
-                          </span>
-                          <span>
-                            {getCheckStateLabel(testCase.responseTimePassed)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                            {t("suggestions.queryParams")}
-                          </p>
-                          <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
-                            {Object.keys(testCase.queryParams || {}).length > 0
-                              ? JSON.stringify(testCase.queryParams, null, 2)
-                              : t("suggestions.none")}
-                          </pre>
-                        </div>
-
-                        <div>
-                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                            {t("suggestions.dependencies")}
-                          </p>
-                          <p className="text-on-surface break-all">
-                            {testCase.dependencyIds.length > 0
-                              ? testCase.dependencyIds.join(", ")
-                              : t("suggestions.none")}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                            {t("suggestions.skippedByDependencies")}
-                          </p>
-                          <p className="text-on-surface break-all">
-                            {testCase.skippedBecauseDependencyIds.length > 0
-                              ? testCase.skippedBecauseDependencyIds.join(", ")
-                              : t("suggestions.none")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                            {t("suggestions.requestHeaders")}
-                          </p>
-                          <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
-                            {Object.keys(testCase.requestHeaders || {}).length >
-                              0
-                              ? JSON.stringify(testCase.requestHeaders, null, 2)
-                              : t("suggestions.none")}
-                          </pre>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                            {t("suggestions.responseHeaders")}
-                          </p>
-                          <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
-                            {Object.keys(testCase.responseHeaders || {})
-                              .length > 0
-                              ? JSON.stringify(
-                                testCase.responseHeaders,
-                                null,
-                                2,
-                              )
-                              : t("suggestions.none")}
-                          </pre>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                          {t("suggestions.requestBody")}
-                        </p>
-                        <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
-                          {testCase.requestBody || t("suggestions.none")}
-                        </pre>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                          {t("suggestions.responseBodyPreview")}
-                        </p>
-                        <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
-                          {testCase.responseBodyPreview ||
-                            t("suggestions.none")}
-                        </pre>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                          {t("suggestions.extractedVariables")}
-                        </p>
-                        <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-xs text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
-                          {Object.keys(testCase.extractedVariables || {})
-                            .length > 0
-                            ? JSON.stringify(
-                              testCase.extractedVariables,
-                              null,
-                              2,
-                            )
-                            : t("suggestions.none")}
-                        </pre>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
-                          {t("suggestions.failureReasons")}
-                        </p>
-                        {testCase.failureReasons.length > 0 ? (
-                          <div className="space-y-2">
-                            {testCase.failureReasons.map((reason, index) => (
-                              <div
-                                key={`${testCase.testCaseId}-reason-${index}`}
-                                className="rounded-lg px-3 py-2 bg-rose-500/5 border border-rose-500/20"
-                              >
-                                <p className="text-xs text-rose-700 dark:text-rose-300 font-semibold">
-                                  {reason.code || "VALIDATION"}
-                                </p>
-                                <p className="text-xs text-on-surface mt-1">
-                                  {reason.message || t("suggestions.none")}
-                                </p>
+                        <div className="p-4 bg-white dark:bg-slate-900/50">
+                          <div className="space-y-3">
+                            {/* Request Method & URL */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-3">
+                                <div className="text-[10px] text-on-surface-variant mb-1 uppercase font-semibold">
+                                  Method
+                                </div>
+                                <div className="font-mono text-cyan-700 dark:text-cyan-300 font-bold text-sm">
+                                  {testCase.httpMethod || "GET"}
+                                </div>
                               </div>
-                            ))}
+                              <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-3 md:col-span-3">
+                                <div className="text-[10px] text-on-surface-variant mb-1 uppercase font-semibold">
+                                  URL
+                                </div>
+                                <div className="font-mono text-cyan-700 dark:text-cyan-300 text-xs break-all">
+                                  {testCase.resolvedUrl ||
+                                    t("suggestions.noUrl")}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Request Headers */}
+                            {Object.keys(testCase.requestHeaders || {}).length >
+                              0 && (
+                              <div>
+                                <div className="text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">
+                                  Headers
+                                </div>
+                                <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-[11px] text-on-surface overflow-x-auto whitespace-pre-wrap break-words max-h-32">
+                                  {JSON.stringify(
+                                    testCase.requestHeaders,
+                                    null,
+                                    2,
+                                  )}
+                                </pre>
+                              </div>
+                            )}
+
+                            {/* Request Body */}
+                            {testCase.requestBody && (
+                              <div>
+                                <div className="text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">
+                                  Body
+                                </div>
+                                <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-[11px] text-on-surface overflow-x-auto whitespace-pre-wrap break-words max-h-32">
+                                  {testCase.requestBody}
+                                </pre>
+                              </div>
+                            )}
+
+                            {/* Query Parameters */}
+                            {Object.keys(testCase.queryParams || {}).length >
+                              0 && (
+                              <div>
+                                <div className="text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">
+                                  Query Parameters
+                                </div>
+                                <pre className="rounded-lg p-3 bg-surface-container-high dark:bg-slate-800 text-[11px] text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                                  {JSON.stringify(
+                                    testCase.queryParams,
+                                    null,
+                                    2,
+                                  )}
+                                </pre>
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <p className="text-sm text-on-surface-variant">
-                            {t("suggestions.noFailureReason")}
-                          </p>
-                        )}
+                        </div>
                       </div>
+
+                      {/* 2. EXPECTED VS ACTUAL RESPONSE */}
+                      {(() => {
+                        const isSkipped =
+                          (testCase.status || "").toLowerCase() === "skipped";
+                        const neverSentRequest =
+                          isSkipped || testCase.httpStatusCode == null;
+
+                        const parseJson = <T,>(raw?: string): T | null => {
+                          if (!raw) return null;
+                          try {
+                            return JSON.parse(raw) as T;
+                          } catch {
+                            return null;
+                          }
+                        };
+
+                        const bodyContainsList = parseJson<string[]>(
+                          testCase.expectedBodyContains,
+                        );
+                        const bodyNotContainsList = parseJson<string[]>(
+                          testCase.expectedBodyNotContains,
+                        );
+                        const jsonPathMap = parseJson<Record<string, string>>(
+                          testCase.expectedJsonPathChecks,
+                        );
+                        const maxRespTime = testCase.expectedMaxResponseTime;
+
+                        return (
+                          <div className="rounded-xl border border-outline-variant/20 dark:border-slate-600 overflow-hidden shadow-sm">
+                            <div className="px-4 py-3 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-slate-800 dark:to-slate-700 border-b border-outline-variant/10 dark:border-slate-600">
+                              <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                Response: Expected vs Actual
+                              </h3>
+                            </div>
+                            <div className="p-4 bg-white dark:bg-slate-900/50 space-y-4 text-xs">
+                              {isSkipped ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                                    ⏭ SKIPPED — no HTTP request sent
+                                  </span>
+                                  {testCase.skippedCause && (
+                                    <span className="text-amber-600 dark:text-amber-400 break-all">
+                                      {testCase.skippedCause}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <>
+                                  {/* 2-Column Layout: Expected vs Actual */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* LEFT COLUMN: Expected */}
+                                    <div className="space-y-3">
+                                      <div className="flex items-center gap-2 pb-2 border-b-2 border-emerald-200 dark:border-emerald-800">
+                                        <svg
+                                          className="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                          />
+                                        </svg>
+                                        <span className="text-sm font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                                          Expected
+                                        </span>
+                                      </div>
+
+                                      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">
+                                        <div className="text-[10px] text-on-surface-variant mb-1">
+                                          HTTP Status
+                                        </div>
+                                        <div className="font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
+                                          {testCase.expectedStatus || "—"}
+                                        </div>
+                                      </div>
+
+                                      {testCase.schemaMatched != null && (
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">
+                                          <div className="text-[10px] text-on-surface-variant">
+                                            Schema Validation
+                                          </div>
+                                          <div className="text-[10px] italic text-emerald-600 dark:text-emerald-400">
+                                            Required
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {bodyContainsList &&
+                                        bodyContainsList.length > 0 && (
+                                          <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">
+                                            <div className="text-[10px] text-on-surface-variant mb-1">
+                                              Body Must Contain
+                                            </div>
+                                            <div className="space-y-1">
+                                              {bodyContainsList.map((s, i) => (
+                                                <div
+                                                  key={i}
+                                                  className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300 break-all"
+                                                >
+                                                  &quot;{s}&quot;
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      {bodyNotContainsList &&
+                                        bodyNotContainsList.length > 0 && (
+                                          <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">
+                                            <div className="text-[10px] text-on-surface-variant mb-1">
+                                              Body Must NOT Contain
+                                            </div>
+                                            <div className="space-y-1">
+                                              {bodyNotContainsList.map(
+                                                (s, i) => (
+                                                  <div
+                                                    key={i}
+                                                    className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300 break-all"
+                                                  >
+                                                    &quot;{s}&quot;
+                                                  </div>
+                                                ),
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      {jsonPathMap &&
+                                        Object.keys(jsonPathMap).length > 0 && (
+                                          <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">
+                                            <div className="text-[10px] text-on-surface-variant mb-1">
+                                              JSON Path Checks
+                                            </div>
+                                            <div className="space-y-1">
+                                              {Object.entries(jsonPathMap).map(
+                                                ([path, expected]) => (
+                                                  <div
+                                                    key={path}
+                                                    className="text-[10px]"
+                                                  >
+                                                    <span className="font-mono text-cyan-700 dark:text-cyan-300">
+                                                      {path}
+                                                    </span>
+                                                    <span className="text-on-surface-variant">
+                                                      {" "}
+                                                      ={" "}
+                                                    </span>
+                                                    <span className="font-mono text-emerald-700 dark:text-emerald-300 break-all">
+                                                      {!expected
+                                                        ? "*"
+                                                        : expected.length > 60
+                                                          ? expected.slice(
+                                                              0,
+                                                              32,
+                                                            ) +
+                                                            "…" +
+                                                            expected.slice(-16)
+                                                          : expected}
+                                                    </span>
+                                                  </div>
+                                                ),
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      {maxRespTime != null && (
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">
+                                          <div className="text-[10px] text-on-surface-variant mb-1">
+                                            Max Response Time
+                                          </div>
+                                          <div className="font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
+                                            {maxRespTime}ms
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* RIGHT COLUMN: Actual */}
+                                    <div className="space-y-3">
+                                      <div className="flex items-center gap-2 pb-2 border-b-2 border-blue-200 dark:border-blue-800">
+                                        <svg
+                                          className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                          />
+                                        </svg>
+                                        <span className="text-sm font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                                          Actual
+                                        </span>
+                                      </div>
+
+                                      <div
+                                        className={`rounded-lg p-2 ${testCase.statusCodeMatched === true ? "bg-emerald-50 dark:bg-emerald-900/20" : neverSentRequest ? "bg-amber-50 dark:bg-amber-900/20" : "bg-rose-50 dark:bg-rose-900/20"}`}
+                                      >
+                                        <div className="text-[10px] text-on-surface-variant mb-1">
+                                          HTTP Status
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span
+                                            className={`font-mono font-semibold ${testCase.statusCodeMatched === true ? "text-emerald-700 dark:text-emerald-300" : neverSentRequest ? "text-amber-700 dark:text-amber-300" : "text-rose-700 dark:text-rose-300"}`}
+                                          >
+                                            {testCase.httpStatusCode ??
+                                              "(no response)"}
+                                          </span>
+                                          <span
+                                            className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold ${testCase.statusCodeMatched === true ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : neverSentRequest ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                          >
+                                            {testCase.statusCodeMatched === true
+                                              ? "✓ PASS"
+                                              : neverSentRequest
+                                                ? "⚠ NO RESP"
+                                                : "✗ FAIL"}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {testCase.schemaMatched != null && (
+                                        <div
+                                          className={`rounded-lg p-2 ${testCase.schemaMatched ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-rose-50 dark:bg-rose-900/20"}`}
+                                        >
+                                          <div className="text-[10px] text-on-surface-variant mb-1">
+                                            Schema Validation
+                                          </div>
+                                          <span
+                                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${testCase.schemaMatched ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                          >
+                                            {testCase.schemaMatched
+                                              ? "✓ PASS"
+                                              : "✗ FAIL"}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {bodyContainsList &&
+                                        bodyContainsList.length > 0 && (
+                                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+                                            <div className="text-[10px] text-on-surface-variant mb-1">
+                                              Body Contains Results
+                                            </div>
+                                            <div className="space-y-1">
+                                              {bodyContainsList.map((s, i) => {
+                                                const inBody =
+                                                  testCase.responseBodyPreview?.includes(
+                                                    s,
+                                                  );
+                                                const failedForThis =
+                                                  testCase.failureReasons?.some(
+                                                    (r) =>
+                                                      r.code ===
+                                                        "BODY_CONTAINS_MISSING" &&
+                                                      r.expected === s,
+                                                  );
+                                                const pass =
+                                                  inBody === true &&
+                                                  !failedForThis;
+                                                return (
+                                                  <div
+                                                    key={i}
+                                                    className="flex items-center gap-2"
+                                                  >
+                                                    <span className="font-mono text-[10px] text-blue-700 dark:text-blue-300 break-all flex-1">
+                                                      &quot;{s}&quot;
+                                                    </span>
+                                                    <span
+                                                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pass ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                                    >
+                                                      {pass
+                                                        ? "✓ found"
+                                                        : "✗ missing"}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      {bodyNotContainsList &&
+                                        bodyNotContainsList.length > 0 && (
+                                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+                                            <div className="text-[10px] text-on-surface-variant mb-1">
+                                              Body Not Contains Results
+                                            </div>
+                                            <div className="space-y-1">
+                                              {bodyNotContainsList.map(
+                                                (s, i) => {
+                                                  const inBody =
+                                                    testCase.responseBodyPreview?.includes(
+                                                      s,
+                                                    );
+                                                  const pass = !inBody;
+                                                  return (
+                                                    <div
+                                                      key={i}
+                                                      className="flex items-center gap-2"
+                                                    >
+                                                      <span className="font-mono text-[10px] text-blue-700 dark:text-blue-300 break-all flex-1">
+                                                        &quot;{s}&quot;
+                                                      </span>
+                                                      <span
+                                                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pass ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                                      >
+                                                        {pass
+                                                          ? "✓ absent"
+                                                          : "✗ present"}
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                },
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      {jsonPathMap &&
+                                        Object.keys(jsonPathMap).length > 0 && (
+                                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+                                            <div className="text-[10px] text-on-surface-variant mb-1">
+                                              JSON Path Results
+                                            </div>
+                                            <div className="space-y-1">
+                                              {Object.entries(jsonPathMap).map(
+                                                ([path, expected]) => {
+                                                  const failureForPath =
+                                                    testCase.failureReasons?.find(
+                                                      (r) =>
+                                                        r.target === path &&
+                                                        r.code?.startsWith(
+                                                          "JSONPATH",
+                                                        ),
+                                                    );
+                                                  // A path passes when there is no specific failure for it.
+                                                  // Do NOT use jsonPathChecksPassed here — that flag reflects
+                                                  // whether ALL paths passed; using it would incorrectly mark
+                                                  // individually-passing paths as X when any sibling fails.
+                                                  const pass = !failureForPath;
+                                                  return (
+                                                    <div
+                                                      key={path}
+                                                      className="flex items-center gap-2"
+                                                    >
+                                                      <div className="text-[10px] flex-1 min-w-0">
+                                                        <span className="font-mono text-cyan-700 dark:text-cyan-300">
+                                                          {path}
+                                                        </span>
+                                                        {failureForPath?.actual && (
+                                                          <>
+                                                            <span className="text-on-surface-variant">
+                                                              {" "}
+                                                              ={" "}
+                                                            </span>
+                                                            <span className="font-mono text-rose-700 dark:text-rose-300 break-all whitespace-pre-wrap">
+                                                              {
+                                                                failureForPath.actual
+                                                              }
+                                                            </span>
+                                                          </>
+                                                        )}
+                                                      </div>
+                                                      <span
+                                                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pass ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                                      >
+                                                        {pass ? "✓" : "✗"}
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                },
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      {maxRespTime != null && (
+                                        <div
+                                          className={`rounded-lg p-2 ${testCase.responseTimePassed !== false ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-rose-50 dark:bg-rose-900/20"}`}
+                                        >
+                                          <div className="text-[10px] text-on-surface-variant mb-1">
+                                            Response Time
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className={`font-mono font-semibold ${testCase.responseTimePassed !== false ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}`}
+                                            >
+                                              {testCase.durationMs}ms
+                                            </span>
+                                            <span
+                                              className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold ${testCase.responseTimePassed !== false ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                            >
+                                              {testCase.responseTimePassed !==
+                                              false
+                                                ? "✓"
+                                                : "✗"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {testCase.responseBodyPreview && (
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+                                          <div className="text-[10px] text-on-surface-variant mb-1">
+                                            Response Body
+                                          </div>
+                                          <pre className="font-mono text-[10px] text-blue-700 dark:text-blue-300 overflow-x-auto whitespace-pre-wrap break-all max-h-32">
+                                            {(() => {
+                                              try {
+                                                return JSON.stringify(
+                                                  JSON.parse(
+                                                    testCase.responseBodyPreview,
+                                                  ),
+                                                  null,
+                                                  2,
+                                                );
+                                              } catch {
+                                                return testCase.responseBodyPreview;
+                                              }
+                                            })()}
+                                          </pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {testCase.failureReasons &&
+                                    testCase.failureReasons.length > 0 && (
+                                      <div className="mt-6 pt-4 border-t-2 border-rose-200 dark:border-rose-800">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <svg
+                                            className="w-5 h-5 text-rose-600 dark:text-rose-400"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            />
+                                          </svg>
+                                          <h4 className="text-sm font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                                            Failure Details
+                                          </h4>
+                                        </div>
+                                        <div className="space-y-2">
+                                          {testCase.failureReasons.map(
+                                            (fr, i) => (
+                                              <div
+                                                key={i}
+                                                className="bg-rose-50 dark:bg-rose-900/20 rounded-lg px-3 py-2"
+                                              >
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <span className="font-mono text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase">
+                                                    {fr.code?.replace(
+                                                      /_/g,
+                                                      " ",
+                                                    )}
+                                                  </span>
+                                                  {fr.target && (
+                                                    <span className="text-[10px] text-rose-600 dark:text-rose-400 italic">
+                                                      ({fr.target})
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                {fr.message && (
+                                                  <div className="text-[10px] text-on-surface-variant break-all">
+                                                    {fr.message}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Test Statistics */}
+                      <div className="mt-6 rounded-xl border border-outline-variant/20 dark:border-slate-600 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-700 border-b border-outline-variant/10 dark:border-slate-600">
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                              />
+                            </svg>
+                            Test Statistics
+                          </h3>
+                        </div>
+                        <div className="p-4 bg-white dark:bg-slate-900/50">
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                            <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                              <span className="font-semibold">
+                                {t("suggestions.orderIndex")}:{" "}
+                              </span>
+                              <span>{testCase.orderIndex}</span>
+                            </div>
+                            <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                              <span className="font-semibold">
+                                {t("suggestions.httpMethod")}:{" "}
+                              </span>
+                              <span>
+                                {testCase.httpMethod || t("suggestions.none")}
+                              </span>
+                            </div>
+                            <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                              <span className="font-semibold">
+                                {t("suggestions.bodyType")}:{" "}
+                              </span>
+                              <span>
+                                {testCase.bodyType || t("suggestions.none")}
+                              </span>
+                            </div>
+                            <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                              <span className="font-semibold">
+                                {t("suggestions.timeoutMs")}:{" "}
+                              </span>
+                              <span>
+                                {typeof testCase.timeoutMs === "number"
+                                  ? `${testCase.timeoutMs} ms`
+                                  : t("suggestions.none")}
+                              </span>
+                            </div>
+                            <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant lg:col-span-2">
+                              <span className="font-semibold">
+                                {t("suggestions.expectedStatus")}:{" "}
+                              </span>
+                              <span>
+                                {testCase.expectedStatus ||
+                                  t("suggestions.none")}
+                              </span>
+                            </div>
+                            <div className="rounded-lg px-3 py-2 bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
+                              <span className="font-semibold">
+                                {t("suggestions.durationMs")}:{" "}
+                              </span>
+                              <span>{testCase.durationMs} ms</span>
+                            </div>
+                            <div
+                              className={cn(
+                                "rounded-lg px-3 py-2",
+                                getCheckStateClass(testCase.statusCodeMatched),
+                              )}
+                            >
+                              <span className="font-semibold">
+                                {t("suggestions.statusCodeCheck")}:
+                              </span>
+                              <span>
+                                {getCheckStateLabel(testCase.statusCodeMatched)}
+                              </span>
+                            </div>
+                            <div
+                              className={cn(
+                                "rounded-lg px-3 py-2",
+                                getCheckStateClass(testCase.schemaMatched),
+                              )}
+                            >
+                              <span className="font-semibold">
+                                {t("suggestions.schemaCheck")}:
+                              </span>
+                              <span>
+                                {getCheckStateLabel(testCase.schemaMatched)}
+                              </span>
+                            </div>
+                            <div
+                              className={cn(
+                                "rounded-lg px-3 py-2",
+                                getCheckStateClass(testCase.headerChecksPassed),
+                              )}
+                            >
+                              <span className="font-semibold">
+                                {t("suggestions.headerChecks")}:
+                              </span>
+                              <span>
+                                {getCheckStateLabel(
+                                  testCase.headerChecksPassed,
+                                )}
+                              </span>
+                            </div>
+                            <div
+                              className={cn(
+                                "rounded-lg px-3 py-2",
+                                getCheckStateClass(testCase.bodyContainsPassed),
+                              )}
+                            >
+                              <span className="font-semibold">
+                                {t("suggestions.bodyContainsCheck")}:
+                              </span>
+                              <span>
+                                {getCheckStateLabel(
+                                  testCase.bodyContainsPassed,
+                                )}
+                              </span>
+                            </div>
+                            <div
+                              className={cn(
+                                "rounded-lg px-3 py-2",
+                                getCheckStateClass(
+                                  testCase.bodyNotContainsPassed,
+                                ),
+                              )}
+                            >
+                              <span className="font-semibold">
+                                {t("suggestions.bodyNotContainsCheck")}:
+                              </span>
+                              <span>
+                                {getCheckStateLabel(
+                                  testCase.bodyNotContainsPassed,
+                                )}
+                              </span>
+                            </div>
+                            <div
+                              className={cn(
+                                "rounded-lg px-3 py-2",
+                                getCheckStateClass(
+                                  testCase.jsonPathChecksPassed,
+                                ),
+                              )}
+                            >
+                              <span className="font-semibold">
+                                {t("suggestions.jsonPathCheck")}:
+                              </span>
+                              <span>
+                                {getCheckStateLabel(
+                                  testCase.jsonPathChecksPassed,
+                                )}
+                              </span>
+                            </div>
+                            <div
+                              className={cn(
+                                "rounded-lg px-3 py-2",
+                                getCheckStateClass(testCase.responseTimePassed),
+                              )}
+                            >
+                              <span className="font-semibold">
+                                {t("suggestions.responseTimeCheck")}:
+                              </span>
+                              <span>
+                                {getCheckStateLabel(
+                                  testCase.responseTimePassed,
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {/* 3. TEST STATISTICS (moved to end) */}
+                      {/* Test Statistics section is already in the correct position */}
                     </div>
                   </details>
 
@@ -932,8 +1650,7 @@ export default function SuggestionsPage() {
               );
             })}
           </div>
-        )
-        }
+        )}
       </div>
     </MainLayout>
   );

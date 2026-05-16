@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Layers,
@@ -16,17 +16,37 @@ import { useTranslation } from "react-i18next";
 import { projectService } from "../services";
 import { handleError } from "../utils/errorHandler";
 import { cn } from "../lib/utils";
+import { useProject } from "../contexts/ProjectContext";
 
 export default function ProjectDetailedViewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { selectedProject } = useProject();
+  const selectedProjectId = selectedProject?.id || "";
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const [project, setProject] = useState<any>(null);
   const [testSuites, setTestSuites] = useState<any[]>([]);
   const [hasEndpoints, setHasEndpoints] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      lastProjectIdRef.current = selectedProjectId || null;
+      return;
+    }
+
+    if (
+      lastProjectIdRef.current &&
+      lastProjectIdRef.current !== selectedProjectId
+    ) {
+      navigate("/projects", { replace: true });
+    }
+
+    lastProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId, navigate]);
 
   const getActiveSpecSummary = (projectData: any) =>
     projectData?.activeSpecSummary || projectData?.ActiveSpecSummary || null;
@@ -246,6 +266,13 @@ export default function ProjectDetailedViewPage() {
                     <FileText className="w-5 h-5" />
                     {t("projectDetail.dataSource.uploadSpec")}
                   </button>
+                  <button
+                    onClick={() => navigate(`/srs-documents`)}
+                    className="mt-3 px-6 py-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl flex items-center gap-2 mx-auto font-semibold cursor-pointer transition-colors"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Open SRS Workflow
+                  </button>
                 </div>
               ) : (
                 <>
@@ -379,6 +406,13 @@ export default function ProjectDetailedViewPage() {
                     <FileText className="w-5 h-5" />
                     {t("projectDetail.dataSource.viewSpecs")}
                   </button>
+                  <button
+                    onClick={() => navigate(`/srs-documents`)}
+                    className="mt-3 px-6 py-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl flex items-center gap-2 mx-auto font-semibold cursor-pointer transition-colors"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Open SRS Workflow
+                  </button>
                 </div>
               ) : isSpecParseFailed ? (
                 <div className="text-center py-12">
@@ -395,6 +429,13 @@ export default function ProjectDetailedViewPage() {
                   >
                     <FileText className="w-5 h-5" />
                     {t("projectDetail.dataSource.manageSpecs")}
+                  </button>
+                  <button
+                    onClick={() => navigate(`/srs-documents`)}
+                    className="mt-3 px-6 py-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl flex items-center gap-2 mx-auto font-semibold cursor-pointer transition-colors"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Open SRS Workflow
                   </button>
                 </div>
               ) : isSpecParsed && !hasEndpoints ? (

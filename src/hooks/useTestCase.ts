@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import testCaseService, { TestCase, CreateTestCaseRequest } from '../services/testCaseService';
+import { TestRunDetailResponse } from '../services/testRunService';
 import { handleError } from '../utils/errorHandler';
 
-export const useTestCase = (testSuiteId: string, testCaseId?: string) => {
+export const useTestCase = (
+  testSuiteId: string,
+  testCaseId?: string,
+  suppressErrorToast = false,
+) => {
   const [testCase, setTestCase] = useState<TestCase | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
-  const [runResult, setRunResult] = useState<any>(null);
+  const [runResult, setRunResult] = useState<TestRunDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTestCase = async () => {
@@ -21,7 +26,7 @@ export const useTestCase = (testSuiteId: string, testCaseId?: string) => {
       const data = await testCaseService.getTestCaseById(testSuiteId, testCaseId);
       setTestCase(data);
     } catch (err) {
-      const errorMessage = handleError(err);
+      const errorMessage = handleError(err, undefined, suppressErrorToast);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -60,17 +65,24 @@ export const useTestCase = (testSuiteId: string, testCaseId?: string) => {
     }
   };
 
-  const runTestCase = async (): Promise<boolean> => {
-    if (!testSuiteId || !testCaseId) return false;
+  const runTestCase = async (
+    environmentId?: string,
+  ): Promise<TestRunDetailResponse | null> => {
+    if (!testSuiteId || !testCaseId) return null;
 
     try {
       setRunning(true);
-      const result = await testCaseService.runTestCase(testSuiteId, testCaseId);
+      setRunResult(null);
+      const result = await testCaseService.runTestCase(
+        testSuiteId,
+        testCaseId,
+        environmentId,
+      );
       setRunResult(result);
-      return true;
+      return result;
     } catch (err) {
       handleError(err);
-      return false;
+      return null;
     } finally {
       setRunning(false);
     }

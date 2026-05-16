@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -18,8 +18,6 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
-  RotateCcw,
-  StopCircle,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
@@ -33,6 +31,7 @@ import {
 } from "../utils/errorHandler";
 import { signalRService } from "../services/signalrService";
 import { useProject } from "../contexts/ProjectContext";
+import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 import environmentService, {
   ExecutionEnvironment,
 } from "../services/environmentService";
@@ -42,503 +41,294 @@ import testRunService, {
 } from "../services/testRunService";
 import { testSuiteService } from "../services/testSuiteService";
 import { apiService } from "../services/apiService";
-import { useAutoLLMAnalysis } from "../hooks/useAutoLLMAnalysis";
-import AutoAnalysisProgressPanel from "../components/test-runs/AutoAnalysisProgressPanel";
-import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 
 export default function TestRunsPage() {
   const { t } = useTranslation();
   const breadcrumbs = useProjectBreadcrumbs(t("testRuns.title"));
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { selectedProject } = useProject();
-
-  const projectId = searchParams.get("projectId") || selectedProject?.id || "";
-  const preselectedSuiteId = searchParams.get("suiteId") || "";
-  const activeSuiteIdFromQuery = searchParams.get("activeSuiteId") || "";
-  const preselectedTestCaseId = searchParams.get("testCaseId") || "";
-  const preselectedTestCaseIdsRaw = searchParams.get("testCaseIds") || "";
-
-  // Key lưu activeSuiteId theo projectId để không bị lẫn giữa các project
-  const activeSuiteStorageKey = projectId ? `testRuns_activeSuiteId:${projectId}` : null;
+  const projectId = selectedProject?.id ?? "";
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [activeSuiteId, setActiveSuiteId] = useState<string>(
+    () => searchParams.get("suiteId") || "",
+  );
+  const [activeSuiteName, setActiveSuiteName] = useState<string | undefined>(
+    undefined,
+  );
+
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
-  const [selectedTestSuiteId, setSelectedTestSuiteId] = useState("");
-  const [activeSuiteId, setActiveSuiteId] = useState(() => {
-    // Khôi phục suite đang xem từ localStorage khi mount
-    if (!projectId) return "";
-    const key = `testRuns_activeSuiteId:${projectId}`;
-    return localStorage.getItem(key) || "";
-  });
-  const [selectedTestCaseIds, setSelectedTestCaseIds] = useState<string[]>([]);
-  const [suiteTestCases, setSuiteTestCases] = useState<TestCase[]>([]);
-  const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [expandedCaseByRunId, setExpandedCaseByRunId] = useState<
+    Record<string, string | null>
+  >({});
+
   const [runDetailsById, setRunDetailsById] = useState<
     Record<string, TestRunDetailResponse>
   >({});
   const [loadingRunDetailsById, setLoadingRunDetailsById] = useState<
     Record<string, boolean>
   >({});
-  const [expandedCaseByRunId, setExpandedCaseByRunId] = useState<
-    Record<string, string | null>
-  >({});
-  const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const pageSize = 20;
 
-  const {
-    testRuns,
-    totalCount,
-    totalPages,
-    isLoading,
-    error,
-    refetch,
-    startTestRun,
-    cancelTestRun,
-    retryFailedTests,
-    exportResults,
-  } = useTestRuns(activeSuiteId || "", currentPage, pageSize, statusFilter);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
 
-  const { testSuites } = useTestSuites(projectId || "");
+  const { testSuites } = useTestSuites(projectId);
+  const { testRuns, totalCount, isLoading, error, refetch } = useTestRuns(
+    activeSuiteId || "",
+    currentPage,
+    pageSize,
+    statusFilter,
+  );
 
-  const {
-    state: autoAnalysisState,
-    cancel: cancelAutoAnalysis,
-    dismiss: dismissAutoAnalysis,
-    retry: retryAutoAnalysis,
-  } = useAutoLLMAnalysis(projectId || "", Boolean(projectId));
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize));
 
-  const activeSuiteName =
-    testSuites.find((suite) => suite.id === activeSuiteId)?.name || "";
-
-  const handleActiveSuiteChange = (suiteId: string) => {
-    setActiveSuiteId(suiteId);
-    setCurrentPage(1);
-    if (activeSuiteStorageKey) {
-      localStorage.setItem(activeSuiteStorageKey, suiteId);
-    }
-  };
-
-  const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
-    if (items.length === 0) return "";
-    const defaultEnv = items.find((env) => env.isDefault);
-    return defaultEnv?.id || items[0].id;
-  };
+  // ── Pending run (triggered when navigated from execute page) ─────────
+  const [pendingRun, setPendingRun] = useState<{
+    status: "running" | "done";
+  } | null>(null);
+  const pendingRunStarted = useRef(false);
 
   useEffect(() => {
-    const loadEnvironments = async () => {
-      if (!projectId) {
-        setEnvironments([]);
-        setSelectedEnvironmentId("");
-        return;
-      }
+    if (!projectId) {
+      lastProjectIdRef.current = projectId || null;
+      return;
+    }
 
-      try {
-        const envs = await environmentService.getEnvironments(projectId);
-        setEnvironments(envs);
-        setSelectedEnvironmentId((prev) => {
-          if (prev && envs.some((env) => env.id === prev)) {
-            return prev;
-          }
-          return getDefaultEnvironmentId(envs);
-        });
-      } catch (err) {
-        setEnvironments([]);
-        setSelectedEnvironmentId("");
-        handleError(err);
-      }
-    };
+    if (lastProjectIdRef.current && lastProjectIdRef.current !== projectId) {
+      navigate("/runs", { replace: true });
+      setActiveSuiteId("");
+      setExpandedRunId(null);
+      setExpandedCaseByRunId({});
+      setRunDetailsById({});
+      setLoadingRunDetailsById({});
+    }
 
-    loadEnvironments();
-  }, [projectId]);
+    lastProjectIdRef.current = projectId;
+  }, [projectId, navigate]);
+
+  useEffect(() => {
+    if (pendingRunStarted.current) return;
+    const envId = searchParams.get("pendingEnvironmentId");
+    const tcIds = searchParams.get("pendingTestCaseIds");
+    const suiteForRun = searchParams.get("suiteId") || activeSuiteId;
+    if (!envId || !suiteForRun) return;
+
+    pendingRunStarted.current = true;
+
+    // Remove pending params from URL so back-navigation won't re-trigger
+    const next = new URLSearchParams(searchParams);
+    next.delete("pendingEnvironmentId");
+    next.delete("pendingTestCaseIds");
+    navigate(`/runs?${next.toString()}`, { replace: true });
+
+    if (suiteForRun !== activeSuiteId) setActiveSuiteId(suiteForRun);
+
+    setPendingRun({ status: "running" });
+    const ids = tcIds
+      ? tcIds
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean)
+      : undefined;
+
+    testRunService
+      .startTestRun({
+        testSuiteId: suiteForRun,
+        environmentId: envId,
+        selectedTestCaseIds: ids?.length ? ids : undefined,
+      })
+      .then(() => {
+        setPendingRun({ status: "done" });
+        setCurrentPage(1);
+        refetch();
+        setTimeout(() => setPendingRun(null), 3000);
+      })
+      .catch((err) => {
+        showErrorToast(handleError(err));
+        setPendingRun(null);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!activeSuiteId && testSuites.length > 0) {
-      const firstId = testSuites[0].id;
-      setActiveSuiteId(firstId);
-      if (activeSuiteStorageKey) {
-        localStorage.setItem(activeSuiteStorageKey, firstId);
-      }
+      setActiveSuiteId(testSuites[0].id);
     }
+    const found = testSuites.find((s) => s.id === activeSuiteId);
+    setActiveSuiteName(found?.name);
   }, [testSuites, activeSuiteId]);
 
-  useEffect(() => {
-    if (!activeSuiteIdFromQuery) return;
-
-    setActiveSuiteId(activeSuiteIdFromQuery);
-    if (activeSuiteStorageKey) {
-      localStorage.setItem(activeSuiteStorageKey, activeSuiteIdFromQuery);
-    }
-
-    const params = new URLSearchParams(searchParams);
-    params.delete("activeSuiteId");
-    setSearchParams(params, { replace: true });
-  }, [activeSuiteIdFromQuery]);
-
-  useEffect(() => {
-    if (!preselectedSuiteId) return;
-
-    setSelectedTestSuiteId(preselectedSuiteId);
-    setActiveSuiteId(preselectedSuiteId);
-    if (activeSuiteStorageKey) {
-      localStorage.setItem(activeSuiteStorageKey, preselectedSuiteId);
-    }
-
-    const idsFromCsv = preselectedTestCaseIdsRaw
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean);
-
-    if (idsFromCsv.length > 0) {
-      setSelectedTestCaseIds(idsFromCsv);
-    } else if (preselectedTestCaseId) {
-      setSelectedTestCaseIds([preselectedTestCaseId]);
-    }
-
-    setIsStartModalOpen(true);
-
-    // Prevent repeated auto-open when user refreshes page state.
-    const params = new URLSearchParams(searchParams);
-    params.delete("suiteId");
-    params.delete("testCaseId");
-    params.delete("testCaseIds");
-    setSearchParams(params, { replace: true });
-  }, [preselectedSuiteId, preselectedTestCaseId, preselectedTestCaseIdsRaw]);
-
-  useEffect(() => {
-    const loadTestCasesForSuite = async () => {
-      if (!isStartModalOpen || !selectedTestSuiteId) {
-        setSuiteTestCases([]);
-        setIsLoadingTestCases(false);
-        return;
-      }
-
-      try {
-        setIsLoadingTestCases(true);
-        const response = await testCaseService.getTestCases(
-          selectedTestSuiteId,
-          1,
-          200,
-        );
-        const items = response.items || [];
-        setSuiteTestCases(items);
-
-        // Keep only selected IDs that still belong to the selected suite.
-        setSelectedTestCaseIds((prev) =>
-          prev.filter((id) => items.some((testCase) => testCase.id === id)),
-        );
-      } catch (err) {
-        setSuiteTestCases([]);
-        setSelectedTestCaseIds([]);
-        handleError(err);
-      } finally {
-        setIsLoadingTestCases(false);
-      }
-    };
-
-    loadTestCasesForSuite();
-  }, [isStartModalOpen, selectedTestSuiteId]);
-
-  // Connect to SignalR for real-time updates
-  useEffect(() => {
-    signalRService.connect().catch(console.error);
-
-    const handleTestRunUpdate = (data?: any) => {
-      // Invalidate cache cho run đang running để force re-fetch khi expand
-      const runId = data?.testRunId || data?.TestRunId;
-      if (runId) {
-        setRunDetailsById((prev) => {
-          const next = { ...prev };
-          delete next[runId];
-          return next;
-        });
-      } else {
-        // Không biết run nào → clear toàn bộ cache running runs
-        setRunDetailsById((prev) => {
-          const next = { ...prev };
-          // Chỉ xóa những run đang running trong cache
-          Object.keys(next).forEach((id) => {
-            const cached = next[id];
-            const status = String((cached as any)?.status || "").toLowerCase();
-            if (status === "running" || status === "pending") {
-              delete next[id];
-            }
-          });
-          return next;
-        });
-      }
-      refetch();
-    };
-
-    signalRService.on("TestRunStatusChanged", handleTestRunUpdate);
-    signalRService.on("TestCaseCompleted", handleTestRunUpdate);
-
-    return () => {
-      signalRService.off("TestRunStatusChanged", handleTestRunUpdate);
-      signalRService.off("TestCaseCompleted", handleTestRunUpdate);
-    };
-  }, [refetch]);
-
-  const closeStartModal = () => {
-    setIsStartModalOpen(false);
-    setSelectedTestSuiteId("");
-    setSelectedTestCaseIds([]);
-    setSuiteTestCases([]);
-  };
-
-  const handleStartTestRun = async () => {
-    if (!selectedTestSuiteId) {
-      showErrorToast(t("testRuns.modal.suiteRequired"));
-      return;
-    }
-
-    if (environments.length === 0) {
-      showErrorToast(t("testRuns.modal.noEnvFound"));
-      return;
-    }
-
-    if (!selectedEnvironmentId) {
-      showErrorToast(t("testRuns.modal.envRequired"));
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const startedRun = await startTestRun({
-        testSuiteId: selectedTestSuiteId,
-        environmentId: selectedEnvironmentId || undefined,
-        selectedTestCaseIds:
-          selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
-      });
-
-      const startedRunId =
-        (startedRun as any)?.id || (startedRun as any)?.run?.id || null;
-
-      // Fallback flow: immediately trigger one-time LLM analysis after run completes,
-      // even when SignalR completion events are not published from backend.
-      if (startedRunId) {
-        void (async () => {
-          try {
-            const suiteDetail = await testSuiteService.getTestSuiteDetail(
-              projectId,
-              selectedTestSuiteId,
-            );
-
-            if (suiteDetail.apiSpecId) {
-              try {
-                await apiService.post(
-                  `/test-suites/${selectedTestSuiteId}/llm-suggestions/generate`,
-                  {
-                    specificationId: suiteDetail.apiSpecId,
-                    forceRefresh: false,
-                  },
-                );
-              } catch (err: any) {
-                const statusCode = err?.status ?? err?.response?.status;
-                const message = String(
-                  err?.message || err?.response?.data?.message || "",
-                );
-                const alreadyHasPendingSuggestions =
-                  statusCode === 400 &&
-                  (message.includes("ForceRefresh=true") ||
-                    message.includes("suggestion preview"));
-
-                if (!alreadyHasPendingSuggestions) {
-                  throw err;
-                }
-              }
-            }
-
-            const runDetail = await testRunService.getTestRunResults(
-              selectedTestSuiteId,
-              startedRunId,
-            );
-
-            const failedCases = (runDetail.cases || []).filter(
-              (c) => (c.status || "").toLowerCase() === "failed",
-            );
-
-            await Promise.all(
-              failedCases.map((testCase) =>
-                apiService.post(
-                  `/test-suites/${selectedTestSuiteId}/test-runs/${startedRunId}/failures/${testCase.testCaseId}/explanation`,
-                ),
-              ),
-            );
-
-            try {
-              const raw = localStorage.getItem("autoLLMAnalysis_processedRuns");
-              const processed = raw ? (JSON.parse(raw) as string[]) : [];
-              if (!processed.includes(startedRunId)) {
-                processed.push(startedRunId);
-                localStorage.setItem(
-                  "autoLLMAnalysis_processedRuns",
-                  JSON.stringify(processed),
-                );
-              }
-            } catch {
-              // Non-blocking localStorage write.
-            }
-          } catch (err) {
-            console.error("Fallback post-run LLM analysis failed:", err);
-          }
-        })();
-      }
-
-      setActiveSuiteId(selectedTestSuiteId);
-      if (activeSuiteStorageKey) {
-        localStorage.setItem(activeSuiteStorageKey, selectedTestSuiteId);
-      }
-      showSuccessToast(t("testRuns.toast.started"));
-      closeStartModal();
-      setSelectedEnvironmentId(getDefaultEnvironmentId(environments));
-    } catch (err) {
-      handleError(err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCancel = async (testRunId: string) => {
-    try {
-      await cancelTestRun(testRunId);
-      showSuccessToast(t("testRuns.toast.cancelled"));
-    } catch (err) {
-      handleError(err);
-    }
-  };
-
-  const handleRetry = async (testRunId: string) => {
-    try {
-      await retryFailedTests(testRunId);
-      showSuccessToast(t("testRuns.toast.retrying"));
-    } catch (err) {
-      handleError(err);
-    }
-  };
-
-  const handleExport = async (
-    testRunId: string,
-    format: "json" | "csv" | "html",
-  ) => {
-    try {
-      const blob = await exportResults(testRunId, format);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `test-run-${testRunId}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      showSuccessToast(t("testRuns.toast.exported"));
-    } catch (err) {
-      handleError(err);
-    }
+  const formatDate = (dateString?: string) =>
+    dateString ? new Date(dateString).toLocaleDateString() : "—";
+  const formatDateTime = (dateString?: string) =>
+    dateString ? new Date(dateString).toLocaleString() : "—";
+  const formatDuration = (ms?: number) => {
+    if (!ms) return "0ms";
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
-      case "passed":
-        return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400";
-      case "failed":
-        return "bg-error-container dark:bg-rose-900/30 text-on-error-container dark:text-rose-400";
+    switch ((status || "").toLowerCase()) {
       case "running":
-        return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400";
-      case "pending":
-        return "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400";
+        return "bg-blue-100 text-blue-700";
+      case "completed":
+        return "bg-emerald-100 text-emerald-700";
+      case "failed":
+        return "bg-rose-100 text-rose-700";
       case "cancelled":
-        return "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-400";
+        return "bg-slate-100 text-slate-600";
       default:
-        return "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-400";
+        return "bg-amber-100 text-amber-700";
     }
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch ((status || "").toLowerCase()) {
+      case "running":
+        return "bg-blue-500";
       case "completed":
-      case "passed":
         return "bg-emerald-500";
       case "failed":
-        return "bg-error";
-      case "running":
-        return "bg-blue-500 animate-pulse";
-      case "pending":
-        return "bg-amber-500";
+        return "bg-rose-500";
       case "cancelled":
         return "bg-slate-500";
       default:
-        return "bg-slate-500";
+        return "bg-amber-500";
     }
   };
 
-  const formatDuration = (ms?: number) => {
-    if (!ms) return t("testRuns.na");
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return t("projects.minutesAgo", { count: diffMins });
-    if (diffHours < 24) return t("projects.hoursAgo", { count: diffHours });
-    if (diffDays === 1) return t("specifications.yesterday");
-    if (diffDays < 30) return t("projects.daysAgo", { count: diffDays });
-    return date.toLocaleDateString();
-  };
-
-  const formatDateTime = (dateString?: string) => {
-    if (!dateString) return t("testRuns.na");
-    return new Date(dateString).toLocaleString();
-  };
-
-  const handleToggleTestCase = (testCaseId: string) => {
-    setSelectedTestCaseIds((prev) => {
-      if (prev.includes(testCaseId)) {
-        return prev.filter((id) => id !== testCaseId);
-      }
-      return [...prev, testCaseId];
-    });
-  };
-
-  const handleSelectAllTestCases = () => {
-    setSelectedTestCaseIds(suiteTestCases.map((testCase) => testCase.id));
-  };
-
-  const handleClearSelectedTestCases = () => {
-    setSelectedTestCaseIds([]);
-  };
+  const handleActiveSuiteChange = (id: string) => setActiveSuiteId(id);
 
   const loadRunDetails = async (runId: string, suiteId: string) => {
-    const cached = runDetailsById[runId];
-    // Không cache nếu run đang running/pending — luôn fetch mới
-    const cachedStatus = String((cached as any)?.status || "").toLowerCase();
-    if (cached && cachedStatus !== "running" && cachedStatus !== "pending") {
-      return;
-    }
-
+    setLoadingRunDetailsById((prev) => ({ ...prev, [runId]: true }));
     try {
-      setLoadingRunDetailsById((prev) => ({ ...prev, [runId]: true }));
       const detail = await testRunService.getTestRunResults(suiteId, runId);
-      setRunDetailsById((prev) => ({ ...prev, [runId]: detail }));
+      setRunDetailsById((prev) => ({ ...(prev || {}), [runId]: detail }));
     } catch (err) {
-      handleError(err);
+      showErrorToast(handleError(err));
     } finally {
       setLoadingRunDetailsById((prev) => ({ ...prev, [runId]: false }));
+    }
+  };
+
+  // minimal autoAnalysisState placeholder used by UI
+  const autoAnalysisState = {
+    isRunning: false,
+    suggestionsStatus: "idle",
+    explanationsStatus: "idle",
+  } as any;
+
+  // --- Modal / start-run state (missing previously) ---
+  const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
+  const [selectedTestSuiteId, setSelectedTestSuiteId] = useState<string>("");
+  const [suiteTestCases, setSuiteTestCases] = useState<TestCase[]>([]);
+  const [selectedTestCaseIds, setSelectedTestCaseIds] = useState<string[]>([]);
+  const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [strictValidation, setStrictValidation] = useState(false);
+  const [maxRetryAttempts, setMaxRetryAttempts] = useState<number>(0);
+  const [retryFailedDependencies, setRetryFailedDependencies] = useState(false);
+  const [rerunSkippedCases, setRerunSkippedCases] = useState(false);
+
+  const closeStartModal = () => setIsStartModalOpen(false);
+
+  const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
+    if (!items || items.length === 0) return "";
+    const def = items.find((e) => e.isDefault);
+    return def?.id || items[0].id;
+  };
+
+  // Load environments for the project (used by start-run modal)
+  React.useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!projectId) return;
+      try {
+        const envs = await environmentService.getEnvironments(projectId);
+        if (!mounted) return;
+        setEnvironments(envs);
+        setSelectedEnvironmentId(getDefaultEnvironmentId(envs));
+      } catch (err) {
+        showErrorToast(handleError(err));
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [projectId]);
+
+  // When a suite is selected in the modal, fetch its test cases
+  React.useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!selectedTestSuiteId) {
+        setSuiteTestCases([]);
+        return;
+      }
+      setIsLoadingTestCases(true);
+      try {
+        const resp = await testCaseService.getTestCases(
+          selectedTestSuiteId,
+          1,
+          2000,
+        );
+        if (!mounted) return;
+        setSuiteTestCases(resp.items || []);
+        setSelectedTestCaseIds([]);
+      } catch (err) {
+        showErrorToast(handleError(err));
+      } finally {
+        setIsLoadingTestCases(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedTestSuiteId]);
+
+  const handleToggleTestCase = (id: string) => {
+    setSelectedTestCaseIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const handleSelectAllTestCases = () =>
+    setSelectedTestCaseIds(suiteTestCases.map((c) => c.id));
+  const handleClearSelectedTestCases = () => setSelectedTestCaseIds([]);
+
+  const handleStartTestRun = async () => {
+    if (!selectedTestSuiteId) return;
+    setIsSubmitting(true);
+    try {
+      await testRunService.startTestRun({
+        testSuiteId: selectedTestSuiteId,
+        environmentId: selectedEnvironmentId || undefined,
+        selectedTestCaseIds: selectedTestCaseIds.length
+          ? selectedTestCaseIds
+          : undefined,
+        strictValidation: strictValidation,
+        retryPolicy: {
+          maxRetryAttempts: maxRetryAttempts,
+          retryFailedDependencies: retryFailedDependencies,
+          rerunSkippedCases: rerunSkippedCases,
+        },
+      });
+      showSuccessToast(t("testRuns.startSuccess") || "Test run started");
+      closeStartModal();
+      refetch();
+    } catch (err) {
+      showErrorToast(handleError(err));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -589,9 +379,9 @@ export default function TestRunsPage() {
   const pageAvgDuration =
     runsWithDuration.length > 0
       ? formatDuration(
-        runsWithDuration.reduce((sum, r) => sum + (r.duration || 0), 0) /
-        runsWithDuration.length,
-      )
+          runsWithDuration.reduce((sum, r) => sum + (r.duration || 0), 0) /
+            runsWithDuration.length,
+        )
       : "N/A";
 
   const stats = {
@@ -758,7 +548,12 @@ export default function TestRunsPage() {
             <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
               {t("testRuns.statusLabel")}
             </span>
-            {[t("testRuns.filterAll"), t("testRuns.filterRunning"), t("testRuns.filterCompleted"), t("testRuns.filterFailed")].map((s, i) => {
+            {[
+              t("testRuns.filterAll"),
+              t("testRuns.filterRunning"),
+              t("testRuns.filterCompleted"),
+              t("testRuns.filterFailed"),
+            ].map((s, i) => {
               const values = ["", "running", "completed", "failed"];
               return (
                 <button
@@ -805,6 +600,41 @@ export default function TestRunsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10 dark:divide-slate-800">
+                {pendingRun && (
+                  <tr
+                    className={cn(
+                      "border-b-2 transition-colors",
+                      pendingRun.status === "running"
+                        ? "bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800"
+                        : "bg-emerald-50/60 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
+                    )}
+                  >
+                    <td colSpan={6} className="px-8 py-4">
+                      <div className="flex items-center gap-3">
+                        {pendingRun.status === "running" ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <div>
+                              <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                                Running test cases...
+                              </p>
+                              <p className="text-xs text-indigo-500 dark:text-indigo-400">
+                                Results will appear here when complete.
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                              Test run completed! Results loaded below.
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {isLoading ? (
                   <tr>
                     <td colSpan={6} className="px-8 py-12 text-center">
@@ -838,11 +668,14 @@ export default function TestRunsPage() {
                         <td className="px-8 py-6">
                           <div className="flex flex-col">
                             <span className="text-sm font-semibold text-on-surface">
-                              Test Suite #{run.testSuiteId.substring(0, 8)}
+                              {run.testSuiteName
+                                ? run.testSuiteName
+                                : `Test Suite #${run.testSuiteId.substring(0, 8)}`}
                             </span>
                             <span className="text-[10px] text-on-surface-variant font-medium">
-                              Env #
-                              {(run.environmentId || "N/A").substring(0, 8)}
+                              {run.environmentName
+                                ? run.environmentName
+                                : `Env #${(run.environmentId || "N/A").substring(0, 8)}`}
                             </span>
                           </div>
                         </td>
@@ -877,25 +710,17 @@ export default function TestRunsPage() {
                         </td>
                         <td className="px-8 py-6 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {run.status === "running" && (
-                              <button
-                                onClick={() => handleCancel(run.id)}
-                                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-error cursor-pointer"
-                                title={t("testRuns.cancelTitle")}
-                              >
-                                <StopCircle className="w-4 h-4" />
-                              </button>
-                            )}
-                            {run.status === "completed" &&
-                              run.failedTests > 0 && (
-                                <button
-                                  onClick={() => handleRetry(run.id)}
-                                  className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors text-amber-500 cursor-pointer"
-                                  title={t("testRuns.retryTitle")}
-                                >
-                                  <RotateCcw className="w-4 h-4" />
-                                </button>
-                              )}
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/traceability?suiteId=${run.testSuiteId}&testRunId=${run.id}${projectId ? `&projectId=${projectId}` : ""}`,
+                                )
+                              }
+                              className="px-4 py-2 bg-surface-container-high dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-widest rounded-lg hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-700 transition-all flex items-center gap-2 cursor-pointer"
+                              title="View SRS Coverage for this run"
+                            >
+                              SRS
+                            </button>
                             <button
                               onClick={() => {
                                 const status = run.status.toLowerCase();
@@ -905,7 +730,10 @@ export default function TestRunsPage() {
                                   status === "cancelled";
 
                                 if (isFinished) {
-                                  handleOpenLlmSuggestions(run.testSuiteId, run.id);
+                                  handleOpenLlmSuggestions(
+                                    run.testSuiteId,
+                                    run.id,
+                                  );
                                   return;
                                 }
 
@@ -984,7 +812,9 @@ export default function TestRunsPage() {
                                       {t("testRuns.detail.hasDetailed")}
                                     </span>{" "}
                                     <span className="text-on-surface font-medium">
-                                      {run.hasDetailedResults ? t("testRuns.yes") : t("testRuns.no")}
+                                      {run.hasDetailedResults
+                                        ? t("testRuns.yes")
+                                        : t("testRuns.no")}
                                     </span>
                                   </div>
                                 </div>
@@ -1002,23 +832,117 @@ export default function TestRunsPage() {
                                             expandedCaseByRunId[run.id] ===
                                             testCase.testCaseId;
 
+                                          // BC-1/BC-2: retry badge logic
+                                          // totalAttempts is the correct field (executionAttempt = index of last attempt, NOT total count)
+                                          const totalAttempts =
+                                            testCase.totalAttempts ?? 1;
+                                          const retryCount = totalAttempts - 1;
+                                          const statusLower = (
+                                            testCase.status || ""
+                                          ).toLowerCase();
+                                          let statusLabel = testCase.status;
+                                          let statusColor =
+                                            "text-on-surface-variant";
+                                          if (statusLower === "passed") {
+                                            statusColor =
+                                              "text-emerald-600 dark:text-emerald-400";
+                                            statusLabel =
+                                              retryCount > 0
+                                                ? `Passed (Retried ×${retryCount})`
+                                                : "Passed";
+                                          } else if (statusLower === "failed") {
+                                            statusColor =
+                                              "text-rose-600 dark:text-rose-400";
+                                            statusLabel =
+                                              retryCount > 0
+                                                ? `Failed (after ${retryCount} retr${retryCount > 1 ? "ies" : "y"})`
+                                                : "Failed";
+                                          } else if (
+                                            statusLower === "skipped"
+                                          ) {
+                                            statusColor =
+                                              "text-amber-500 dark:text-amber-400";
+                                            statusLabel = "Skipped";
+                                          }
+
                                           return (
                                             <div
                                               key={testCase.testCaseId}
                                               className="rounded-lg border border-outline-variant/10 dark:border-slate-700 bg-surface-container-low/40 dark:bg-slate-800/40"
                                             >
                                               <div className="p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                                                <div className="min-w-0">
-                                                  <p className="text-sm font-semibold text-on-surface truncate">
-                                                    {testCase.name}
-                                                  </p>
-                                                  <p className="text-xs text-on-surface-variant">
-                                                    {t("testRuns.detail.caseStatus")} {testCase.status} •
-                                                    {t("testRuns.detail.caseDuration")}{" "}
-                                                    {formatDuration(
-                                                      testCase.durationMs,
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <p className="text-sm font-semibold text-on-surface truncate">
+                                                      {testCase.name}
+                                                    </p>
+                                                    {testCase.description && (
+                                                      <p className="w-full text-xs text-on-surface-variant truncate">
+                                                        {testCase.description}
+                                                      </p>
                                                     )}
+                                                    {/* Retry / Replay badge */}
+                                                    {retryCount > 0 && (
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 shrink-0">
+                                                        ↩ ×{retryCount}
+                                                      </span>
+                                                    )}
+                                                    {testCase.hasWarnings && (
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 shrink-0">
+                                                        ⚠ warn
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className="text-xs mt-0.5">
+                                                    <span
+                                                      className={`font-semibold ${statusColor}`}
+                                                    >
+                                                      {statusLabel}
+                                                    </span>
+                                                    <span className="text-on-surface-variant">
+                                                      {" "}
+                                                      •{" "}
+                                                      {t(
+                                                        "testRuns.detail.caseDuration",
+                                                      )}{" "}
+                                                      {formatDuration(
+                                                        testCase.durationMs,
+                                                      )}
+                                                    </span>
                                                   </p>
+                                                  {/* BC-1: skipped dependency info */}
+                                                  {statusLower === "skipped" &&
+                                                    testCase.skippedCause && (
+                                                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                                        {testCase.skippedCause}
+                                                      </p>
+                                                    )}
+                                                  {statusLower === "skipped" &&
+                                                    testCase
+                                                      .skippedBecauseDependencyIds
+                                                      ?.length > 0 && (
+                                                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                                        Depends on:{" "}
+                                                        {testCase.skippedBecauseDependencyIds
+                                                          .map((depId) => {
+                                                            const depCase =
+                                                              runDetailsById[
+                                                                run.id
+                                                              ]?.cases?.find(
+                                                                (c) =>
+                                                                  c.testCaseId ===
+                                                                  depId,
+                                                              );
+                                                            return depCase
+                                                              ? depCase.name
+                                                              : depId.slice(
+                                                                  0,
+                                                                  8,
+                                                                ) + "…";
+                                                          })
+                                                          .join(", ")}
+                                                      </p>
+                                                    )}
                                                 </div>
                                                 <button
                                                   type="button"
@@ -1031,53 +955,326 @@ export default function TestRunsPage() {
                                                   className="px-3 py-1.5 text-xs font-semibold rounded-md bg-surface-container-high dark:bg-slate-700 text-on-surface hover:bg-primary hover:text-white dark:hover:bg-indigo-600 transition-all"
                                                 >
                                                   {isExpanded
-                                                    ? t("testRuns.detail.hideDetail")
-                                                    : t("testRuns.detail.viewDetail")}
+                                                    ? t(
+                                                        "testRuns.detail.hideDetail",
+                                                      )
+                                                    : t(
+                                                        "testRuns.detail.viewDetail",
+                                                      )}
                                                 </button>
                                               </div>
 
                                               {isExpanded && (
-                                                <div className="px-3 pb-3 space-y-2 text-xs text-on-surface-variant">
+                                                <div className="px-3 pb-3 space-y-2 text-xs text-on-surface-variant border-t border-outline-variant/10 dark:border-slate-700 pt-2">
                                                   <p>
                                                     {t("testRuns.detail.url")}{" "}
-                                                    <span className="text-on-surface">
+                                                    <span className="text-on-surface break-all">
                                                       {testCase.resolvedUrl ||
                                                         t("testRuns.na")}
                                                     </span>
                                                   </p>
                                                   <p>
-                                                    {t("testRuns.detail.httpStatus")}{" "}
+                                                    {t(
+                                                      "testRuns.detail.httpStatus",
+                                                    )}{" "}
                                                     <span className="text-on-surface">
                                                       {testCase.httpStatusCode ??
                                                         t("testRuns.na")}
                                                     </span>
+                                                    {testCase.expectedStatus && (
+                                                      <span className="text-on-surface-variant">
+                                                        {" "}
+                                                        (expected:{" "}
+                                                        {
+                                                          testCase.expectedStatus
+                                                        }
+                                                        )
+                                                      </span>
+                                                    )}
                                                   </p>
+                                                  {/* Check results row — hide for skipped cases */}
+                                                  {statusLower !== "skipped" &&
+                                                    (testCase.checksPerformed !=
+                                                      null ||
+                                                      testCase.checksSkipped !=
+                                                        null) && (
+                                                      <p>
+                                                        Checks:{" "}
+                                                        <span className="text-on-surface">
+                                                          {testCase.checksPerformed ??
+                                                            0}{" "}
+                                                          performed
+                                                          {(testCase.checksSkipped ??
+                                                            0) > 0 &&
+                                                            `, ${testCase.checksSkipped} skipped`}
+                                                        </span>
+                                                      </p>
+                                                    )}
+                                                  {/* Individual check results — only show when HTTP was actually sent */}
+                                                  {statusLower !== "skipped" &&
+                                                    testCase.httpStatusCode !=
+                                                      null &&
+                                                    [
+                                                      {
+                                                        label: "Status code",
+                                                        value:
+                                                          testCase.statusCodeMatched,
+                                                      },
+                                                      {
+                                                        label: "Schema",
+                                                        value:
+                                                          testCase.schemaMatched,
+                                                      },
+                                                      {
+                                                        label: "Headers",
+                                                        value:
+                                                          testCase.headerChecksPassed,
+                                                      },
+                                                      {
+                                                        label: "Body contains",
+                                                        value:
+                                                          testCase.bodyContainsPassed,
+                                                      },
+                                                      {
+                                                        label:
+                                                          "Body not contains",
+                                                        value:
+                                                          testCase.bodyNotContainsPassed,
+                                                      },
+                                                      {
+                                                        label: "JSON path",
+                                                        value:
+                                                          testCase.jsonPathChecksPassed,
+                                                      },
+                                                      {
+                                                        label: "Response time",
+                                                        value:
+                                                          testCase.responseTimePassed,
+                                                      },
+                                                    ].filter(
+                                                      (c) => c.value != null,
+                                                    ).length > 0 && (
+                                                      <div className="flex flex-wrap gap-1">
+                                                        {[
+                                                          {
+                                                            label:
+                                                              "Status code",
+                                                            value:
+                                                              testCase.statusCodeMatched,
+                                                          },
+                                                          {
+                                                            label: "Schema",
+                                                            value:
+                                                              testCase.schemaMatched,
+                                                          },
+                                                          {
+                                                            label: "Headers",
+                                                            value:
+                                                              testCase.headerChecksPassed,
+                                                          },
+                                                          {
+                                                            label:
+                                                              "Body contains",
+                                                            value:
+                                                              testCase.bodyContainsPassed,
+                                                          },
+                                                          {
+                                                            label:
+                                                              "Body not contains",
+                                                            value:
+                                                              testCase.bodyNotContainsPassed,
+                                                          },
+                                                          {
+                                                            label: "JSON path",
+                                                            value:
+                                                              testCase.jsonPathChecksPassed,
+                                                          },
+                                                          {
+                                                            label:
+                                                              "Response time",
+                                                            value:
+                                                              testCase.responseTimePassed,
+                                                          },
+                                                        ]
+                                                          .filter(
+                                                            (c) =>
+                                                              c.value != null,
+                                                          )
+                                                          .map((c) => (
+                                                            <span
+                                                              key={c.label}
+                                                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${c.value ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                                            >
+                                                              {c.value
+                                                                ? "✓"
+                                                                : "✗"}{" "}
+                                                              {c.label}
+                                                            </span>
+                                                          ))}
+                                                      </div>
+                                                    )}
+                                                  {/* For failed cases with no HTTP (pre-request failure like UNRESOLVED_VARIABLE) */}
+                                                  {statusLower === "failed" &&
+                                                    testCase.httpStatusCode ==
+                                                      null && (
+                                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                                                        ⚠ Request not sent —
+                                                        pre-execution failure
+                                                      </span>
+                                                    )}
+                                                  {/* Failure reasons */}
                                                   {testCase.failureReasons
                                                     ?.length > 0 && (
+                                                    <div>
+                                                      <p className="font-semibold text-rose-600 dark:text-rose-400 mb-1">
+                                                        {t(
+                                                          "testRuns.detail.failureReasons",
+                                                        )}
+                                                      </p>
+                                                      {testCase.failureReasons.map(
+                                                        (reason, index) => (
+                                                          <p
+                                                            key={`${testCase.testCaseId}-f${index}`}
+                                                            className="ml-2"
+                                                          >
+                                                            <span className="font-mono text-rose-500 dark:text-rose-400">
+                                                              {reason.code}
+                                                            </span>
+                                                            {reason.message
+                                                              ? `: ${reason.message}`
+                                                              : ""}
+                                                            {reason.expected && (
+                                                              <span className="text-on-surface-variant">
+                                                                {" "}
+                                                                (expected:{" "}
+                                                                <span className="text-on-surface">
+                                                                  {
+                                                                    reason.expected
+                                                                  }
+                                                                </span>
+                                                                , got:{" "}
+                                                                <span className="text-on-surface">
+                                                                  {
+                                                                    reason.actual
+                                                                  }
+                                                                </span>
+                                                                )
+                                                              </span>
+                                                            )}
+                                                          </p>
+                                                        ),
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                  {/* Warnings */}
+                                                  {testCase.warnings &&
+                                                    testCase.warnings.length >
+                                                      0 && (
                                                       <div>
-                                                        <p className="font-semibold text-rose-600 dark:text-rose-400">
-                                                          {t("testRuns.detail.failureReasons")}
+                                                        <p className="font-semibold text-yellow-600 dark:text-yellow-400 mb-1">
+                                                          Warnings
                                                         </p>
-                                                        {testCase.failureReasons.map(
-                                                          (reason, index) => (
+                                                        {testCase.warnings.map(
+                                                          (w, index) => (
                                                             <p
-                                                              key={`${testCase.testCaseId}-${index}`}
+                                                              key={`${testCase.testCaseId}-w${index}`}
+                                                              className="ml-2"
                                                             >
-                                                              -{" "}
-                                                              {(reason.code ||
-                                                                "") +
-                                                                (reason.message
-                                                                  ? `: ${reason.message}`
-                                                                  : "")}
+                                                              <span className="font-mono text-yellow-500">
+                                                                {w.code}
+                                                              </span>
+                                                              {w.message
+                                                                ? `: ${w.message}`
+                                                                : ""}
                                                             </p>
                                                           ),
                                                         )}
                                                       </div>
                                                     )}
+                                                  {/* Extracted variables */}
+                                                  {Object.keys(
+                                                    testCase.extractedVariables ||
+                                                      {},
+                                                  ).length > 0 && (
+                                                    <div>
+                                                      <p className="font-semibold text-on-surface mb-1">
+                                                        Extracted Variables
+                                                      </p>
+                                                      {Object.entries(
+                                                        testCase.extractedVariables,
+                                                      ).map(([k, v]) => (
+                                                        <p
+                                                          key={k}
+                                                          className="ml-2 font-mono"
+                                                        >
+                                                          <span className="text-indigo-500 dark:text-indigo-400">
+                                                            {k}
+                                                          </span>
+                                                          {" = "}
+                                                          <span className="text-on-surface">
+                                                            {v}
+                                                          </span>
+                                                        </p>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {/* Response body preview */}
+                                                  {/* Expected response (from test case expectation) */}
+                                                  {testCase.expectedResponse !=
+                                                    null && (
+                                                    <div>
+                                                      <p className="font-semibold text-on-surface">
+                                                        Expected response
+                                                      </p>
+                                                      <pre className="mt-1 p-2 rounded bg-surface-container-high dark:bg-slate-800 text-on-surface overflow-x-auto whitespace-pre-wrap break-words">
+                                                        {(() => {
+                                                          try {
+                                                            const er =
+                                                              testCase.expectedResponse;
+                                                            if (
+                                                              typeof er ===
+                                                              "string"
+                                                            ) {
+                                                              const t =
+                                                                er.trim();
+                                                              if (
+                                                                t.startsWith(
+                                                                  "{",
+                                                                ) ||
+                                                                t.startsWith(
+                                                                  "[",
+                                                                )
+                                                              ) {
+                                                                return JSON.stringify(
+                                                                  JSON.parse(t),
+                                                                  null,
+                                                                  2,
+                                                                );
+                                                              }
+                                                              return er;
+                                                            }
+                                                            return JSON.stringify(
+                                                              er,
+                                                              null,
+                                                              2,
+                                                            );
+                                                          } catch {
+                                                            return String(
+                                                              testCase.expectedResponse,
+                                                            );
+                                                          }
+                                                        })()}
+                                                      </pre>
+                                                    </div>
+                                                  )}
+
+                                                  {/* Response body preview */}
                                                   {testCase.responseBodyPreview && (
                                                     <div>
                                                       <p className="font-semibold text-on-surface">
-                                                        {t("testRuns.detail.responsePreview")}
+                                                        {t(
+                                                          "testRuns.detail.responsePreview",
+                                                        )}
                                                       </p>
                                                       <pre className="mt-1 p-2 rounded bg-slate-900 text-slate-100 overflow-x-auto whitespace-pre-wrap break-all">
                                                         {
@@ -1115,6 +1312,133 @@ export default function TestRunsPage() {
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Attempt Timeline (BC-2/BC-3) */}
+                                {runDetailsById[run.id]?.attempts &&
+                                  runDetailsById[run.id].attempts!.length > 0 &&
+                                  (() => {
+                                    const attempts =
+                                      runDetailsById[run.id].attempts!;
+                                    const childrenMap =
+                                      runDetailsById[run.id]
+                                        .attemptChildrenMap || {};
+                                    // Group attempts by testCaseId, show only cases with >1 attempt or retries
+                                    const byCase = attempts.reduce<
+                                      Record<string, typeof attempts>
+                                    >((acc, a) => {
+                                      if (!acc[a.testCaseId])
+                                        acc[a.testCaseId] = [];
+                                      acc[a.testCaseId].push(a);
+                                      return acc;
+                                    }, {});
+                                    const casesWithRetries = Object.entries(
+                                      byCase,
+                                    ).filter(
+                                      ([, atts]) =>
+                                        atts.length > 1 ||
+                                        atts.some((a) => a.retryReason),
+                                    );
+                                    if (casesWithRetries.length === 0)
+                                      return null;
+                                    return (
+                                      <div className="mt-4 pt-4 border-t border-outline-variant/10 dark:border-slate-700">
+                                        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">
+                                          Retry / Attempt Timeline
+                                        </p>
+                                        <div className="space-y-3">
+                                          {casesWithRetries.map(
+                                            ([caseId, atts]) => {
+                                              const caseInfo = runDetailsById[
+                                                run.id
+                                              ].cases?.find(
+                                                (c) => c.testCaseId === caseId,
+                                              );
+                                              const sorted = [...atts].sort(
+                                                (a, b) =>
+                                                  a.attemptNumber -
+                                                  b.attemptNumber,
+                                              );
+                                              return (
+                                                <div
+                                                  key={caseId}
+                                                  className="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3"
+                                                >
+                                                  <p className="text-xs font-semibold text-on-surface mb-2">
+                                                    {caseInfo?.name ||
+                                                      caseId.slice(0, 8) + "…"}
+                                                  </p>
+                                                  <div className="flex flex-wrap gap-2">
+                                                    {sorted.map((att, i) => {
+                                                      const attStatusLower =
+                                                        att.status.toLowerCase();
+                                                      const dotColor =
+                                                        attStatusLower ===
+                                                        "passed"
+                                                          ? "bg-emerald-500"
+                                                          : attStatusLower ===
+                                                              "failed"
+                                                            ? "bg-rose-500"
+                                                            : "bg-amber-400";
+                                                      return (
+                                                        <div
+                                                          key={
+                                                            att.executionAttemptId
+                                                          }
+                                                          className="flex items-center gap-1"
+                                                        >
+                                                          {i > 0 && (
+                                                            <span className="text-on-surface-variant text-xs">
+                                                              →
+                                                            </span>
+                                                          )}
+                                                          <div className="flex flex-col items-center">
+                                                            <div
+                                                              className={`w-2.5 h-2.5 rounded-full ${dotColor}`}
+                                                              title={att.status}
+                                                            />
+                                                            <span className="text-[9px] text-on-surface-variant mt-0.5">
+                                                              #
+                                                              {
+                                                                att.attemptNumber
+                                                              }
+                                                            </span>
+                                                            {att.isReplay && (
+                                                              <span className="text-[9px] text-indigo-500 font-bold">
+                                                                ↺
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                          <div className="text-[10px] text-on-surface-variant max-w-[120px]">
+                                                            <span
+                                                              className={`font-semibold ${attStatusLower === "passed" ? "text-emerald-600 dark:text-emerald-400" : attStatusLower === "failed" ? "text-rose-600 dark:text-rose-400" : "text-amber-500"}`}
+                                                            >
+                                                              {att.status}
+                                                            </span>
+                                                            {att.retryReason && (
+                                                              <span
+                                                                className="block text-[9px] italic truncate"
+                                                                title={
+                                                                  att.retryReason
+                                                                }
+                                                              >
+                                                                {
+                                                                  att.retryReason
+                                                                }
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                </div>
+                                              );
+                                            },
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                               </>
                             )}
                           </td>
@@ -1338,9 +1662,123 @@ export default function TestRunsPage() {
           )}
           <p className="text-sm text-on-surface-variant">
             {selectedTestCaseIds.length > 0
-              ? t("testRuns.modal.selectedCasesInfo", { count: selectedTestCaseIds.length })
+              ? t("testRuns.modal.selectedCasesInfo", {
+                  count: selectedTestCaseIds.length,
+                })
               : t("testRuns.modal.allCasesInfo")}
           </p>
+
+          {/* Strict Validation Toggle */}
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                Strict Validation
+              </label>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                When enabled, test cases without expectations will fail instead
+                of warn.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStrictValidation((prev) => !prev)}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer",
+                strictValidation
+                  ? "bg-primary dark:bg-indigo-500"
+                  : "bg-slate-300 dark:bg-slate-600",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                  strictValidation ? "translate-x-6" : "translate-x-1",
+                )}
+              />
+            </button>
+          </div>
+
+          {/* Retry Policy */}
+          <div className="space-y-3 pt-1 border-t border-slate-200 dark:border-slate-700">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              Retry Policy
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Max Retry Attempts (0 = no retry, max 3)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={3}
+                value={maxRetryAttempts}
+                onChange={(e) =>
+                  setMaxRetryAttempts(
+                    Math.min(3, Math.max(0, parseInt(e.target.value) || 0)),
+                  )
+                }
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all text-on-surface text-sm"
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Retry Failed Dependencies
+                </label>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Retry test cases that failed due to a dependency failing.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRetryFailedDependencies((prev) => !prev)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer flex-shrink-0",
+                  retryFailedDependencies
+                    ? "bg-primary dark:bg-indigo-500"
+                    : "bg-slate-300 dark:bg-slate-600",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    retryFailedDependencies ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Rerun Skipped Cases
+                </label>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Replay skipped cases after their dependency is recovered.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRerunSkippedCases((prev) => !prev)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer flex-shrink-0",
+                  rerunSkippedCases
+                    ? "bg-primary dark:bg-indigo-500"
+                    : "bg-slate-300 dark:bg-slate-600",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    rerunSkippedCases ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
           {!activeSuiteId && testSuites.length === 0 && (
             <p className="text-sm text-on-surface-variant">
               {t("testRuns.modal.noSuitesWarning")}

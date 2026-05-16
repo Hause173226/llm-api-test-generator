@@ -14,6 +14,7 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  RotateCcw,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
@@ -25,10 +26,13 @@ import {
   handleError,
   showErrorToast,
   showSuccessToast,
+  showLoadingToast,
+  showCustomToast,
 } from "../utils/errorHandler";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 import GlobalSpinner from "../components/ui/GlobalSpinner";
 import ManualSpecModal from "../components/specifications/ManualSpecModal";
+import toast from "react-hot-toast";
 
 export default function SpecificationPage() {
   const { t } = useTranslation();
@@ -45,11 +49,16 @@ export default function SpecificationPage() {
 
   const {
     specifications,
+    trashedSpecifications,
     isLoading,
     error,
+    viewMode,
+    setViewMode,
     refetch,
     uploadSpecification,
+    pollParseStatus,
     deleteSpecification,
+    restoreSpecification,
     createManualSpecification,
   } = useSpecifications(projectId);
 
@@ -118,15 +127,36 @@ export default function SpecificationPage() {
 
     try {
       setIsSubmitting(true);
-      await uploadSpecification(uploadForm);
+      const newSpec = await uploadSpecification(uploadForm);
       showSuccessToast(t("specifications.upload.successToast"));
       setIsUploadModalOpen(false);
       setUploadForm({ name: "", description: "", type: "openapi", file: null });
 
-      // Wait a moment for parse to start, then navigate to endpoints
-      setTimeout(() => {
-        navigate(`/endpoints?projectId=${projectId}`);
-      }, 1500);
+      // If parseStatus is Pending (async parse for YAML/Postman), poll until done
+      if (newSpec && newSpec.parseStatus === "Pending") {
+        const loadingId = showLoadingToast(
+          "Parsing specification... Please wait.",
+        );
+        try {
+          const parsed = await pollParseStatus(newSpec.id);
+          toast.dismiss(loadingId);
+          if (parsed.parseStatus === "Failed") {
+            showErrorToast(
+              "Specification parsing failed. Please check the file format.",
+            );
+            return;
+          }
+          showSuccessToast("Specification parsed successfully!");
+        } catch (pollErr) {
+          toast.dismiss(loadingId);
+          showErrorToast(
+            "Parse status polling timed out. Check specification status manually.",
+          );
+          return;
+        }
+      }
+
+      navigate(`/endpoints?projectId=${projectId}`);
     } catch (err) {
       handleError(err);
     } finally {
@@ -137,12 +167,55 @@ export default function SpecificationPage() {
   const handleDelete = async () => {
     if (!selectedSpec) return;
 
+    const deletedSpecId = selectedSpec.id;
+    const deletedSpecName = selectedSpec.name;
+
     try {
       setIsSubmitting(true);
-      await deleteSpecification(selectedSpec.id);
-      showSuccessToast(t("specifications.delete.successToast"));
+      await deleteSpecification(deletedSpecId);
       setIsDeleteModalOpen(false);
       setSelectedSpec(null);
+
+      // Show undo toast (FE-18: quick undo via restore)
+      showCustomToast(
+        (t) => (
+          <div className="flex items-start gap-3 p-4 rounded-2xl border-2 shadow-2xl min-w-[320px] max-w-[500px] bg-emerald-50 dark:bg-emerald-950 border-emerald-500 text-emerald-900 dark:text-emerald-100">
+            <svg
+              className="w-6 h-6 flex-shrink-0 text-emerald-600 dark:text-emerald-400"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M9 12l2 2 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold leading-relaxed break-words">
+                Deleted <b>{deletedSpecName}</b>
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  await restoreSpecification(deletedSpecId);
+                  showSuccessToast("Specification restored!");
+                } catch {
+                  showErrorToast("Failed to restore specification");
+                }
+              }}
+              className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Undo
+            </button>
+          </div>
+        ),
+        { duration: 6000 },
+      );
     } catch (err) {
       handleError(err);
     } finally {
@@ -255,8 +328,7 @@ export default function SpecificationPage() {
   return (
     <MainLayout title={t("specifications.title")} breadcrumbs={breadcrumbs}>
       <div className="space-y-12">
-
-        <header className="mb-16">
+        <header className="mb-8">
           <h1 className="text-4xl font-bold tracking-tight text-on-surface mt-10 mb-2">
             {t("specifications.title")}
             {project && (
@@ -269,6 +341,252 @@ export default function SpecificationPage() {
             {t("specifications.subtitle")}
           </p>
         </header>
+
+        {/* Recent Specifications Table */}
+        <section className="space-y-8">
+          <div className="flex items-end justify-between">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-semibold text-on-surface">
+                {t("specifications.recent.title")}
+              </h2>
+              <p className="text-on-surface-variant text-sm">
+                {t("specifications.recent.subtitle")}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* FE-18: Main / Trash toggle */}
+              <div className="flex rounded-lg border border-outline-variant/20 dark:border-slate-700 overflow-hidden">
+                <button
+                  onClick={() => setViewMode("main")}
+                  className={cn(
+                    "px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer",
+                    viewMode === "main"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-surface-container-lowest dark:bg-slate-900 text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800",
+                  )}
+                >
+                  Main
+                </button>
+                <button
+                  onClick={() => setViewMode("trash")}
+                  className={cn(
+                    "px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-1.5",
+                    viewMode === "trash"
+                      ? "bg-rose-600 text-white"
+                      : "bg-surface-container-lowest dark:bg-slate-900 text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800",
+                  )}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Trash
+                  {trashedSpecifications.length > 0 && (
+                    <span className="ml-1 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                      {trashedSpecifications.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+              <button
+                onClick={refetch}
+                disabled={isLoading}
+                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <RefreshCw
+                  className={cn(
+                    "w-4 h-4 text-on-surface",
+                    isLoading && "animate-spin",
+                  )}
+                />
+              </button>
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1.5 rounded-full">
+                {viewMode === "trash"
+                  ? `${trashedSpecifications?.length || 0} deleted`
+                  : t("specifications.recent.activeCount", {
+                      count: specifications?.length || 0,
+                    })}
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto bg-surface-container-lowest dark:bg-slate-900 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800">
+            <table className="min-w-full text-left">
+              <thead className="bg-surface-container-low/50 dark:bg-slate-800/50">
+                <tr>
+                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                    {t("specifications.recent.table.name")}
+                  </th>
+                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                    {t("specifications.recent.table.type")}
+                  </th>
+                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-center">
+                    {t("specifications.recent.table.version")}
+                  </th>
+                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                    {t("specifications.recent.table.parseStatus")}
+                  </th>
+                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-right">
+                    {t("specifications.recent.table.actions")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-container-low dark:divide-slate-800">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                    </td>
+                  </tr>
+                ) : viewMode === "trash" ? (
+                  /* ── TRASH VIEW ── */
+                  !trashedSpecifications ||
+                  trashedSpecifications.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-6 py-12 text-center text-on-surface-variant"
+                      >
+                        Trash is empty
+                      </td>
+                    </tr>
+                  ) : (
+                    trashedSpecifications.map((spec) => {
+                      const SpecIcon = getSpecIcon(
+                        spec.sourceType || spec.type,
+                      );
+                      const specType =
+                        spec.sourceType || spec.type || "Unknown";
+                      return (
+                        <tr
+                          key={spec.id}
+                          className="hover:bg-surface-container-low/30 dark:hover:bg-slate-800/30 transition-colors opacity-60"
+                        >
+                          <td className="px-6 py-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400">
+                                <SpecIcon className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <span className="font-semibold text-on-surface text-sm line-through">
+                                  {spec.name}
+                                </span>
+                                <div className="text-[10px] text-rose-500">
+                                  Deleted{" "}
+                                  {spec.deletedAt
+                                    ? formatDate(spec.deletedAt)
+                                    : ""}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-6">
+                            <span className="px-3 py-1 bg-surface-container dark:bg-slate-800 text-on-secondary-container dark:text-slate-300 text-[10px] font-bold rounded-full">
+                              {specType}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6 text-center">
+                            <span className="text-xs font-medium text-on-surface-variant">
+                              {spec.version || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6">
+                            {getParseStatusBadge(spec.parseStatus)}
+                          </td>
+                          <td className="px-6 py-6 text-right">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await restoreSpecification(spec.id);
+                                  showSuccessToast(`Restored "${spec.name}"`);
+                                } catch {
+                                  showErrorToast(
+                                    "Failed to restore specification",
+                                  );
+                                }
+                              }}
+                              className="text-indigo-600 dark:text-indigo-400 hover:opacity-80 font-bold text-[10px] uppercase tracking-widest cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              Restore
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )
+                ) : !specifications || specifications.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-6 py-12 text-center text-on-surface-variant"
+                    >
+                      {t("specifications.recent.noSpecs")}
+                    </td>
+                  </tr>
+                ) : (
+                  (specifications || []).map((spec, i) => {
+                    const SpecIcon = getSpecIcon(spec.sourceType || spec.type);
+                    const specType = spec.sourceType || spec.type || "Unknown";
+                    const modifiedDate =
+                      spec.updatedDateTime || spec.createdDateTime;
+                    return (
+                      <tr
+                        key={spec.id}
+                        className="hover:bg-surface-container-low/30 dark:hover:bg-slate-800/30 transition-colors"
+                      >
+                        <td className="px-6 py-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary-fixed dark:bg-indigo-900/50 text-on-primary-fixed-variant dark:text-indigo-300">
+                              <SpecIcon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/endpoints?projectId=${projectId}&specId=${spec.id}`,
+                                  )
+                                }
+                                className="font-semibold text-on-surface text-sm hover:text-primary dark:hover:text-indigo-400 hover:underline cursor-pointer transition-colors text-left"
+                              >
+                                {spec.name}
+                              </button>
+                              <div className="text-[10px] text-on-surface-variant">
+                                {t("specifications.modified")}{" "}
+                                {modifiedDate ? formatDate(modifiedDate) : "—"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6">
+                          <span className="px-3 py-1 bg-surface-container dark:bg-slate-800 text-on-secondary-container dark:text-slate-300 text-[10px] font-bold rounded-full">
+                            {specType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-6 text-center">
+                          <span className="text-xs font-medium text-on-surface-variant">
+                            {spec.version || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-6">
+                          {getParseStatusBadge(spec.parseStatus)}
+                        </td>
+                        <td className="px-6 py-6 text-right space-x-3">
+                          <button
+                            onClick={() => {
+                              setSelectedSpec(spec);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="text-red-600 dark:text-red-400 hover:opacity-80 font-bold text-[10px] uppercase tracking-widest cursor-pointer"
+                          >
+                            {t("specifications.recent.actions.delete")}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         {/* Asymmetric Grid for Upload and Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-20">
@@ -336,7 +654,8 @@ export default function SpecificationPage() {
                   {t("specifications.manual.description")}
                 </p>
               </div>
-              <button className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer"
+              <button
+                className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer"
                 onClick={() => setIsManualModalOpen(true)}
               >
                 <Keyboard className="w-5 h-5" />
@@ -347,136 +666,6 @@ export default function SpecificationPage() {
         </div>
 
         {/* Recent Specifications Table */}
-        <section className="space-y-8">
-          <div className="flex items-end justify-between">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-semibold text-on-surface">
-                {t("specifications.recent.title")}
-              </h2>
-              <p className="text-on-surface-variant text-sm">
-                {t("specifications.recent.subtitle")}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={refetch}
-                disabled={isLoading}
-                className="p-2 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                <RefreshCw
-                  className={cn(
-                    "w-4 h-4 text-on-surface",
-                    isLoading && "animate-spin",
-                  )}
-                />
-              </button>
-              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1.5 rounded-full">
-                {t("specifications.recent.activeCount", { count: specifications?.length || 0 })}
-              </span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto bg-surface-container-lowest dark:bg-slate-900 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-800">
-            <table className="min-w-full text-left">
-              <thead className="bg-surface-container-low/50 dark:bg-slate-800/50">
-                <tr>
-                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    {t("specifications.recent.table.name")}
-                  </th>
-                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    {t("specifications.recent.table.type")}
-                  </th>
-                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-center">
-                    {t("specifications.recent.table.version")}
-                  </th>
-                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    {t("specifications.recent.table.parseStatus")}
-                  </th>
-                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-right">
-                    {t("specifications.recent.table.actions")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-container-low dark:divide-slate-800">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
-                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-                    </td>
-                  </tr>
-                ) : !specifications || specifications.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-6 py-12 text-center text-on-surface-variant"
-                    >
-                      {t("specifications.recent.noSpecs")}
-                    </td>
-                  </tr>
-                ) : (
-                  (specifications || []).map((spec, i) => {
-                    const SpecIcon = getSpecIcon(spec.sourceType || spec.type);
-                    const specType = spec.sourceType || spec.type || "Unknown";
-                    const modifiedDate = spec.updatedDateTime || spec.createdDateTime;
-                    return (
-                      <tr
-                        key={spec.id}
-                        className="hover:bg-surface-container-low/30 dark:hover:bg-slate-800/30 transition-colors"
-                      >
-                        <td className="px-6 py-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary-fixed dark:bg-indigo-900/50 text-on-primary-fixed-variant dark:text-indigo-300">
-                              <SpecIcon className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <button
-                                onClick={() =>
-                                  navigate(
-                                    `/endpoints?projectId=${projectId}&specId=${spec.id}`,
-                                  )
-                                }
-                                className="font-semibold text-on-surface text-sm hover:text-primary dark:hover:text-indigo-400 hover:underline cursor-pointer transition-colors text-left"
-                              >
-                                {spec.name}
-                              </button>
-                              <div className="text-[10px] text-on-surface-variant">
-                                {t("specifications.modified")} {modifiedDate ? formatDate(modifiedDate) : "—"}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-6">
-                          <span className="px-3 py-1 bg-surface-container dark:bg-slate-800 text-on-secondary-container dark:text-slate-300 text-[10px] font-bold rounded-full">
-                            {specType}
-                          </span>
-                        </td>
-                        <td className="px-6 py-6 text-center">
-                          <span className="text-xs font-medium text-on-surface-variant">
-                            {spec.version || "N/A"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-6">
-                          {getParseStatusBadge(spec.parseStatus)}
-                        </td>
-                        <td className="px-6 py-6 text-right space-x-3">
-                          <button
-                            onClick={() => {
-                              setSelectedSpec(spec);
-                              setIsDeleteModalOpen(true);
-                            }}
-                            className="text-red-600 dark:text-red-400 hover:opacity-80 font-bold text-[10px] uppercase tracking-widest cursor-pointer"
-                          >
-                            {t("specifications.recent.actions.delete")}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </div>
 
       {/* Global spinner khi đang upload */}
@@ -490,7 +679,12 @@ export default function SpecificationPage() {
         onClose={() => {
           if (isSubmitting) return;
           setIsUploadModalOpen(false);
-          setUploadForm({ name: "", description: "", type: "openapi", file: null });
+          setUploadForm({
+            name: "",
+            description: "",
+            type: "openapi",
+            file: null,
+          });
         }}
         title={t("specifications.upload.modalTitle")}
         footer={
@@ -498,7 +692,12 @@ export default function SpecificationPage() {
             <button
               onClick={() => {
                 setIsUploadModalOpen(false);
-                setUploadForm({ name: "", description: "", type: "openapi", file: null });
+                setUploadForm({
+                  name: "",
+                  description: "",
+                  type: "openapi",
+                  file: null,
+                });
               }}
               disabled={isSubmitting}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"

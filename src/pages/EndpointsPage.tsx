@@ -243,7 +243,6 @@ export default function EndpointsPage() {
           const proposal = await testSuiteService.proposeOrder(newSuite.id, {
             specificationId: selectedSpecId,
             selectedEndpointIds: Array.from(selectedEndpoints),
-            source: "System",
             reasoningNote:
               "Auto-proposed from selected endpoints on suite creation",
           });
@@ -398,7 +397,7 @@ export default function EndpointsPage() {
             >
               {specifications.map((spec) => (
                 <option key={spec.id} value={spec.id}>
-                  {spec.name} ({spec.type}) - {spec.parseStatus}
+                  {spec.name} 
                 </option>
               ))}
             </select>
