@@ -41,6 +41,7 @@ import srsService, { type SrsDocument } from "../services/srsService";
 import { useProject } from "../contexts/ProjectContext";
 import testCaseService, { TestCase } from "../services/testCaseService";
 import testSuiteLlmSuggestionService, {
+  GenerationJobStatus,
   SuiteSuggestionModel,
   SuiteSuggestionQuery,
 } from "../services/testSuiteLlmSuggestionService";
@@ -141,6 +142,8 @@ export default function TestSuiteDetailPage() {
   const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const [suggestionGenerationStatus, setSuggestionGenerationStatus] =
+    useState<GenerationJobStatus | null>(null);
   const isGeneratingSuggestionsRef = React.useRef(false);
   const isRouteActiveRef = React.useRef(true);
   const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
@@ -1032,7 +1035,7 @@ export default function TestSuiteDetailPage() {
               setIsGeneratingSuggestions(true);
 
               try {
-                const resp = await testSuiteLlmSuggestionService.generate(
+                const accepted = await testSuiteLlmSuggestionService.generate(
                   suite.id,
                   {
                     specificationId: suite.apiSpecId,
@@ -1040,8 +1043,8 @@ export default function TestSuiteDetailPage() {
                   },
                 );
 
-                const generatedSuggestionIds = (resp?.suggestions || []).map(
-                  (s) => s.id,
+                const terminalStatus = await pollSuggestionGeneration(
+                  accepted.jobId,
                 );
                 if (run && run.id) {
                   updateGenerationRun(run.id, {
@@ -1050,9 +1053,15 @@ export default function TestSuiteDetailPage() {
                   });
                 }
 
-                await refreshSuggestions();
-                await refreshAllSuggestions();
-                showSuccessToast("AI preview regenerated after approval.");
+                if (terminalStatus === "Completed") {
+                  await finalizeSuggestionGeneration(run);
+                  showSuccessToast("AI preview regenerated after approval.");
+                } else if (terminalStatus === "Cancelled") {
+                  if (run && run.id) removeGenerationRun(run.id);
+                  showInfoToast("LLM suggestion generation was cancelled.");
+                } else {
+                  throw new Error("LLM suggestion generation failed.");
+                }
               } catch (suggestionErr: any) {
                 const statusCode =
                   suggestionErr?.status ?? suggestionErr?.response?.status;
@@ -1085,6 +1094,7 @@ export default function TestSuiteDetailPage() {
               }
             } finally {
               setIsGeneratingSuggestions(false);
+              setSuggestionGenerationStatus(null);
               setForceOpenSuggestions(false);
               endSuggestionGeneration();
             }
@@ -1230,6 +1240,57 @@ export default function TestSuiteDetailPage() {
     isGeneratingSuggestionsRef.current = false;
   };
 
+  const pollSuggestionGeneration = async (
+    jobId: string,
+  ): Promise<GenerationJobStatus> => {
+    if (!suiteId) {
+      throw new Error("Missing test suite id for suggestion polling.");
+    }
+
+    const timeoutAt = Date.now() + 300000;
+
+    while (Date.now() < timeoutAt) {
+      const job = await testSuiteLlmSuggestionService.getGenerationStatus(
+        suiteId,
+        jobId,
+      );
+      setSuggestionGenerationStatus(job.status);
+
+      if (
+        job.status === "Completed" ||
+        job.status === "Failed" ||
+        job.status === "Cancelled"
+      ) {
+        return job.status;
+      }
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, job.status === "WaitingForCallback" ? 5000 : 2500),
+      );
+    }
+
+    throw new Error("LLM suggestion generation timed out.");
+  };
+
+  const finalizeSuggestionGeneration = async (
+    run?: LocalGenerationRun,
+  ): Promise<SuiteSuggestionModel[]> => {
+    const nextSuggestions = await refreshSuggestions();
+    await refreshArchivedSuggestions();
+
+    const pendingSuggestionIds = nextSuggestions
+      .filter(
+        (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
+      )
+      .map((item) => item.id);
+
+    if (run?.id && pendingSuggestionIds.length > 0) {
+      updateGenerationRun(run.id, { suggestionIds: pendingSuggestionIds });
+    }
+
+    return nextSuggestions;
+  };
+
   const handleGenerateSuggestions = async (forceRefresh = false) => {
     if (!suite || !suiteId || !suite.apiSpecId) {
       showErrorToast("Selected test suite does not have an API specification.");
@@ -1273,14 +1334,12 @@ export default function TestSuiteDetailPage() {
       }
 
       try {
-        const resp = await testSuiteLlmSuggestionService.generate(suiteId, {
+        const accepted = await testSuiteLlmSuggestionService.generate(suiteId, {
           specificationId: suite.apiSpecId,
           forceRefresh,
         });
 
-        const generatedSuggestionIds = (resp?.suggestions || []).map(
-          (s) => s.id,
-        );
+        const terminalStatus = await pollSuggestionGeneration(accepted.jobId);
 
         if (run && run.id) {
           updateGenerationRun(run.id, {
@@ -1288,14 +1347,6 @@ export default function TestSuiteDetailPage() {
             completedAt: new Date().toISOString(),
           });
         }
-
-        await refreshSuggestions();
-        await refreshAllSuggestions();
-        showSuccessToast(
-          forceRefresh
-            ? "LLM suggestions regenerated successfully."
-            : "LLM suggestions are ready.",
-        );
       } catch (err: any) {
         const statusCode = err?.status ?? err?.response?.status;
         const message = String(
@@ -1321,6 +1372,7 @@ export default function TestSuiteDetailPage() {
       handleError(err);
     } finally {
       setIsGeneratingSuggestions(false);
+      setSuggestionGenerationStatus(null);
       setForceOpenSuggestions(false);
       endSuggestionGeneration();
     }
@@ -2739,7 +2791,14 @@ export default function TestSuiteDetailPage() {
                           <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
                           <div>
                             <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
-                              Generating suggestions...
+                              {suggestionGenerationStatus === "Queued" &&
+                                "Starting refinement..."}
+                              {suggestionGenerationStatus === "Triggering" &&
+                                "Sending to n8n..."}
+                              {suggestionGenerationStatus ===
+                                "WaitingForCallback" && "Refining suggestions..."}
+                              {!suggestionGenerationStatus &&
+                                "Generating suggestions..."}
                             </p>
                             <p className="text-xs text-indigo-500 dark:text-indigo-400">
                               Suggestions will appear here when complete.
