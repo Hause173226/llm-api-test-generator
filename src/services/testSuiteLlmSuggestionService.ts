@@ -70,12 +70,38 @@ export interface GenerateSuggestionPreviewRequest {
   specificationId: string;
   forceRefresh: boolean;
   algorithmProfile?: {
-    useObservationConfirmationPrompting?: boolean;
-    useDependencyAwareOrdering?: boolean;
-    useSchemaRelationshipAnalysis?: boolean;
-    useSemanticTokenMatching?: boolean;
-    useFeedbackLoopContext?: boolean;
+    enableBoundary?: boolean;
+    enableNegative?: boolean;
+    enableSecurity?: boolean;
+    enablePerformance?: boolean;
   };
+}
+
+export type GenerationJobStatus =
+  | "Queued"
+  | "Triggering"
+  | "WaitingForCallback"
+  | "Completed"
+  | "Failed"
+  | "Cancelled";
+
+export interface GenerateSuggestionPreviewAcceptedResponse {
+  jobId: string;
+  testSuiteId: string;
+  mode: string;
+  message: string;
+}
+
+export interface GenerationJobStatusModel {
+  jobId: string;
+  testSuiteId: string;
+  status: GenerationJobStatus;
+  queuedAt: string;
+  triggeredAt?: string | null;
+  completedAt?: string | null;
+  testCasesGenerated?: number | null;
+  errorMessage?: string | null;
+  webhookName?: string | null;
 }
 
 export interface ReviewSuggestionRequest {
@@ -137,25 +163,20 @@ const testSuiteLlmSuggestionService = {
   async generate(
     suiteId: string,
     payload: GenerateSuggestionPreviewRequest,
-  ): Promise<{ suggestions?: SuiteSuggestionModel[] }> {
-    return await apiService.post<{ suggestions?: SuiteSuggestionModel[] }>(
+  ): Promise<GenerateSuggestionPreviewAcceptedResponse> {
+    return await apiService.post<GenerateSuggestionPreviewAcceptedResponse>(
       `/test-suites/${suiteId}/llm-suggestions/generate`,
-      {
-        ...payload,
-        algorithmProfile: {
-          useObservationConfirmationPrompting:
-            payload.algorithmProfile?.useObservationConfirmationPrompting ??
-            true,
-          useDependencyAwareOrdering:
-            payload.algorithmProfile?.useDependencyAwareOrdering ?? true,
-          useSchemaRelationshipAnalysis:
-            payload.algorithmProfile?.useSchemaRelationshipAnalysis ?? true,
-          useSemanticTokenMatching:
-            payload.algorithmProfile?.useSemanticTokenMatching ?? true,
-          useFeedbackLoopContext:
-            payload.algorithmProfile?.useFeedbackLoopContext ?? true,
-        },
-      },
+      payload,
+    );
+  },
+
+  async getGenerationStatus(
+    suiteId: string,
+    jobId: string,
+  ): Promise<GenerationJobStatusModel> {
+    return await apiService.get<GenerationJobStatusModel>(
+      `/test-suites/${suiteId}/generation-status`,
+      { params: { jobId } },
     );
   },
 
