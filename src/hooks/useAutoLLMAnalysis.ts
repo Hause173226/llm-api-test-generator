@@ -3,7 +3,9 @@ import { apiService } from "../services/apiService";
 import { signalRService } from "../services/signalrService";
 import testRunService, { TestRunDetailResponse, TestCaseRunDetail } from "../services/testRunService";
 import { testSuiteService } from "../services/testSuiteService";
-import testSuiteLlmSuggestionService from "../services/testSuiteLlmSuggestionService";
+import testSuiteLlmSuggestionService, {
+  GenerationJobStatusModel,
+} from "../services/testSuiteLlmSuggestionService";
 import { showErrorToast } from "../utils/errorHandler";
 
 // State interfaces
@@ -50,6 +52,9 @@ const INITIAL_STATE: AutoAnalysisState = {
 
 const MAX_CONCURRENT_REQUESTS = 5;
 const PROCESSED_RUNS_KEY = "autoLLMAnalysis_processedRuns";
+const SUGGESTION_POLL_TIMEOUT_MS = 300000;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function useAutoLLMAnalysis(
   projectId: string,
@@ -123,17 +128,48 @@ export function useAutoLLMAnalysis(
       setState((prev) => ({ ...prev, suggestionsStatus: "running" }));
 
       try {
-        await testSuiteLlmSuggestionService.generate(suiteId, {
+        const accepted = await testSuiteLlmSuggestionService.generate(suiteId, {
           specificationId,
           forceRefresh: false,
-          algorithmProfile: {
-            useObservationConfirmationPrompting: true,
-            useDependencyAwareOrdering: true,
-            useSchemaRelationshipAnalysis: true,
-            useSemanticTokenMatching: true,
-            useFeedbackLoopContext: true,
-          },
         });
+
+        const startedAt = Date.now();
+        let latestStatus: GenerationJobStatusModel | null = null;
+
+        while (Date.now() - startedAt < SUGGESTION_POLL_TIMEOUT_MS) {
+          if (signal.aborted) {
+            setState((prev) => ({ ...prev, suggestionsStatus: "cancelled" }));
+            return false;
+          }
+
+          latestStatus = await testSuiteLlmSuggestionService.getGenerationStatus(
+            suiteId,
+            accepted.jobId,
+          );
+
+          if (latestStatus.status === "Completed") {
+            break;
+          }
+
+          if (latestStatus.status === "Failed") {
+            throw new Error(
+              latestStatus.errorMessage || "LLM suggestion generation failed",
+            );
+          }
+
+          if (latestStatus.status === "Cancelled") {
+            setState((prev) => ({ ...prev, suggestionsStatus: "cancelled" }));
+            return false;
+          }
+
+          await wait(
+            latestStatus.status === "WaitingForCallback" ? 5000 : 2500,
+          );
+        }
+
+        if (latestStatus?.status !== "Completed") {
+          throw new Error("LLM suggestion generation timed out");
+        }
 
         if (signal.aborted) {
           setState((prev) => ({ ...prev, suggestionsStatus: "cancelled" }));
