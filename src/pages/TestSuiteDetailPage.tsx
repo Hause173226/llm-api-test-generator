@@ -69,6 +69,7 @@ type LocalGenerationRun = {
   id: string;
   generatedAt: string;
   suggestionIds?: string[];
+  completedAt?: string;
 };
 
 type GenerationItem = {
@@ -254,8 +255,9 @@ export default function TestSuiteDetailPage() {
       const now = Date.now();
 
       const isCompletedRun = (run: LocalGenerationRun) =>
-        Array.isArray((run as any).suggestionIds) &&
-        (run as any).suggestionIds.length > 0;
+        !!run.completedAt ||
+        (Array.isArray((run as any).suggestionIds) &&
+          (run as any).suggestionIds.length > 0);
 
       const isRecentPendingRun = (run: LocalGenerationRun) => {
         const time = new Date(run.generatedAt).getTime();
@@ -398,7 +400,8 @@ export default function TestSuiteDetailPage() {
     // runs causes confusing "Generating..." entries for earlier runs.
     const retainedRuns = (generationRuns || []).filter(
       (r) =>
-        Array.isArray(r.suggestionIds) && (r.suggestionIds || []).length > 0,
+        !!r.completedAt ||
+        (Array.isArray(r.suggestionIds) && (r.suggestionIds || []).length > 0),
     );
 
     const nextRuns = [...retainedRuns, run].sort(
@@ -587,7 +590,10 @@ export default function TestSuiteDetailPage() {
     // Prefer the latest run that does not yet have suggestionIds attached
     const pendingRun = [...sorted]
       .reverse()
-      .find((r) => !r.suggestionIds || r.suggestionIds.length === 0);
+      .find(
+        (r) =>
+          !r.completedAt && (!r.suggestionIds || r.suggestionIds.length === 0),
+      );
 
     if (!pendingRun) {
       setPendingGeneration(null);
@@ -1037,9 +1043,10 @@ export default function TestSuiteDetailPage() {
                 const generatedSuggestionIds = (resp?.suggestions || []).map(
                   (s) => s.id,
                 );
-                if (run && run.id && generatedSuggestionIds.length > 0) {
+                if (run && run.id) {
                   updateGenerationRun(run.id, {
                     suggestionIds: generatedSuggestionIds,
+                    completedAt: new Date().toISOString(),
                   });
                 }
 
@@ -1275,9 +1282,10 @@ export default function TestSuiteDetailPage() {
           (s) => s.id,
         );
 
-        if (run && run.id && generatedSuggestionIds.length > 0) {
+        if (run && run.id) {
           updateGenerationRun(run.id, {
             suggestionIds: generatedSuggestionIds,
+            completedAt: new Date().toISOString(),
           });
         }
 
