@@ -70,6 +70,7 @@ type LocalGenerationRun = {
   id: string;
   generatedAt: string;
   suggestionIds?: string[];
+  completedAt?: string;
 };
 
 type GenerationItem = {
@@ -257,8 +258,9 @@ export default function TestSuiteDetailPage() {
       const now = Date.now();
 
       const isCompletedRun = (run: LocalGenerationRun) =>
-        Array.isArray((run as any).suggestionIds) &&
-        (run as any).suggestionIds.length > 0;
+        !!run.completedAt ||
+        (Array.isArray((run as any).suggestionIds) &&
+          (run as any).suggestionIds.length > 0);
 
       const isRecentPendingRun = (run: LocalGenerationRun) => {
         const time = new Date(run.generatedAt).getTime();
@@ -375,12 +377,29 @@ export default function TestSuiteDetailPage() {
     setGenerationRuns(nextRuns);
   };
 
+  const getCurrentGenerationRuns = (): LocalGenerationRun[] => {
+    if (!suiteId) return [];
+    try {
+      const raw = localStorage.getItem(generationStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return generationRuns || [];
+      return parsed.filter(
+        (item) =>
+          item &&
+          typeof item.id === "string" &&
+          typeof item.generatedAt === "string",
+      ) as LocalGenerationRun[];
+    } catch {
+      return generationRuns || [];
+    }
+  };
+
   const updateGenerationRun = (
     runId: string,
     patch: Partial<LocalGenerationRun>,
   ) => {
     if (!suiteId) return;
-    const nextRuns = (generationRuns || []).map((r) =>
+    const nextRuns = getCurrentGenerationRuns().map((r) =>
       r.id === runId ? { ...r, ...patch } : r,
     );
     persistGenerationRuns(nextRuns);
@@ -399,9 +418,10 @@ export default function TestSuiteDetailPage() {
     // Remove older runs that are still pending (no suggestionIds) because
     // a newly started generation supersedes them. Keeping old pending
     // runs causes confusing "Generating..." entries for earlier runs.
-    const retainedRuns = (generationRuns || []).filter(
+    const retainedRuns = getCurrentGenerationRuns().filter(
       (r) =>
-        Array.isArray(r.suggestionIds) && (r.suggestionIds || []).length > 0,
+        !!r.completedAt ||
+        (Array.isArray(r.suggestionIds) && (r.suggestionIds || []).length > 0),
     );
 
     const nextRuns = [...retainedRuns, run].sort(
@@ -415,7 +435,7 @@ export default function TestSuiteDetailPage() {
 
   const removeGenerationRun = (runId: string) => {
     if (!suiteId) return;
-    const nextRuns = (generationRuns || []).filter((r) => r.id !== runId);
+    const nextRuns = getCurrentGenerationRuns().filter((r) => r.id !== runId);
     persistGenerationRuns(nextRuns);
   };
 
@@ -590,7 +610,10 @@ export default function TestSuiteDetailPage() {
     // Prefer the latest run that does not yet have suggestionIds attached
     const pendingRun = [...sorted]
       .reverse()
-      .find((r) => !r.suggestionIds || r.suggestionIds.length === 0);
+      .find(
+        (r) =>
+          !r.completedAt && (!r.suggestionIds || r.suggestionIds.length === 0),
+      );
 
     if (!pendingRun) {
       setPendingGeneration(null);
@@ -1043,6 +1066,11 @@ export default function TestSuiteDetailPage() {
 
                 if (terminalStatus === "Completed") {
                   await finalizeSuggestionGeneration(run);
+                  if (run && run.id) {
+                    updateGenerationRun(run.id, {
+                      completedAt: new Date().toISOString(),
+                    });
+                  }
                   showSuccessToast("AI preview regenerated after approval.");
                 } else if (terminalStatus === "Cancelled") {
                   if (run && run.id) removeGenerationRun(run.id);
@@ -1263,7 +1291,28 @@ export default function TestSuiteDetailPage() {
   const finalizeSuggestionGeneration = async (
     run?: LocalGenerationRun,
   ): Promise<SuiteSuggestionModel[]> => {
-    const nextSuggestions = await refreshSuggestions();
+    // Backend can report Completed slightly before freshly generated suggestions
+    // are visible in list API. Retry briefly so Step 2 can render immediately.
+    const previousCount = allSuggestions.length;
+    const runStartedAt = run?.generatedAt ? new Date(run.generatedAt).getTime() : 0;
+    const hasFreshItems = (items: SuiteSuggestionModel[]) =>
+      items.some((item) => {
+        const value = item.createdDateTime || item.updatedDateTime;
+        if (!value) return false;
+        const time = new Date(value).getTime();
+        return Number.isFinite(time) && time >= runStartedAt;
+      });
+
+    let nextSuggestions = await refreshSuggestions();
+    const deadline = Date.now() + 20000;
+    while (
+      Date.now() < deadline &&
+      nextSuggestions.length <= previousCount &&
+      !hasFreshItems(nextSuggestions)
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      nextSuggestions = await refreshSuggestions();
+    }
     await refreshArchivedSuggestions();
 
     const pendingSuggestionIds = nextSuggestions
@@ -1331,11 +1380,11 @@ export default function TestSuiteDetailPage() {
 
         if (terminalStatus === "Completed") {
           await finalizeSuggestionGeneration(run);
-          showSuccessToast(
-            forceRefresh
-              ? "LLM suggestions regenerated successfully."
-              : "LLM suggestions are ready.",
-          );
+          if (run && run.id) {
+            updateGenerationRun(run.id, {
+              completedAt: new Date().toISOString(),
+            });
+          }
         } else if (terminalStatus === "Cancelled") {
           if (run && run.id) removeGenerationRun(run.id);
           showInfoToast("LLM suggestion generation was cancelled.");

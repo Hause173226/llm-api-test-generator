@@ -147,6 +147,48 @@ export default function BillingPage() {
     limitValue: 25000,
   };
 
+  const getPaymentDateText = (payment: (typeof payments)[number]) => {
+    const rawDate = payment.createdDateTime || payment.transactionDate;
+    if (!rawDate) return "N/A";
+    const d = new Date(rawDate);
+    return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString();
+  };
+
+  const getPaymentStatusView = (status: number) => {
+    switch (status) {
+      case 0:
+        return {
+          label: "Pending",
+          className:
+            "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+        };
+      case 1:
+        return {
+          label: "Succeeded",
+          className:
+            "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+        };
+      case 2:
+        return {
+          label: "Failed",
+          className:
+            "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
+        };
+      case 3:
+        return {
+          label: "Refunded",
+          className:
+            "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200",
+        };
+      default:
+        return {
+          label: "Unknown",
+          className:
+            "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200",
+        };
+    }
+  };
+
   return (
     <MainLayout title={t("billing.title")}>
       <div className="space-y-10 pb-12">
@@ -433,43 +475,40 @@ export default function BillingPage() {
               </thead>
               <tbody className="divide-y divide-outline-variant/5">
                 {payments.length > 0 ? (
-                  payments.map((payment) => (
-                    <tr
-                      key={payment.id}
-                      className="hover:bg-surface-container-low/30 dark:hover:bg-surface-container-high/30 transition-colors"
-                    >
-                      <td className="px-8 py-5 text-sm font-bold text-on-surface">
-                        {payment.id.substring(0, 13)}
-                      </td>
-                      <td className="px-8 py-5 text-sm text-on-surface-variant">
-                        {new Date(payment.transactionDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-8 py-5 text-sm font-medium text-on-surface">
-                        ${payment.amount.toFixed(2)} {payment.currency}
-                      </td>
-                      <td className="px-8 py-5">
-                        <span
-                          className={cn(
-                            "px-2.5 py-1 text-[10px] font-bold rounded-full uppercase",
-                            payment.status === 2
-                              ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                              : payment.status === 0 || payment.status === 1
-                                ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                                : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
-                          )}
-                        >
-                          {["Pending", "Processing", "Succeeded", "Canceled"][
-                            payment.status
-                          ] ?? "Unknown"}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        <button className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
-                          <CreditCard className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  payments.map((payment) => {
+                    const statusView = getPaymentStatusView(payment.status);
+                    return (
+                      <tr
+                        key={payment.id}
+                        className="hover:bg-surface-container-low/30 dark:hover:bg-surface-container-high/30 transition-colors"
+                      >
+                        <td className="px-8 py-5 text-sm font-bold text-on-surface">
+                          {payment.id.substring(0, 13)}
+                        </td>
+                        <td className="px-8 py-5 text-sm text-on-surface-variant">
+                          {getPaymentDateText(payment)}
+                        </td>
+                        <td className="px-8 py-5 text-sm font-medium text-on-surface">
+                          ${payment.amount.toFixed(2)} {payment.currency}
+                        </td>
+                        <td className="px-8 py-5">
+                          <span
+                            className={cn(
+                              "px-2.5 py-1 text-[10px] font-bold rounded-full uppercase",
+                              statusView.className,
+                            )}
+                          >
+                            {statusView.label}
+                          </span>
+                        </td>
+                        <td className="px-8 py-5 text-right">
+                          <button className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
+                            <CreditCard className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td

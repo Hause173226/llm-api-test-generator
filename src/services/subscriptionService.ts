@@ -49,10 +49,13 @@ export interface PaymentTransaction {
   subscriptionId: string;
   amount: number;
   currency: string;
-  // FE-14 contract: 0=Pending, 1=Processing, 2=Succeeded, 3=Canceled (numeric enum)
+  // Runtime BE enum: 0=Pending, 1=Succeeded, 2=Failed, 3=Refunded
   status: number;
   paymentMethod: string;
-  transactionDate: string;
+  createdDateTime?: string;
+  updatedDateTime?: string;
+  // Backward compatibility with older payload shape (if any)
+  transactionDate?: string;
   description?: string;
 }
 
