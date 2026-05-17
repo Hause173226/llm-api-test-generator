@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, X, Pencil, Filter, Loader2, Route, Clock, BookOpen, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
 import Modal from "../ui/Modal";
@@ -50,6 +50,17 @@ export interface SuggestionReviewPanelProps {
   isHistoricalView?: boolean;
   currentGenerationNumber?: number;
   viewingGenerationNumber?: number;
+  srsCoverageSummary?: {
+    totalRequirements: number;
+    coveredRequirements: number;
+    uncoveredRequirements: number;
+    coveragePercent: number;
+    coveredItems?: Array<{
+      requirementId?: string;
+      requirementCode?: string;
+      title?: string;
+    }>;
+  } | null;
 }
 
 export default function SuggestionReviewPanel({
@@ -78,6 +89,7 @@ export default function SuggestionReviewPanel({
   isHistoricalView = false,
   currentGenerationNumber,
   viewingGenerationNumber,
+  srsCoverageSummary = null,
 }: SuggestionReviewPanelProps) {
   const navigate = useNavigate();
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>(
@@ -89,6 +101,9 @@ export default function SuggestionReviewPanel({
   const [draftStatus, setDraftStatus] = useState(reviewStatusFilter);
   const [draftTestType, setDraftTestType] = useState(testTypeFilter);
   const [draftEndpoint, setDraftEndpoint] = useState(endpointFilter);
+  const [draftCoverage, setDraftCoverage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [reviewMode, setReviewMode] = useState<"Reject" | "Modify" | null>(
     null,
   );
@@ -124,28 +139,49 @@ export default function SuggestionReviewPanel({
     [allSuggestions],
   );
 
+  const getCoverageState = (suggestion: SuiteSuggestionModel) => {
+    const coveredCount = suggestion.coveredRequirements?.length ?? 0;
+    const coveredIdCount = suggestion.coveredRequirementIds?.length ?? 0;
+    if (coveredCount > 0 || coveredIdCount > 0) {
+      return "FULL";
+    }
+    if (suggestion.hasSrsContext) {
+      return "SRS_ONLY";
+    }
+    return "NO_SRS";
+  };
+
+  const filteredByCoverageSuggestions = useMemo(() => {
+    if (!draftCoverage) return suggestions;
+    return suggestions.filter((s) => getCoverageState(s) === draftCoverage);
+  }, [suggestions, draftCoverage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [draftStatus, draftTestType, draftEndpoint, draftCoverage, suggestions.length]);
+
   const pendingSuggestions = useMemo(
     () =>
-      suggestions.filter(
+      filteredByCoverageSuggestions.filter(
         (s) => String(s.reviewStatus || "").toLowerCase() === "pending",
       ),
-    [suggestions],
+    [filteredByCoverageSuggestions],
   );
 
   const supersededSuggestions = useMemo(
     () =>
-      suggestions.filter(
+      filteredByCoverageSuggestions.filter(
         (s) => String(s.reviewStatus || "").toLowerCase() === "superseded",
       ),
-    [suggestions],
+    [filteredByCoverageSuggestions],
   );
 
   const rejectedSuggestions = useMemo(
     () =>
-      suggestions.filter(
+      filteredByCoverageSuggestions.filter(
         (s) => String(s.reviewStatus || "").toLowerCase() === "rejected",
       ),
-    [suggestions],
+    [filteredByCoverageSuggestions],
   );
 
   const selectedPendingSuggestions = useMemo(
@@ -185,15 +221,33 @@ export default function SuggestionReviewPanel({
 
   const suggestionStats = useMemo(() => {
     const pending = pendingSuggestions.length;
-    const approved = suggestions.filter((s) => {
+    const approved = filteredByCoverageSuggestions.filter((s) => {
       const status = String(s.reviewStatus || "").toLowerCase();
       return status === "approved" || status === "modifiedandapproved";
     }).length;
-    const rejected = suggestions.filter(
+    const rejected = filteredByCoverageSuggestions.filter(
       (s) => String(s.reviewStatus || "").toLowerCase() === "rejected",
     ).length;
     return { pending, approved, rejected };
-  }, [pendingSuggestions, suggestions]);
+  }, [pendingSuggestions, filteredByCoverageSuggestions]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredByCoverageSuggestions.length / pageSize),
+  );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pagedSuggestions = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredByCoverageSuggestions.slice(start, start + pageSize);
+  }, [filteredByCoverageSuggestions, safeCurrentPage, pageSize]);
+  const fromIndex =
+    filteredByCoverageSuggestions.length === 0
+      ? 0
+      : (safeCurrentPage - 1) * pageSize + 1;
+  const toIndex = Math.min(
+    safeCurrentPage * pageSize,
+    filteredByCoverageSuggestions.length,
+  );
 
   const toggleSelectAllPending = () => {
     setSelectedSuggestionIds((prev) => {
@@ -398,6 +452,38 @@ export default function SuggestionReviewPanel({
 
   return (
     <div className="space-y-4">
+      {srsCoverageSummary && srsCoverageSummary.totalRequirements > 0 && (
+        <div className="rounded-xl border border-cyan-300/40 bg-cyan-50/40 dark:bg-cyan-950/20 dark:border-cyan-700/40 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-bold text-cyan-800 dark:text-cyan-300">
+              SRS Coverage: {srsCoverageSummary.coveragePercent}% ({srsCoverageSummary.coveredRequirements}/{srsCoverageSummary.totalRequirements})
+            </p>
+            <span className="text-xs text-cyan-700 dark:text-cyan-400">
+              Uncovered: {srsCoverageSummary.uncoveredRequirements}
+            </span>
+          </div>
+          {Array.isArray(srsCoverageSummary.coveredItems) &&
+            srsCoverageSummary.coveredItems.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {srsCoverageSummary.coveredItems.slice(0, 8).map((item, idx) => (
+                  <span
+                    key={item.requirementId || `${item.requirementCode || "req"}-${idx}`}
+                    title={item.title || item.requirementCode || "Covered requirement"}
+                    className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40"
+                  >
+                    {item.requirementCode || "REQ"}
+                  </span>
+                ))}
+                {srsCoverageSummary.coveredItems.length > 8 && (
+                  <span className="text-[10px] text-cyan-700 dark:text-cyan-400">
+                    +{srsCoverageSummary.coveredItems.length - 8} more
+                  </span>
+                )}
+              </div>
+            )}
+        </div>
+      )}
+
       {/* SRS Trust Banner — shown when all/some suggestions have SRS context */}
       {srsLinkedCount > 0 && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-emerald-300/60 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-950/30">
@@ -528,7 +614,7 @@ export default function SuggestionReviewPanel({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <select
             value={draftStatus}
             onChange={(e) => {
@@ -593,9 +679,21 @@ export default function SuggestionReviewPanel({
               </option>
             ))}
           </select>
+
+          <select
+            value={draftCoverage}
+            onChange={(e) => setDraftCoverage(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
+          >
+            <option value="">All SRS coverage</option>
+            <option value="FULL">Covered requirements</option>
+            <option value="SRS_ONLY">SRS-aligned (no req IDs)</option>
+            <option value="NO_SRS">No SRS context</option>
+          </select>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-on-surface-variant">
+          <span>Total: {filteredByCoverageSuggestions.length}</span>
           <span>Pending: {suggestionStats.pending}</span>
           <span>Approved: {suggestionStats.approved}</span>
           <span>Rejected: {suggestionStats.rejected}</span>
@@ -618,13 +716,18 @@ export default function SuggestionReviewPanel({
         </div>
       ) : null}
 
-      {!isLoadingSuggestions && suggestions.length > 0 && (
+      {!isLoadingSuggestions && filteredByCoverageSuggestions.length > 0 && (
         <div className="space-y-2">
-          {suggestions.map((suggestion) => {
+          {pagedSuggestions.map((suggestion) => {
             const endpoint = suggestion.endpointId
               ? endpointById.get(suggestion.endpointId)
               : null;
             const status = String(suggestion.reviewStatus || "").toLowerCase();
+            const coverageState = getCoverageState(suggestion);
+            const coveredRequirementCount =
+              suggestion.coveredRequirements?.length ??
+              suggestion.coveredRequirementIds?.length ??
+              0;
 
             return (
               <div
@@ -651,6 +754,18 @@ export default function SuggestionReviewPanel({
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/25">
                           <BookOpen className="w-2.5 h-2.5" />
                           SRS
+                        </span>
+                      )}
+                      {coverageState === "FULL" && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-cyan-100 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-400/25">
+                          <ShieldCheck className="w-2.5 h-2.5" />
+                          Covered {coveredRequirementCount}
+                        </span>
+                      )}
+                      {coverageState === "SRS_ONLY" && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/25">
+                          <ShieldCheck className="w-2.5 h-2.5" />
+                          SRS (no req IDs)
                         </span>
                       )}
                       {draftEdits[suggestion.id] && (
@@ -767,8 +882,62 @@ export default function SuggestionReviewPanel({
               </div>
             );
           })}
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant/20 px-3 py-2 text-xs text-on-surface-variant">
+            <div className="flex items-center gap-2">
+              <span>
+                Showing {fromIndex}-{toIndex} of{" "}
+                {filteredByCoverageSuggestions.length}
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const next = Number(e.target.value) || 10;
+                  setPageSize(next);
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 rounded bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-600 text-on-surface"
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage <= 1}
+                className="px-3 py-1 rounded bg-surface-container-high text-on-surface disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <span>
+                Page {safeCurrentPage}/{totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={safeCurrentPage >= totalPages}
+                className="px-3 py-1 rounded bg-surface-container-high text-on-surface disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      {!isLoadingSuggestions &&
+        suggestions.length > 0 &&
+        filteredByCoverageSuggestions.length === 0 && (
+          <div className="rounded-lg border border-outline-variant/20 p-4 text-sm text-on-surface-variant">
+            No suggestions match current SRS coverage filter.
+          </div>
+        )}
 
       <Modal
         isOpen={isRejectModalOpen}

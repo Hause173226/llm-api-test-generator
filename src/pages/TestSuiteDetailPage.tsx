@@ -213,6 +213,17 @@ export default function TestSuiteDetailPage() {
     useState("");
   const [suggestionTestTypeFilter, setSuggestionTestTypeFilter] = useState("");
   const [suggestionEndpointFilter, setSuggestionEndpointFilter] = useState("");
+  const [srsCoverageSummary, setSrsCoverageSummary] = useState<{
+    totalRequirements: number;
+    coveredRequirements: number;
+    uncoveredRequirements: number;
+    coveragePercent: number;
+    coveredItems: Array<{
+      requirementId?: string;
+      requirementCode?: string;
+      title?: string;
+    }>;
+  } | null>(null);
   const [expandedGenerationItemId, setExpandedGenerationItemId] = useState<
     string | null
   >(null);
@@ -230,6 +241,42 @@ export default function TestSuiteDetailPage() {
     allSuggestions.some(
       (s) => s.reviewStatus === "Pending" && !s.hasSrsContext,
     );
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSrsCoverage = async () => {
+      if (!projectId || !suiteId || !linkedSrsDocId) {
+        setSrsCoverageSummary(null);
+        return;
+      }
+
+      try {
+        const data = await srsService.getTraceability(projectId, suiteId);
+        if (cancelled) return;
+
+        const rows = Array.isArray(data?.requirements) ? data.requirements : [];
+        const coveredRows = rows.filter((r: any) => r?.isCovered);
+        setSrsCoverageSummary({
+          totalRequirements: Number(data?.totalRequirements ?? 0),
+          coveredRequirements: Number(data?.coveredRequirements ?? 0),
+          uncoveredRequirements: Number(data?.uncoveredRequirements ?? 0),
+          coveragePercent: Number(data?.coveragePercent ?? 0),
+          coveredItems: coveredRows.map((r: any) => ({
+            requirementId: r?.requirementId,
+            requirementCode: r?.requirementCode,
+            title: r?.title,
+          })),
+        });
+      } catch {
+        if (!cancelled) setSrsCoverageSummary(null);
+      }
+    };
+
+    loadSrsCoverage();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, suiteId, linkedSrsDocId, allSuggestions.length]);
 
   const breadcrumbs = useProjectBreadcrumbs(
     t("testSuites.title"),
@@ -1284,22 +1331,34 @@ export default function TestSuiteDetailPage() {
     const completeJob = async () => {
       try {
         if (generationPolling.terminalStatus === "Completed") {
-          await finalizeSuggestionGeneration({
+          const finalized = await finalizeSuggestionGeneration({
             id: activeGenerationJob.runId,
             generatedAt: activeGenerationJob.generatedAt,
           });
           updateGenerationRun(activeGenerationJob.runId, {
             completedAt: new Date().toISOString(),
           });
-          showSuccessToast(
-            activeGenerationJob.successToast || "LLM suggestions are ready.",
-          );
+          if (finalized.length === 0) {
+            showInfoToast(
+              "Generation completed but no valid suggestions passed strict contract checks.",
+            );
+          } else {
+            showSuccessToast(
+              activeGenerationJob.successToast || "LLM suggestions are ready.",
+            );
+          }
         } else if (generationPolling.terminalStatus === "Cancelled") {
           removeGenerationRun(activeGenerationJob.runId);
           showInfoToast("LLM suggestion generation was cancelled.");
         } else {
           removeGenerationRun(activeGenerationJob.runId);
-          showErrorToast("LLM suggestion generation failed.");
+          const latest = await testSuiteLlmSuggestionService.getGenerationStatus(
+            suiteId!,
+            activeGenerationJob.jobId,
+          );
+          showErrorToast(
+            latest.errorMessage || "LLM suggestion generation failed.",
+          );
         }
       } catch (err) {
         handleError(err);
@@ -2957,6 +3016,7 @@ export default function TestSuiteDetailPage() {
                   onBulkApprove={handleBulkApprove}
                   isBulkApprovingSuggestions={isBulkApprovingSuggestions}
                   onBulkReject={handleBulkReject}
+                  srsCoverageSummary={srsCoverageSummary}
                 />
               ) : (
                 <div className="text-sm text-on-surface-variant text-center py-8">
