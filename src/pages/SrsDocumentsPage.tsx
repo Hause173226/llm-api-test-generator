@@ -158,6 +158,10 @@ export default function SrsDocumentsPage() {
   });
 
   const [isAddReqOpen, setIsAddReqOpen] = useState(false);
+  const [showFullSrsContent, setShowFullSrsContent] = useState(false);
+  const [expandedRequirementIds, setExpandedRequirementIds] = useState<
+    Record<string, boolean>
+  >({});
   const [addReqForm, setAddReqForm] = useState({
     title: "",
     description: "",
@@ -207,6 +211,19 @@ export default function SrsDocumentsPage() {
 
       const reqs = await srsService.listRequirements(projectId, docId);
       setRequirements(reqs);
+      // Keep library card in sync with latest requirement count/status for this document
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === docId
+            ? {
+                ...doc,
+                analysisStatus: detail.analysisStatus,
+                requirements: reqs,
+                latestJobId: detail.latestJobId ?? doc.latestJobId ?? null,
+              }
+            : doc,
+        ),
+      );
 
       const clarificationMap: Record<string, SrsClarification[]> = {};
       await Promise.all(
@@ -558,6 +575,58 @@ export default function SrsDocumentsPage() {
     !!selectedRequirement &&
     criticalClarifications.length > 0 &&
     answeredCriticalCount === criticalClarifications.length;
+
+  const prettyJson = (raw?: string | null) => {
+    if (!raw || !String(raw).trim()) return null;
+    try {
+      return JSON.stringify(JSON.parse(raw), null, 2);
+    } catch {
+      return String(raw);
+    }
+  };
+
+  const selectedSrsContent = useMemo(() => {
+    const raw = (selectedDocument as any)?.parsedMarkdown || selectedDocument?.rawContent || "";
+    return String(raw || "").trim();
+  }, [selectedDocument]);
+
+  const buildRequirementEvidence = (req: SrsRequirement) => {
+    const content = selectedSrsContent;
+    if (!content) return null;
+
+    const paragraphs = content
+      .split(/\r?\n\r?\n+/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+
+    const titleTokens = (req.title || "")
+      .toLowerCase()
+      .split(/[^a-z0-9_]+/i)
+      .filter((t) => t.length >= 4);
+    const descTokens = (req.description || "")
+      .toLowerCase()
+      .split(/[^a-z0-9_]+/i)
+      .filter((t) => t.length >= 5)
+      .slice(0, 6);
+    const codeToken = (req.requirementCode || "").toLowerCase();
+    const tokens = [...new Set([codeToken, ...titleTokens, ...descTokens].filter(Boolean))];
+    if (tokens.length === 0) return null;
+
+    let best: { text: string; score: number } | null = null;
+    for (const p of paragraphs) {
+      const lower = p.toLowerCase();
+      let score = 0;
+      for (const t of tokens) {
+        if (lower.includes(t)) score++;
+      }
+      if (!best || score > best.score) {
+        best = { text: p, score };
+      }
+    }
+
+    if (!best || best.score === 0) return null;
+    return best.text.length > 420 ? `${best.text.slice(0, 420)}...` : best.text;
+  };
 
   return (
     <MainLayout title="SRS Documents" breadcrumbs={breadcrumbs}>
@@ -925,6 +994,37 @@ export default function SrsDocumentsPage() {
                     </button>
                   </div>
                 </div>
+
+                <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs uppercase tracking-widest text-on-surface-variant">
+                      Nội dung SRS đã upload
+                    </p>
+                    {selectedSrsContent && (
+                      <button
+                        type="button"
+                        onClick={() => setShowFullSrsContent((v) => !v)}
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
+                        {showFullSrsContent ? "Thu gọn" : "Xem đầy đủ"}
+                      </button>
+                    )}
+                  </div>
+                  {!selectedSrsContent ? (
+                    <p className="mt-2 text-sm text-on-surface-variant">
+                      Chưa có raw content để hiển thị.
+                    </p>
+                  ) : (
+                    <pre
+                      className={cn(
+                        "mt-2 rounded-xl border border-outline-variant/20 bg-surface-container px-3 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words",
+                        showFullSrsContent ? "max-h-[420px] overflow-auto" : "max-h-32 overflow-hidden",
+                      )}
+                    >
+                      {selectedSrsContent}
+                    </pre>
+                  )}
+                </div>
               </section>
 
               <section className="rounded-3xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-sm space-y-4">
@@ -1064,6 +1164,12 @@ export default function SrsDocumentsPage() {
                       ).length;
                       const hasOpenCritical = criticalCount > answeredCritical;
                       const isSelected = selectedRequirement?.id === req.id;
+                      const isExpanded = !!expandedRequirementIds[req.id];
+                      const parsedConstraints = prettyJson(
+                        req.refinedConstraints || req.testableConstraints,
+                      );
+                      const parsedAssumptions = prettyJson(req.assumptions);
+                      const parsedAmbiguities = prettyJson(req.ambiguities);
 
                       return (
                         <article
@@ -1113,10 +1219,80 @@ export default function SrsDocumentsPage() {
                                 <p className="mt-1 text-sm text-on-surface-variant line-clamp-2">
                                   {req.description}
                                 </p>
+                                {(() => {
+                                  const evidence = buildRequirementEvidence(req);
+                                  if (!evidence) return null;
+                                  return (
+                                    <div className="mt-2 rounded-lg border border-cyan-200/60 dark:border-cyan-700/40 bg-cyan-50/50 dark:bg-cyan-950/20 px-2.5 py-2">
+                                      <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
+                                        Evidence from SRS
+                                      </p>
+                                      <p className="mt-1 text-xs text-cyan-800 dark:text-cyan-200 whitespace-pre-wrap">
+                                        {evidence}
+                                      </p>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                               <ChevronRight className="w-4 h-4 text-on-surface-variant shrink-0 mt-1" />
                             </div>
                           </button>
+
+                          <div className="mt-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedRequirementIds((prev) => ({
+                                  ...prev,
+                                  [req.id]: !prev[req.id],
+                                }))
+                              }
+                              className="text-xs font-semibold text-primary hover:underline"
+                            >
+                              {isExpanded ? "Ẩn chi tiết requirement" : "Hiện chi tiết requirement"}
+                            </button>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="mt-3 space-y-2 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3">
+                              <div>
+                                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
+                                  Full Description
+                                </p>
+                                <p className="mt-1 text-sm text-on-surface whitespace-pre-wrap">
+                                  {req.description || "No description"}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
+                                  Constraints (for test generation)
+                                </p>
+                                <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
+                                  {parsedConstraints || "No constraints"}
+                                </pre>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
+                                    Assumptions
+                                  </p>
+                                  <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
+                                    {parsedAssumptions || "No assumptions"}
+                                  </pre>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
+                                    Ambiguities / Clarification hints
+                                  </p>
+                                  <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
+                                    {parsedAmbiguities || "No ambiguities"}
+                                  </pre>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                           <div className="mt-4 flex flex-wrap items-center gap-3">
                             {/* Edit requirement — always visible */}
