@@ -28,6 +28,86 @@ export interface EndpointsResponse {
   totalPages: number;
 }
 
+const ENDPOINT_CACHE_TTL_MS = 30000;
+
+type CacheEntry<T> = {
+  expiresAt: number;
+  value: T;
+};
+
+type EndpointCacheKey = {
+  projectId: string;
+  specId: string;
+  pageNumber: number;
+  pageSize: number;
+  searchTerm: string;
+  method: string;
+  tag: string;
+};
+
+const endpointCache = new Map<string, CacheEntry<EndpointsResponse>>();
+const pendingEndpointRequests = new Map<string, Promise<EndpointsResponse>>();
+let endpointCacheRevision = 0;
+
+const buildEndpointCacheKey = (
+  projectId: string,
+  specId: string,
+  pageNumber: number,
+  pageSize: number,
+  searchTerm: string,
+  method?: string,
+  tag?: string,
+) =>
+  JSON.stringify({
+    projectId,
+    specId,
+    pageNumber,
+    pageSize,
+    searchTerm,
+    method: method || "",
+    tag: tag || "",
+  } satisfies EndpointCacheKey);
+
+const parseEndpointCacheKey = (key: string): EndpointCacheKey | null => {
+  try {
+    return JSON.parse(key) as EndpointCacheKey;
+  } catch {
+    return null;
+  }
+};
+
+const invalidateEndpointCache = (projectId?: string, specId?: string) => {
+  endpointCacheRevision += 1;
+
+  for (const key of endpointCache.keys()) {
+    const parsed = parseEndpointCacheKey(key);
+    if (!parsed) {
+      endpointCache.delete(key);
+      continue;
+    }
+
+    const matchesProject = !projectId || parsed.projectId === projectId;
+    const matchesSpec = !specId || parsed.specId === specId;
+    if (matchesProject && matchesSpec) {
+      endpointCache.delete(key);
+    }
+  }
+
+  for (const key of pendingEndpointRequests.keys()) {
+    const parsed = parseEndpointCacheKey(key);
+    if (!parsed) {
+      pendingEndpointRequests.delete(key);
+      continue;
+    }
+
+    const matchesProject = !projectId || parsed.projectId === projectId;
+    const matchesSpec = !specId || parsed.specId === specId;
+    if (matchesProject && matchesSpec) {
+      pendingEndpointRequests.delete(key);
+    }
+  }
+};
+
 const endpointService = {
   // Get all endpoints for a specification
   getEndpoints: async (
@@ -44,42 +124,83 @@ const endpointService = {
     if (method) params.method = method;
     if (tag) params.tag = tag;
 
-    // Backend returns array directly, not paginated response
-    const rawItems = await apiService.get<any[]>(
-      `/projects/${projectId}/specifications/${specId}/endpoints`,
-      { params },
+    const cacheKey = buildEndpointCacheKey(
+      projectId,
+      specId,
+      pageNumber,
+      pageSize,
+      searchTerm,
+      method,
+      tag,
     );
+    const now = Date.now();
+    const cached = endpointCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
 
-    // Map Backend response to Frontend format
-    const items: Endpoint[] = Array.isArray(rawItems)
-      ? rawItems.map((item: any) => ({
-          id: item.id,
-          projectId: projectId,
-          path: item.path || "",
-          method: item.httpMethod || "GET",
-          description: item.description || item.summary || "",
-          parameters: item.parameters || [],
-          requestBody: item.requestBody,
-          responses: item.responses,
-          tags: item.tags
-            ? typeof item.tags === "string"
-              ? JSON.parse(item.tags)
-              : item.tags
-            : [],
-          isActive: !item.isDeprecated,
-          createdAt: item.createdDateTime || new Date().toISOString(),
-          updatedAt: item.updatedDateTime || new Date().toISOString(),
-        }))
-      : [];
+    const pending = pendingEndpointRequests.get(cacheKey);
+    if (pending) {
+      return pending;
+    }
 
-    // Convert to paginated response format
-    return {
-      items,
-      totalCount: items.length,
-      pageNumber: 1,
-      pageSize: items.length,
-      totalPages: 1,
-    };
+    const revisionAtStart = endpointCacheRevision;
+    const requestPromise = (async () => {
+      // Backend returns array directly, not paginated response
+      const rawItems = await apiService.get<any[]>(
+        `/projects/${projectId}/specifications/${specId}/endpoints`,
+        { params },
+      );
+
+      // Map Backend response to Frontend format
+      const items: Endpoint[] = Array.isArray(rawItems)
+        ? rawItems.map((item: any) => ({
+            id: item.id,
+            projectId: projectId,
+            path: item.path || "",
+            method: item.httpMethod || "GET",
+            description: item.description || item.summary || "",
+            parameters: item.parameters || [],
+            requestBody: item.requestBody,
+            responses: item.responses,
+            tags: item.tags
+              ? typeof item.tags === "string"
+                ? JSON.parse(item.tags)
+                : item.tags
+              : [],
+            isActive: !item.isDeprecated,
+            createdAt: item.createdDateTime || new Date().toISOString(),
+            updatedAt: item.updatedDateTime || new Date().toISOString(),
+          }))
+        : [];
+
+      // Convert to paginated response format
+      const response = {
+        items,
+        totalCount: items.length,
+        pageNumber: 1,
+        pageSize: items.length,
+        totalPages: 1,
+      };
+
+      if (revisionAtStart === endpointCacheRevision) {
+        endpointCache.set(cacheKey, {
+          expiresAt: Date.now() + ENDPOINT_CACHE_TTL_MS,
+          value: response,
+        });
+      }
+
+      return response;
+    })();
+
+    pendingEndpointRequests.set(cacheKey, requestPromise);
+    try {
+      return await requestPromise;
+    } finally {
+      if (pendingEndpointRequests.get(cacheKey) === requestPromise) {
+        pendingEndpointRequests.delete(cacheKey);
+      }
+    }
   },
 
   // Get endpoint by ID
@@ -107,10 +228,12 @@ const endpointService = {
     // Remove FE-only 'method' key so we don't confuse backend
     delete (apiPayload as any).method;
 
-    return await apiService.post<Endpoint>(
+    const created = await apiService.post<Endpoint>(
       `/projects/${projectId}/specifications/${specId}/endpoints`,
       apiPayload,
     );
+    invalidateEndpointCache(projectId, specId);
+    return created;
   },
 
   // Update endpoint
@@ -127,10 +250,12 @@ const endpointService = {
     };
     delete (apiPayload as any).method;
 
-    return await apiService.put<Endpoint>(
+    const updated = await apiService.put<Endpoint>(
       `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}`,
       apiPayload,
     );
+    invalidateEndpointCache(projectId, specId);
+    return updated;
   },
 
   // Delete endpoint
@@ -142,6 +267,7 @@ const endpointService = {
     await apiService.delete(
       `/projects/${projectId}/specifications/${specId}/endpoints/${endpointId}`,
     );
+    invalidateEndpointCache(projectId, specId);
   },
 
   // Get endpoint statistics
@@ -161,6 +287,8 @@ const endpointService = {
       `/projects/${projectId}/specifications/${specId}/endpoints/tags`,
     );
   },
+
+  invalidateCache: invalidateEndpointCache,
 };
 
 export default endpointService;

@@ -384,7 +384,7 @@ describe("HttpClientService", () => {
         message: "Network Error",
       };
       
-      mockedAxios.isAxiosError = vi.fn(() => true);
+      mockedAxios.isAxiosError = vi.fn(() => true) as any;
       mockedAxios.mockRejectedValueOnce(networkError);
 
       const config: RequestConfig = {
@@ -408,7 +408,7 @@ describe("HttpClientService", () => {
         message: "timeout of 5000ms exceeded",
       };
       
-      mockedAxios.isAxiosError = vi.fn(() => true);
+      mockedAxios.isAxiosError = vi.fn(() => true) as any;
       mockedAxios.mockRejectedValueOnce(timeoutError);
 
       const config: RequestConfig = {
@@ -432,7 +432,7 @@ describe("HttpClientService", () => {
         message: "CORS policy blocked",
       };
       
-      mockedAxios.isAxiosError = vi.fn(() => true);
+      mockedAxios.isAxiosError = vi.fn(() => true) as any;
       mockedAxios.mockRejectedValueOnce(corsError);
 
       const config: RequestConfig = {

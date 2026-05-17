@@ -49,6 +49,10 @@ import SuggestionReviewPanel from "../components/test-runs/SuggestionReviewPanel
 import Modal from "../components/ui/Modal";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
+import {
+  getGenerationStatusLabel,
+  useGenerationJobPolling,
+} from "../hooks/useGenerationJobPolling";
 type ProposalApiResponse = {
   proposalId?: string;
   ProposalId?: string;
@@ -71,6 +75,13 @@ type LocalGenerationRun = {
   generatedAt: string;
   suggestionIds?: string[];
   completedAt?: string;
+};
+
+type ActiveGenerationJob = {
+  jobId: string;
+  runId: string;
+  generatedAt: string;
+  successToast?: string;
 };
 
 type GenerationItem = {
@@ -151,6 +162,9 @@ export default function TestSuiteDetailPage() {
     id: string;
     label: string;
   } | null>(null);
+  const [activeGenerationJob, setActiveGenerationJob] =
+    useState<ActiveGenerationJob | null>(null);
+  const finalizedGenerationJobIdsRef = React.useRef<Set<string>>(new Set());
   const [forceOpenSuggestions, setForceOpenSuggestions] = useState(false);
   const [isBulkReviewingSuggestions, setIsBulkReviewingSuggestions] =
     useState(false);
@@ -456,16 +470,42 @@ export default function TestSuiteDetailPage() {
         : suggestionEndpointFilter || undefined,
   });
 
+  const mergeSuggestionIntoList = (
+    items: SuiteSuggestionModel[],
+    updated: SuiteSuggestionModel,
+  ) => {
+    const index = items.findIndex((item) => item.id === updated.id);
+    if (index === -1) {
+      return [updated, ...items];
+    }
+
+    const next = [...items];
+    next[index] = { ...next[index], ...updated };
+    return next;
+  };
+
   const applySuggestionToLocalState = (updated: SuiteSuggestionModel) => {
     setSuggestions((prev) => {
-      const index = prev.findIndex((item) => item.id === updated.id);
-      if (index === -1) {
-        return [updated, ...prev];
+      return mergeSuggestionIntoList(prev, updated);
+    });
+
+    const status = String(updated.reviewStatus || "").toLowerCase();
+    setAllSuggestions((prev) => {
+      if (status === "superseded") {
+        return prev.filter((item) => item.id !== updated.id);
       }
 
-      const next = [...prev];
-      next[index] = { ...next[index], ...updated };
-      return next;
+      return mergeSuggestionIntoList(prev, updated);
+    });
+
+    setArchivedSuggestions((prev) => {
+      if (status === "superseded") {
+        return mergeSuggestionIntoList(prev, updated);
+      }
+
+      return prev.map((item) =>
+        item.id === updated.id ? { ...item, ...updated } : item,
+      );
     });
   };
 
@@ -716,6 +756,128 @@ export default function TestSuiteDetailPage() {
     }
   };
 
+  const normalizeProposalOrder = (
+    items?: Array<{ endpointId?: string; orderIndex?: number }>,
+  ) =>
+    (items || [])
+      .filter((item) => Boolean(item?.endpointId))
+      .sort(
+        (a, b) =>
+          (a.orderIndex ?? Number.MAX_SAFE_INTEGER) -
+          (b.orderIndex ?? Number.MAX_SAFE_INTEGER),
+      )
+      .map((item) => item.endpointId as string);
+
+  const loadSuite = async () => {
+    const suiteData = await testSuiteService.getTestSuiteDetail(
+      projectId,
+      suiteId!,
+    );
+    console.log("Suite data from API:", suiteData);
+
+    // WORKAROUND: Backend detail API returns testCaseCount=0, but list API returns correct count.
+    try {
+      const allSuites = await testSuiteService.getTestSuites(projectId);
+      const suiteFromList = allSuites.find((s: any) => s.id === suiteId);
+      if (suiteFromList && suiteFromList.testCaseCount !== undefined) {
+        suiteData.testCaseCount = suiteFromList.testCaseCount;
+        console.log(
+          "Updated testCaseCount from list API:",
+          suiteFromList.testCaseCount,
+        );
+      }
+    } catch (err) {
+      console.warn("Failed to fetch testCaseCount from list API:", err);
+    }
+
+    setSuite(suiteData);
+    return suiteData;
+  };
+
+  const loadSrsDocuments = async () => {
+    try {
+      const docs = await srsService.listDocuments(projectId);
+      setSrsDocuments(docs);
+      const linked = docs.find((d) => d.testSuiteId === suiteId);
+      setLinkedSrsDocId(linked?.id ?? "");
+    } catch {
+      // non-critical
+    }
+  };
+
+  const loadEndpointsAndOrder = async (suiteData: any) => {
+    let approvedOrderDetected = false;
+
+    if (!suiteData.apiSpecId) {
+      setAllSpecEndpoints([]);
+      setEndpoints([]);
+      savedOrderRef.current = [];
+      return { approvedOrderDetected };
+    }
+
+    const response = await endpointService.getEndpoints(
+      suiteData.projectId,
+      suiteData.apiSpecId,
+    );
+
+    const allEndpoints = response.items || [];
+    setAllSpecEndpoints(allEndpoints);
+
+    let orderedEndpointIds: string[] = suiteData.selectedEndpointIds || [];
+
+    try {
+      const latestProposal = await apiService.get<ProposalApiResponse>(
+        `/test-suites/${suiteId}/order-proposals/latest`,
+      );
+
+      const latestProposalStatus = String(
+        latestProposal?.status || latestProposal?.Status || "",
+      ).toLowerCase();
+
+      const appliedOrder = normalizeProposalOrder(
+        latestProposal?.appliedOrder || latestProposal?.AppliedOrder,
+      );
+      const userModifiedOrder = normalizeProposalOrder(
+        latestProposal?.userModifiedOrder || latestProposal?.UserModifiedOrder,
+      );
+      const proposedOrder = normalizeProposalOrder(
+        latestProposal?.proposedOrder || latestProposal?.ProposedOrder,
+      );
+
+      const proposalOrder =
+        appliedOrder.length > 0
+          ? appliedOrder
+          : userModifiedOrder.length > 0
+            ? userModifiedOrder
+            : proposedOrder;
+
+      if (proposalOrder.length > 0) {
+        orderedEndpointIds = proposalOrder;
+      }
+
+      if (
+        appliedOrder.length > 0 ||
+        latestProposalStatus === "approved" ||
+        latestProposalStatus === "applied"
+      ) {
+        approvedOrderDetected = true;
+      }
+    } catch (proposalErr) {
+      console.warn(
+        "Failed to load latest order proposal, fallback to suite selectedEndpointIds.",
+        proposalErr,
+      );
+    }
+
+    const orderedEndpoints = orderedEndpointIds
+      .map((id: string) => allEndpoints.find((ep: any) => ep.id === id))
+      .filter(Boolean);
+
+    setEndpoints(orderedEndpoints);
+    savedOrderRef.current = orderedEndpoints.map((ep: any) => ep.id);
+    return { approvedOrderDetected };
+  };
+
   const fetchData = async () => {
     if (!suiteId || !projectId) return;
     if (!isRouteActiveRef.current) return;
@@ -723,155 +885,18 @@ export default function TestSuiteDetailPage() {
     try {
       setIsLoading(true);
       setError(null);
-      let approvedOrderDetected = false;
-      let hasLoadedSuggestions = false;
 
-      // Fetch suite details
-      const suiteData = await testSuiteService.getTestSuiteDetail(
-        projectId,
-        suiteId,
+      const suiteData = await loadSuite();
+      const [, , loadedSuggestions] = await Promise.all([
+        loadSrsDocuments(),
+        refreshTestCases(),
+        refreshSuggestionBuckets(),
+      ]);
+      const { approvedOrderDetected } = await loadEndpointsAndOrder(suiteData);
+
+      setHasApprovedOrderOnce(
+        approvedOrderDetected || loadedSuggestions.length > 0,
       );
-      console.log("Suite data from API:", suiteData);
-
-      // WORKAROUND: Backend detail API returns testCaseCount=0, but list API returns correct count
-      // Fetch from list to get correct testCaseCount
-      try {
-        const allSuites = await testSuiteService.getTestSuites(projectId);
-        const suiteFromList = allSuites.find((s: any) => s.id === suiteId);
-        if (suiteFromList && suiteFromList.testCaseCount !== undefined) {
-          suiteData.testCaseCount = suiteFromList.testCaseCount;
-          console.log(
-            "Updated testCaseCount from list API:",
-            suiteFromList.testCaseCount,
-          );
-        }
-      } catch (err) {
-        console.warn("Failed to fetch testCaseCount from list API:", err);
-      }
-
-      setSuite(suiteData);
-
-      // Load SRS documents for this project to allow linking
-      try {
-        const docs = await srsService.listDocuments(projectId);
-        setSrsDocuments(docs);
-        const linked = docs.find((d) => d.testSuiteId === suiteId);
-        setLinkedSrsDocId(linked?.id ?? "");
-      } catch {
-        // non-critical
-      }
-
-      try {
-        setIsLoadingTestCases(true);
-        const testCaseResponse = await testCaseService.getTestCases(
-          suiteId,
-          1,
-          300,
-        );
-        setTestCases(testCaseResponse.items || []);
-      } catch (testCaseErr) {
-        console.warn("Failed to load test cases:", testCaseErr);
-        setTestCases([]);
-      } finally {
-        setIsLoadingTestCases(false);
-      }
-
-      try {
-        const [loadedSuggestions] = await Promise.all([
-          refreshSuggestions(),
-          refreshAllSuggestions(),
-        ]);
-        hasLoadedSuggestions = Array.isArray(loadedSuggestions)
-          ? loadedSuggestions.length > 0
-          : false;
-      } catch (suggestionErr) {
-        console.warn("Failed to load LLM suggestions:", suggestionErr);
-        setAllSuggestions([]);
-        hasLoadedSuggestions = false;
-      }
-
-      // Fetch all endpoints for this spec and map selected ones into Step 1 order
-      if (suiteData.apiSpecId) {
-        const response = await endpointService.getEndpoints(
-          suiteData.projectId,
-          suiteData.apiSpecId,
-        );
-
-        const allEndpoints = response.items || [];
-        setAllSpecEndpoints(allEndpoints);
-
-        const normalizeOrder = (
-          items?: Array<{ endpointId?: string; orderIndex?: number }>,
-        ) =>
-          (items || [])
-            .filter((item) => Boolean(item?.endpointId))
-            .sort(
-              (a, b) =>
-                (a.orderIndex ?? Number.MAX_SAFE_INTEGER) -
-                (b.orderIndex ?? Number.MAX_SAFE_INTEGER),
-            )
-            .map((item) => item.endpointId as string);
-
-        let orderedEndpointIds: string[] = suiteData.selectedEndpointIds || [];
-
-        try {
-          const latestProposal = await apiService.get<ProposalApiResponse>(
-            `/test-suites/${suiteId}/order-proposals/latest`,
-          );
-
-          const latestProposalStatus = String(
-            latestProposal?.status || latestProposal?.Status || "",
-          ).toLowerCase();
-
-          const appliedOrder = normalizeOrder(
-            latestProposal?.appliedOrder || latestProposal?.AppliedOrder,
-          );
-          const userModifiedOrder = normalizeOrder(
-            latestProposal?.userModifiedOrder ||
-              latestProposal?.UserModifiedOrder,
-          );
-          const proposedOrder = normalizeOrder(
-            latestProposal?.proposedOrder || latestProposal?.ProposedOrder,
-          );
-
-          const proposalOrder =
-            appliedOrder.length > 0
-              ? appliedOrder
-              : userModifiedOrder.length > 0
-                ? userModifiedOrder
-                : proposedOrder;
-
-          if (proposalOrder.length > 0) {
-            orderedEndpointIds = proposalOrder;
-          }
-
-          if (
-            appliedOrder.length > 0 ||
-            latestProposalStatus === "approved" ||
-            latestProposalStatus === "applied"
-          ) {
-            approvedOrderDetected = true;
-          }
-        } catch (proposalErr) {
-          console.warn(
-            "Failed to load latest order proposal, fallback to suite selectedEndpointIds.",
-            proposalErr,
-          );
-        }
-
-        // Filter and sort endpoints based on latest order proposal (fallback: selectedEndpointIds)
-        const orderedEndpoints = orderedEndpointIds
-          .map((id: string) => allEndpoints.find((ep: any) => ep.id === id))
-          .filter(Boolean);
-
-        setEndpoints(orderedEndpoints);
-        savedOrderRef.current = orderedEndpoints.map((ep: any) => ep.id);
-      } else {
-        setAllSpecEndpoints([]);
-        setEndpoints([]);
-      }
-
-      setHasApprovedOrderOnce(approvedOrderDetected || hasLoadedSuggestions);
     } catch (err) {
       const statusCode =
         (err as any)?.status ||
@@ -1029,98 +1054,14 @@ export default function TestSuiteDetailPage() {
           setHasApprovedOrderOnce(true);
           showSuccessToast("Order approved successfully");
 
-          // Launch generation in background so the form submit spinner can clear
-          const launchGeneration = async () => {
-            if (!beginSuggestionGeneration("auto")) return;
-            const nextIndex = (generationRuns?.length || 0) + 1;
-            let run: LocalGenerationRun | undefined;
-            try {
-              setForceOpenSuggestions(true);
-              setActiveTab("suggestions");
-              const params = new URLSearchParams(searchParams);
-              params.set("tab", "suggestions");
-              setSearchParams(params, { replace: true });
-
-              // create a run marker before generation so suggestions can be grouped
-              run = appendGenerationRun(new Date().toISOString());
-              const runId = run?.id ?? `pending-${Date.now()}`;
-              setPendingGeneration({
-                id: runId,
-                label: `Generate #${nextIndex}`,
-              });
-              setExpandedGenerationItemId(runId);
-              setIsGeneratingSuggestions(true);
-
-              try {
-                const accepted = await testSuiteLlmSuggestionService.generate(
-                  suite.id,
-                  {
-                    specificationId: suite.apiSpecId,
-                    forceRefresh: true,
-                  },
-                );
-
-                const terminalStatus = await pollSuggestionGeneration(
-                  accepted.jobId,
-                );
-
-                if (terminalStatus === "Completed") {
-                  await finalizeSuggestionGeneration(run);
-                  if (run && run.id) {
-                    updateGenerationRun(run.id, {
-                      completedAt: new Date().toISOString(),
-                    });
-                  }
-                  showSuccessToast("AI preview regenerated after approval.");
-                } else if (terminalStatus === "Cancelled") {
-                  if (run && run.id) removeGenerationRun(run.id);
-                  showInfoToast("LLM suggestion generation was cancelled.");
-                } else {
-                  throw new Error("LLM suggestion generation failed.");
-                }
-              } catch (suggestionErr: any) {
-                const statusCode =
-                  suggestionErr?.status ?? suggestionErr?.response?.status;
-                const message = String(
-                  suggestionErr?.message ||
-                    suggestionErr?.response?.data?.message ||
-                    "",
-                );
-                const alreadyHasPendingSuggestions =
-                  statusCode === 400 &&
-                  (message.includes("ForceRefresh=true") ||
-                    message.includes("suggestion preview"));
-
-                // Remove run marker when generation did not actually produce a new run
-                if (run && run.id) removeGenerationRun(run.id);
-
-                if (alreadyHasPendingSuggestions) {
-                  // fetch existing suggestions so UI reflects current state
-                  await refreshSuggestions();
-                  await refreshAllSuggestions();
-                } else {
-                  console.error(
-                    "Failed to auto-generate LLM suggestions after approval:",
-                    suggestionErr,
-                  );
-                  showErrorToast(
-                    "Order approved but AI preview generation failed.",
-                  );
-                }
-              }
-            } finally {
-              setIsGeneratingSuggestions(false);
-              setSuggestionGenerationStatus(null);
-              setForceOpenSuggestions(false);
-              endSuggestionGeneration();
-            }
-          };
-
           // Fire-and-forget so that isSubmitting can clear
           setTimeout(() => {
-            launchGeneration().catch((e) =>
-              console.error("Background generation failed", e),
-            );
+            startSuggestionGeneration({
+              source: "auto",
+              forceRefresh: true,
+              checkGate: false,
+              successToast: "AI preview regenerated after approval.",
+            }).catch((e) => console.error("Background generation failed", e));
           }, 0);
         }
       } catch (approveErr) {
@@ -1131,8 +1072,6 @@ export default function TestSuiteDetailPage() {
         );
       }
 
-      // Refresh data to ensure we have latest rowVersion
-      await fetchData();
       return true;
     } catch (err) {
       handleError(err);
@@ -1213,6 +1152,32 @@ export default function TestSuiteDetailPage() {
     }
   };
 
+  const refreshSuggestionBuckets = async (): Promise<SuiteSuggestionModel[]> => {
+    if (!suiteId) return [];
+
+    try {
+      setIsLoadingSuggestions(true);
+      const [activeItems, archivedItems] = await Promise.all([
+        testSuiteLlmSuggestionService.list(suiteId),
+        testSuiteLlmSuggestionService.list(suiteId, {
+          reviewStatus: "Superseded",
+        }),
+      ]);
+      const active = Array.isArray(activeItems) ? activeItems : [];
+      const archived = Array.isArray(archivedItems) ? archivedItems : [];
+      setAllSuggestions(active);
+      setArchivedSuggestions(archived);
+      return active;
+    } catch (err) {
+      handleError(err, undefined, !isRouteActiveRef.current);
+      setAllSuggestions([]);
+      setArchivedSuggestions([]);
+      return [];
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
   // Refresh archived (superseded) suggestions used only for timeline/history view
   const refreshArchivedSuggestions = async (): Promise<
     SuiteSuggestionModel[]
@@ -1233,14 +1198,6 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  // Refresh both active and archived suggestions; return active suggestions for compatibility
-  const refreshAllSuggestions = async (): Promise<SuiteSuggestionModel[]> => {
-    const active = await refreshSuggestions();
-    // Keep archived refresh separate to avoid disturbing active loading flag
-    await refreshArchivedSuggestions();
-    return active;
-  };
-
   const beginSuggestionGeneration = (source: "manual" | "auto") => {
     if (isGeneratingSuggestionsRef.current) {
       if (source === "manual") {
@@ -1256,36 +1213,12 @@ export default function TestSuiteDetailPage() {
     isGeneratingSuggestionsRef.current = false;
   };
 
-  const pollSuggestionGeneration = async (
-    jobId: string,
-  ): Promise<GenerationJobStatus> => {
-    if (!suiteId) {
-      throw new Error("Missing test suite id for suggestion polling.");
-    }
-
-    const timeoutAt = Date.now() + 300000;
-
-    while (Date.now() < timeoutAt) {
-      const job = await testSuiteLlmSuggestionService.getGenerationStatus(
-        suiteId,
-        jobId,
-      );
-      setSuggestionGenerationStatus(job.status);
-
-      if (
-        job.status === "Completed" ||
-        job.status === "Failed" ||
-        job.status === "Cancelled"
-      ) {
-        return job.status;
-      }
-
-      await new Promise((resolve) =>
-        setTimeout(resolve, job.status === "WaitingForCallback" ? 5000 : 2500),
-      );
-    }
-
-    throw new Error("LLM suggestion generation timed out.");
+  const clearSuggestionGenerationState = () => {
+    setIsGeneratingSuggestions(false);
+    setSuggestionGenerationStatus(null);
+    setForceOpenSuggestions(false);
+    setActiveGenerationJob(null);
+    endSuggestionGeneration();
   };
 
   const finalizeSuggestionGeneration = async (
@@ -1328,16 +1261,95 @@ export default function TestSuiteDetailPage() {
     return nextSuggestions;
   };
 
-  const handleGenerateSuggestions = async (forceRefresh = false) => {
-    if (!suite || !suiteId || !suite.apiSpecId) {
-      showErrorToast("Selected test suite does not have an API specification.");
+  const generationPolling = useGenerationJobPolling({
+    suiteId,
+    jobId: activeGenerationJob?.jobId,
+    enabled: !!activeGenerationJob,
+  });
+
+  useEffect(() => {
+    if (!activeGenerationJob) return;
+    setSuggestionGenerationStatus(generationPolling.status);
+  }, [activeGenerationJob, generationPolling.status]);
+
+  useEffect(() => {
+    if (!activeGenerationJob || !generationPolling.terminalStatus) return;
+    if (finalizedGenerationJobIdsRef.current.has(activeGenerationJob.jobId)) {
       return;
     }
 
-    if (!beginSuggestionGeneration("manual")) return;
+    finalizedGenerationJobIdsRef.current.add(activeGenerationJob.jobId);
+    let isCurrent = true;
+
+    const completeJob = async () => {
+      try {
+        if (generationPolling.terminalStatus === "Completed") {
+          await finalizeSuggestionGeneration({
+            id: activeGenerationJob.runId,
+            generatedAt: activeGenerationJob.generatedAt,
+          });
+          updateGenerationRun(activeGenerationJob.runId, {
+            completedAt: new Date().toISOString(),
+          });
+          showSuccessToast(
+            activeGenerationJob.successToast || "LLM suggestions are ready.",
+          );
+        } else if (generationPolling.terminalStatus === "Cancelled") {
+          removeGenerationRun(activeGenerationJob.runId);
+          showInfoToast("LLM suggestion generation was cancelled.");
+        } else {
+          removeGenerationRun(activeGenerationJob.runId);
+          showErrorToast("LLM suggestion generation failed.");
+        }
+      } catch (err) {
+        handleError(err);
+      } finally {
+        if (isCurrent) {
+          clearSuggestionGenerationState();
+        }
+      }
+    };
+
+    void completeJob();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeGenerationJob, generationPolling.terminalStatus]);
+
+  useEffect(() => {
+    if (!activeGenerationJob || !generationPolling.error) return;
+    if (finalizedGenerationJobIdsRef.current.has(activeGenerationJob.jobId)) {
+      return;
+    }
+
+    finalizedGenerationJobIdsRef.current.add(activeGenerationJob.jobId);
+    removeGenerationRun(activeGenerationJob.runId);
+    handleError(generationPolling.error);
+    clearSuggestionGenerationState();
+  }, [activeGenerationJob, generationPolling.error]);
+
+  const startSuggestionGeneration = async ({
+    source,
+    forceRefresh,
+    checkGate,
+    successToast,
+  }: {
+    source: "manual" | "auto";
+    forceRefresh: boolean;
+    checkGate: boolean;
+    successToast?: string;
+  }) => {
+    if (!suite || !suiteId || !suite.apiSpecId) {
+      showErrorToast("Selected test suite does not have an API specification.");
+      return false;
+    }
+
+    if (!beginSuggestionGeneration(source)) return false;
 
     const nextIndex = (generationRuns?.length || 0) + 1;
     let run: LocalGenerationRun | undefined;
+    let jobStarted = false;
 
     try {
       setForceOpenSuggestions(true);
@@ -1346,80 +1358,75 @@ export default function TestSuiteDetailPage() {
       params.set("tab", "suggestions");
       setSearchParams(params, { replace: true });
 
-      // create run marker before starting generation so suggestions can be grouped
       run = appendGenerationRun(new Date().toISOString());
       const runId = run?.id ?? `pending-${Date.now()}`;
+      const generatedAt = run?.generatedAt ?? new Date().toISOString();
       setPendingGeneration({ id: runId, label: `Generate #${nextIndex}` });
       setExpandedGenerationItemId(runId);
       setIsGeneratingSuggestions(true);
 
-      // H-01: Check order gate status before generation/suggestion
-      try {
-        const gateStatus = await testSuiteService.getOrderGateStatus(suiteId);
-        if (!gateStatus.isGatePassed) {
-          showErrorToast(
-            gateStatus.message ||
-              "Order gate not passed. Please approve the API order proposal first.",
-          );
-          // remove the provisional run because generation did not start
-          if (run && run.id) removeGenerationRun(run.id);
-          return;
-        }
-      } catch (gateErr: any) {
-        console.warn("Could not check order gate status:", gateErr);
-        // Continue anyway; BE will reject if gate not passed
-      }
-
-      try {
-        const accepted = await testSuiteLlmSuggestionService.generate(suiteId, {
-          specificationId: suite.apiSpecId,
-          forceRefresh,
-        });
-
-        const terminalStatus = await pollSuggestionGeneration(accepted.jobId);
-
-        if (terminalStatus === "Completed") {
-          await finalizeSuggestionGeneration(run);
-          if (run && run.id) {
-            updateGenerationRun(run.id, {
-              completedAt: new Date().toISOString(),
-            });
+      if (checkGate) {
+        try {
+          const gateStatus = await testSuiteService.getOrderGateStatus(suiteId);
+          if (!gateStatus.isGatePassed) {
+            showErrorToast(
+              gateStatus.message ||
+                "Order gate not passed. Please approve the API order proposal first.",
+            );
+            if (run?.id) removeGenerationRun(run.id);
+            return false;
           }
-        } else if (terminalStatus === "Cancelled") {
-          if (run && run.id) removeGenerationRun(run.id);
-          showInfoToast("LLM suggestion generation was cancelled.");
-        } else {
-          throw new Error("LLM suggestion generation failed.");
-        }
-      } catch (err: any) {
-        const statusCode = err?.status ?? err?.response?.status;
-        const message = String(
-          err?.message || err?.response?.data?.message || "",
-        );
-        const alreadyHasPendingSuggestions =
-          statusCode === 400 &&
-          (message.includes("ForceRefresh=true") ||
-            message.includes("suggestion preview"));
-
-        // remove provisional run because no new run was produced
-        if (run && run.id) removeGenerationRun(run.id);
-
-        if (alreadyHasPendingSuggestions) {
-          await refreshSuggestions();
-          await refreshAllSuggestions();
-          showSuccessToast("LLM suggestions are ready.");
-        } else {
-          throw err;
+        } catch (gateErr: any) {
+          console.warn("Could not check order gate status:", gateErr);
         }
       }
-    } catch (err) {
-      handleError(err);
+
+      const accepted = await testSuiteLlmSuggestionService.generate(suiteId, {
+        specificationId: suite.apiSpecId,
+        forceRefresh,
+      });
+
+      setActiveGenerationJob({
+        jobId: accepted.jobId,
+        runId,
+        generatedAt,
+        successToast,
+      });
+      jobStarted = true;
+      return true;
+    } catch (err: any) {
+      const statusCode = err?.status ?? err?.response?.status;
+      const message = String(
+        err?.message || err?.response?.data?.message || "",
+      );
+      const alreadyHasPendingSuggestions =
+        statusCode === 400 &&
+        (message.includes("ForceRefresh=true") ||
+          message.includes("suggestion preview"));
+
+      if (run?.id) removeGenerationRun(run.id);
+
+      if (alreadyHasPendingSuggestions) {
+        await refreshSuggestionBuckets();
+        showSuccessToast("LLM suggestions are ready.");
+      } else {
+        handleError(err);
+      }
+      return false;
     } finally {
-      setIsGeneratingSuggestions(false);
-      setSuggestionGenerationStatus(null);
-      setForceOpenSuggestions(false);
-      endSuggestionGeneration();
+      if (!jobStarted) {
+        clearSuggestionGenerationState();
+      }
     }
+  };
+
+  const handleGenerateSuggestions = async (forceRefresh = false) => {
+    await startSuggestionGeneration({
+      source: "manual",
+      forceRefresh,
+      checkGate: true,
+      successToast: "LLM suggestions are ready.",
+    });
   };
 
   const handleOpenSuggestionDetail = async (suggestionId: string) => {
@@ -1526,6 +1533,7 @@ export default function TestSuiteDetailPage() {
         },
       );
 
+      const nextSuggestions = mergeSuggestionIntoList(allSuggestions, result);
       applySuggestionToLocalState(result);
       showSuccessToast(
         payload?.modifiedContent
@@ -1533,11 +1541,7 @@ export default function TestSuiteDetailPage() {
           : "Suggestion approved successfully.",
       );
 
-      const [nextSuggestions, , nextTestCases] = await Promise.all([
-        refreshSuggestions(),
-        refreshAllSuggestions(),
-        refreshTestCases(),
-      ]);
+      const nextTestCases = await refreshTestCases();
       maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
     } catch (err) {
       handleError(err);
@@ -1573,14 +1577,10 @@ export default function TestSuiteDetailPage() {
         },
       );
 
+      const nextSuggestions = mergeSuggestionIntoList(allSuggestions, result);
       applySuggestionToLocalState(result);
       showSuccessToast("Suggestion reviewed successfully.");
-      const [nextSuggestions, , nextTestCases] = await Promise.all([
-        refreshSuggestions(),
-        refreshAllSuggestions(),
-        refreshTestCases(),
-      ]);
-      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+      maybeAutoNavigateToTestCases(nextSuggestions, testCases);
       return true;
     } catch (err) {
       handleError(err);
@@ -1621,11 +1621,9 @@ export default function TestSuiteDetailPage() {
         `${action} completed. Processed ${result?.processedCount || 0} suggestion(s).`,
       );
 
-      const [nextSuggestions, , nextTestCases] = await Promise.all([
-        refreshSuggestions(),
-        refreshAllSuggestions(),
-        refreshTestCases(),
-      ]);
+      const nextSuggestions = await refreshSuggestionBuckets();
+      const nextTestCases =
+        action === "Approve" ? await refreshTestCases() : testCases;
       maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
     } catch (err) {
       handleError(err);
@@ -1651,13 +1649,8 @@ export default function TestSuiteDetailPage() {
         `Restore processed. Restored ${result?.processedCount || suggestionIds.length} suggestion(s).`,
       );
 
-      const [nextSuggestions, , nextTestCases] = await Promise.all([
-        refreshSuggestions(),
-        refreshAllSuggestions(),
-        refreshTestCases(),
-      ]);
-
-      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+      const nextSuggestions = await refreshSuggestionBuckets();
+      maybeAutoNavigateToTestCases(nextSuggestions, testCases);
     } catch (err) {
       handleError(err);
     } finally {
@@ -1705,12 +1698,8 @@ export default function TestSuiteDetailPage() {
             `Reject processed. Rejected ${result?.processedCount ?? 0} suggestion(s).`,
           );
 
-          const [nextSuggestions, , nextTestCases] = await Promise.all([
-            refreshSuggestions(),
-            refreshAllSuggestions(),
-            refreshTestCases(),
-          ]);
-          maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+          const nextSuggestions = await refreshSuggestionBuckets();
+          maybeAutoNavigateToTestCases(nextSuggestions, testCases);
           return;
         } catch (err) {
           console.warn(
@@ -1739,11 +1728,7 @@ export default function TestSuiteDetailPage() {
         }
       }
 
-      const [nextSuggestions, , nextTestCases] = await Promise.all([
-        refreshSuggestions(),
-        refreshAllSuggestions(),
-        refreshTestCases(),
-      ]);
+      const nextSuggestions = await refreshSuggestionBuckets();
 
       if (processed > 0) {
         showSuccessToast(
@@ -1755,7 +1740,7 @@ export default function TestSuiteDetailPage() {
         );
       }
 
-      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+      maybeAutoNavigateToTestCases(nextSuggestions, testCases);
     } catch (err) {
       handleError(err);
     } finally {
@@ -1801,9 +1786,8 @@ export default function TestSuiteDetailPage() {
             `Approve processed. Approved ${result?.processedCount ?? 0} suggestion(s).`,
           );
 
-          const [nextSuggestions, , nextTestCases] = await Promise.all([
-            refreshSuggestions(),
-            refreshAllSuggestions(),
+          const [nextSuggestions, nextTestCases] = await Promise.all([
+            refreshSuggestionBuckets(),
             refreshTestCases(),
           ]);
 
@@ -1831,10 +1815,11 @@ export default function TestSuiteDetailPage() {
             return { id, ok: false, reason: "missing-rowVersion" } as const;
           }
 
-          await testSuiteLlmSuggestionService.review(suiteId, id, {
+          const updated = await testSuiteLlmSuggestionService.review(suiteId, id, {
             action: "Approve",
             rowVersion: latest.rowVersion,
           });
+          applySuggestionToLocalState(updated);
 
           return { id, ok: true } as const;
         } catch (e) {
@@ -1845,9 +1830,8 @@ export default function TestSuiteDetailPage() {
       const results = await Promise.all(approvePromises);
       const processed = results.filter((r) => r.ok).length;
 
-      const [nextSuggestions, , nextTestCases] = await Promise.all([
-        refreshSuggestions(),
-        refreshAllSuggestions(),
+      const [nextSuggestions, nextTestCases] = await Promise.all([
+        refreshSuggestionBuckets(),
         refreshTestCases(),
       ]);
 
@@ -2835,14 +2819,10 @@ export default function TestSuiteDetailPage() {
                           <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
                           <div>
                             <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
-                              {suggestionGenerationStatus === "Queued" &&
-                                "Starting refinement..."}
-                              {suggestionGenerationStatus === "Triggering" &&
-                                "Sending to n8n..."}
-                              {suggestionGenerationStatus ===
-                                "WaitingForCallback" && "Refining suggestions..."}
-                              {!suggestionGenerationStatus &&
-                                "Generating suggestions..."}
+                              {generationPolling.phaseLabel ||
+                                getGenerationStatusLabel(
+                                  suggestionGenerationStatus,
+                                )}
                             </p>
                             <p className="text-xs text-indigo-500 dark:text-indigo-400">
                               Suggestions will appear here when complete.

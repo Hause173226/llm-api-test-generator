@@ -167,7 +167,10 @@ function RequirementCard({ row, onAddLink, onDeleteLink }: { row: any; onAddLink
             {row.confidenceScore != null && (
               <p className="mt-1 text-xs text-on-surface-variant flex items-center gap-1">
                 {row.confidenceScore < 0.6 && (
-                  <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" title="Low confidence extraction" />
+                  <AlertTriangle
+                    className="w-3 h-3 text-amber-500 shrink-0"
+                    aria-label="Low confidence extraction"
+                  />
                 )}
                 Confidence: {(row.confidenceScore * 100).toFixed(0)}%
               </p>

@@ -507,7 +507,7 @@ export default function TestSuitesPage() {
                         <Layers className="w-6 h-6 text-primary dark:text-indigo-400" />
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {suite.status === "Active" ? (
+                        {suite.status === "Ready" ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                         ) : (
                           <Clock className="w-4 h-4 text-slate-400" />
@@ -515,7 +515,7 @@ export default function TestSuitesPage() {
                         <span
                           className={cn(
                             "text-[10px] font-bold uppercase tracking-widest",
-                            suite.status === "Active"
+                            suite.status === "Ready"
                               ? "text-emerald-600 dark:text-emerald-400"
                               : "text-slate-600 dark:text-slate-400",
                           )}

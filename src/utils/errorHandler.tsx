@@ -91,7 +91,7 @@ export const showCustomToast = (
   render: (t: { id: string }) => React.ReactNode,
   options?: ToastOptions,
 ): string => {
-  return toast.custom(render, { ...defaultPositions, ...options });
+  return toast.custom(render as any, { ...defaultPositions, ...options });
 };
 
 // Generic error handler that returns error message

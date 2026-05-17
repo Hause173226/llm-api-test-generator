@@ -29,6 +29,62 @@ export interface SpecificationUploadRequest {
   file: File;
 }
 
+const SPECIFICATION_CACHE_TTL_MS = 30000;
+
+type CacheEntry<T> = {
+  expiresAt: number;
+  value: T;
+};
+
+type SpecificationCacheKey = {
+  projectId: string;
+  includeDeleted: boolean;
+};
+
+const specificationCache = new Map<string, CacheEntry<Specification[]>>();
+const pendingSpecificationRequests = new Map<
+  string,
+  Promise<Specification[]>
+>();
+let specificationCacheRevision = 0;
+
+const buildSpecificationCacheKey = (
+  projectId: string,
+  includeDeleted: boolean,
+) =>
+  JSON.stringify({
+    projectId,
+    includeDeleted,
+  } satisfies SpecificationCacheKey);
+
+const parseSpecificationCacheKey = (
+  key: string,
+): SpecificationCacheKey | null => {
+  try {
+    return JSON.parse(key) as SpecificationCacheKey;
+  } catch {
+    return null;
+  }
+};
+
+const invalidateSpecificationCache = (projectId?: string) => {
+  specificationCacheRevision += 1;
+
+  for (const key of specificationCache.keys()) {
+    const parsed = parseSpecificationCacheKey(key);
+    if (!parsed || !projectId || parsed.projectId === projectId) {
+      specificationCache.delete(key);
+    }
+  }
+
+  for (const key of pendingSpecificationRequests.keys()) {
+    const parsed = parseSpecificationCacheKey(key);
+    if (!parsed || !projectId || parsed.projectId === projectId) {
+      pendingSpecificationRequests.delete(key);
+    }
+  }
+};
+
 const specificationService = {
   // Get all specifications for a project
   // FE-18: pass includeDeleted=true to see soft-deleted specs (trash view)
@@ -39,11 +95,44 @@ const specificationService = {
     const params: Record<string, any> = {};
     if (includeDeleted) params.includeDeleted = true;
 
-    const response = await apiService.get<Specification[]>(
-      `/projects/${projectId}/specifications`,
-      { params },
-    );
-    return Array.isArray(response) ? response : [];
+    const cacheKey = buildSpecificationCacheKey(projectId, includeDeleted);
+    const now = Date.now();
+    const cached = specificationCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
+
+    const pending = pendingSpecificationRequests.get(cacheKey);
+    if (pending) {
+      return pending;
+    }
+
+    const revisionAtStart = specificationCacheRevision;
+    const requestPromise = (async () => {
+      const response = await apiService.get<Specification[]>(
+        `/projects/${projectId}/specifications`,
+        { params },
+      );
+      const result = Array.isArray(response) ? response : [];
+
+      if (revisionAtStart === specificationCacheRevision) {
+        specificationCache.set(cacheKey, {
+          expiresAt: Date.now() + SPECIFICATION_CACHE_TTL_MS,
+          value: result,
+        });
+      }
+
+      return result;
+    })();
+
+    pendingSpecificationRequests.set(cacheKey, requestPromise);
+    try {
+      return await requestPromise;
+    } finally {
+      if (pendingSpecificationRequests.get(cacheKey) === requestPromise) {
+        pendingSpecificationRequests.delete(cacheKey);
+      }
+    }
   },
 
   // Get specification by ID
@@ -78,10 +167,12 @@ const specificationService = {
     formData.append("AutoActivate", "true"); // Auto activate after upload
     formData.append("UploadMethod", "0"); // StorageGatewayContract = 0
 
-    return await apiService.uploadFile<Specification>(
+    const uploaded = await apiService.uploadFile<Specification>(
       `/projects/${data.projectId}/specifications/upload`,
       formData,
     );
+    invalidateSpecificationCache(data.projectId);
+    return uploaded;
   },
 
   // Update specification
@@ -90,10 +181,12 @@ const specificationService = {
     specId: string,
     data: { name?: string; description?: string },
   ): Promise<Specification> => {
-    return await apiService.put<Specification>(
+    const updated = await apiService.put<Specification>(
       `/projects/${projectId}/specifications/${specId}`,
       data,
     );
+    invalidateSpecificationCache(projectId);
+    return updated;
   },
 
   // Delete specification
@@ -102,6 +195,7 @@ const specificationService = {
     specId: string,
   ): Promise<void> => {
     await apiService.delete(`/projects/${projectId}/specifications/${specId}`);
+    invalidateSpecificationCache(projectId);
   },
 
   // Create manual specification
@@ -109,10 +203,12 @@ const specificationService = {
     projectId: string,
     data: ManualSpecificationRequest,
   ): Promise<any> => {
-    return await apiService.post(
+    const created = await apiService.post(
       `/projects/${projectId}/specifications/manual`,
       data,
     );
+    invalidateSpecificationCache(projectId);
+    return created;
   },
 
   // Get available upload methods
@@ -124,24 +220,30 @@ const specificationService = {
 
   // Import from cURL command
   importCurl: async (projectId: string, data: { curlCommand: string; name?: string }): Promise<any> => {
-    return await apiService.post(
+    const imported = await apiService.post(
       `/projects/${projectId}/specifications/curl-import`,
       data,
     );
+    invalidateSpecificationCache(projectId);
+    return imported;
   },
 
   // Activate a specification
   activateSpecification: async (projectId: string, specId: string): Promise<any> => {
-    return await apiService.put(
+    const activated = await apiService.put(
       `/projects/${projectId}/specifications/${specId}/activate`,
     );
+    invalidateSpecificationCache(projectId);
+    return activated;
   },
 
   // Deactivate a specification
   deactivateSpecification: async (projectId: string, specId: string): Promise<any> => {
-    return await apiService.put(
+    const deactivated = await apiService.put(
       `/projects/${projectId}/specifications/${specId}/deactivate`,
     );
+    invalidateSpecificationCache(projectId);
+    return deactivated;
   },
 
   // FE-18: Restore a soft-deleted specification
@@ -152,7 +254,10 @@ const specificationService = {
     await apiService.post(
       `/projects/${projectId}/specifications/${specId}/restore`,
     );
+    invalidateSpecificationCache(projectId);
   },
+
+  invalidateCache: invalidateSpecificationCache,
 };
 
 export default specificationService;

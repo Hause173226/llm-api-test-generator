@@ -130,6 +130,12 @@ export interface BulkReviewRequest {
   filterByEndpointId?: string;
 }
 
+export interface BulkReviewResponse {
+  processedCount?: number;
+  suggestionIds?: string[];
+  appliedTestCaseIds?: string[];
+}
+
 const buildQueryString = (query?: SuiteSuggestionQuery) => {
   const params = new URLSearchParams();
 
@@ -173,10 +179,11 @@ const testSuiteLlmSuggestionService = {
   async getGenerationStatus(
     suiteId: string,
     jobId: string,
+    options: { signal?: AbortSignal } = {},
   ): Promise<GenerationJobStatusModel> {
     return await apiService.get<GenerationJobStatusModel>(
       `/test-suites/${suiteId}/generation-status`,
-      { params: { jobId } },
+      { params: { jobId }, signal: options.signal },
     );
   },
 
@@ -205,8 +212,8 @@ const testSuiteLlmSuggestionService = {
   async bulkReview(
     suiteId: string,
     payload: BulkReviewRequest,
-  ): Promise<any> {
-    return await apiService.post<any>(
+  ): Promise<BulkReviewResponse> {
+    return await apiService.post<BulkReviewResponse>(
       `/test-suites/${suiteId}/llm-suggestions/bulk-review`,
       payload,
     );
@@ -215,8 +222,8 @@ const testSuiteLlmSuggestionService = {
   async bulkRestore(
     suiteId: string,
     payload: { suggestionIds: string[] },
-  ): Promise<any> {
-    return await apiService.post<any>(
+  ): Promise<BulkReviewResponse> {
+    return await apiService.post<BulkReviewResponse>(
       `/test-suites/${suiteId}/llm-suggestions/bulk-restore`,
       payload,
     );
@@ -224,8 +231,8 @@ const testSuiteLlmSuggestionService = {
   async bulkApprove(
     suiteId: string,
     payload: { suggestionIds: string[] },
-  ): Promise<any> {
-    return await apiService.post<any>(
+  ): Promise<BulkReviewResponse> {
+    return await apiService.post<BulkReviewResponse>(
       `/test-suites/${suiteId}/llm-suggestions/bulk-approve`,
       payload,
     );
