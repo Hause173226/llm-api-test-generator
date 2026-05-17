@@ -74,6 +74,7 @@ export interface TestCaseRunDetail {
   jsonPathChecksPassed?: boolean;
   responseTimePassed?: boolean;
   // Expectation snapshots — for FE Evidence panel
+  expectedResponse?: any;
   expectedBodyContains?: string;
   expectedBodyNotContains?: string;
   expectedHeaderChecks?: string;

@@ -73,6 +73,7 @@ export default function SuggestionReviewPanel({
   onBulkRestore,
   isBulkRestoringSuggestions = false,
   onBulkApprove,
+  onBulkReject,
   isBulkApprovingSuggestions = false,
   isHistoricalView = false,
   currentGenerationNumber,

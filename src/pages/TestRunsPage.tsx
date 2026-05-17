@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
+import AutoAnalysisProgressPanel from "../components/test-runs/AutoAnalysisProgressPanel";
 import { cn } from "../lib/utils";
 import { useTestRuns } from "../hooks/useTestRuns";
 import { useTestSuites } from "../hooks/useTestSuites";
@@ -222,6 +223,9 @@ export default function TestRunsPage() {
     suggestionsStatus: "idle",
     explanationsStatus: "idle",
   } as any;
+  const cancelAutoAnalysis = () => {};
+  const dismissAutoAnalysis = () => {};
+  const retryAutoAnalysis = () => {};
 
   // --- Modal / start-run state (missing previously) ---
   const [environments, setEnvironments] = useState<ExecutionEnvironment[]>([]);

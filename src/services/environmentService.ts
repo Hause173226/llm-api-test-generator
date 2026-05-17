@@ -93,8 +93,8 @@ export function sanitizeAuthConfig(
 export function getConflictReasonCode(
   error: unknown,
 ): ConflictReasonCode | null {
-  if (error instanceof ApiError && error.status === 409) {
-    return (error.data?.reasonCode as ConflictReasonCode) ?? null;
+  if (error instanceof ApiError && error.statusCode === 409) {
+    return (error.errors?.reasonCode as ConflictReasonCode) ?? null;
   }
   return null;
 }
