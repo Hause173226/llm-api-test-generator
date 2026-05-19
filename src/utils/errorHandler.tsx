@@ -19,23 +19,23 @@ export const handleApiError = (error: any): void => {
   if (error instanceof ApiError) {
     switch (error.statusCode) {
       case 401:
-        console.error("Unauthorized - redirecting to login");
+        if (import.meta.env.DEV) console.error("Unauthorized - redirecting to login");
         window.location.href = "/login";
         break;
       case 403:
-        console.error("Access forbidden");
+        if (import.meta.env.DEV) console.error("Access forbidden");
         break;
       case 404:
-        console.error("Resource not found");
+        if (import.meta.env.DEV) console.error("Resource not found");
         break;
       case 500:
-        console.error("Server error");
+        if (import.meta.env.DEV) console.error("Server error");
         break;
       default:
-        console.error(error.message);
+        if (import.meta.env.DEV) console.error(error.message);
     }
   } else {
-    console.error("Unexpected error:", error);
+    if (import.meta.env.DEV) console.error("Unexpected error:", error);
   }
 };
 
@@ -100,8 +100,10 @@ export const handleError = (
   navigate?: (path: string) => void,
   suppressToast = false,
 ): string => {
-  console.log("🔴 handleError called with:", error);
-  console.log("🔴 navigate function:", navigate ? "provided" : "NOT provided");
+  if (import.meta.env.DEV) {
+    console.log("handleError called with:", error);
+    console.log("navigate function:", navigate ? "provided" : "NOT provided");
+  }
 
   let errorMessage = "An unexpected error occurred";
   let shouldNavigateToBilling = false;
@@ -113,7 +115,7 @@ export const handleError = (
     // Check if it's a subscription-related error
     const errorText = (errorMessage || "").toLowerCase();
 
-    console.log("ApiError detection - errorText:", errorText);
+    if (import.meta.env.DEV) console.log("ApiError detection - errorText:", errorText);
 
     if (
       errorText.includes("subscription") ||
@@ -124,10 +126,10 @@ export const handleError = (
       errorText.includes("đăng ký") ||
       errorText.includes("không tìm thấy gói")
     ) {
-      console.log("✅ Subscription error detected!");
+      if (import.meta.env.DEV) console.log("Subscription error detected (ApiError)");
       shouldNavigateToBilling = true;
     } else {
-      console.log("❌ Not a subscription error");
+      if (import.meta.env.DEV) console.log("Not a subscription error (ApiError)");
     }
   }
   // Handle axios-style errors
@@ -145,8 +147,10 @@ export const handleError = (
       error.response.data || {},
     ).toLowerCase();
 
-    console.log("Error detection - errorText:", errorText);
-    console.log("Error detection - responseData:", responseData);
+    if (import.meta.env.DEV) {
+      console.log("Error detection - errorText:", errorText);
+      console.log("Error detection - responseData:", responseData);
+    }
 
     if (
       errorText.includes("subscription") ||
@@ -160,10 +164,10 @@ export const handleError = (
       responseData.includes("đăng ký gói") ||
       responseData.includes("gói dịch vụ")
     ) {
-      console.log("✅ Subscription error detected!");
+      if (import.meta.env.DEV) console.log("Subscription error detected (axios)");
       shouldNavigateToBilling = true;
     } else {
-      console.log("❌ Not a subscription error");
+      if (import.meta.env.DEV) console.log("Not a subscription error (axios)");
     }
 
     // Status-specific messages
@@ -209,7 +213,7 @@ export const handleError = (
 
   // Navigate to billing if subscription error detected
   if (shouldNavigateToBilling && navigate) {
-    console.log("Subscription error detected, navigating to billing page...");
+    if (import.meta.env.DEV) console.log("Subscription error detected, navigating to billing page...");
     setTimeout(() => {
       navigate("/billing");
     }, 2000);

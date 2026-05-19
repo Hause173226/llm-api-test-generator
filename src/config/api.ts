@@ -31,11 +31,21 @@ export const setRefreshToken = (token: string): void => {
   localStorage.setItem('refreshToken', token);
 };
 
-export const getUser = (): any | null => {
-  const user = localStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
+export const getUser = (): { id: string; email: string; fullName: string; roles: string[] } | null => {
+  const raw = localStorage.getItem('user');
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && typeof parsed.id === 'string' && typeof parsed.email === 'string') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    localStorage.removeItem('user');
+    return null;
+  }
 };
 
-export const setUser = (user: any): void => {
+export const setUser = (user: { id: string; email: string; fullName: string; roles: string[] }): void => {
   localStorage.setItem('user', JSON.stringify(user));
 };
