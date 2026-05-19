@@ -15,7 +15,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   user: {
     id: string;
     email: string;
@@ -47,7 +47,9 @@ class AuthService {
 
     // Store tokens and user info
     setAuthToken(response.accessToken);
-    setRefreshToken(response.refreshToken);
+    if (response.refreshToken) {
+      setRefreshToken(response.refreshToken);
+    }
     setUser(response.user);
 
     return response;
@@ -83,17 +85,15 @@ class AuthService {
 
   async refreshToken(): Promise<LoginResponse> {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
     const response = await apiService.post<LoginResponse>(
       '/auth/refresh-token',
-      { refreshToken }
+      refreshToken ? { refreshToken } : undefined,
     );
 
     setAuthToken(response.accessToken);
-    setRefreshToken(response.refreshToken);
+    if (response.refreshToken) {
+      setRefreshToken(response.refreshToken);
+    }
     setUser(response.user);
 
     return response;

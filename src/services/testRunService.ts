@@ -80,6 +80,10 @@ export interface TestCaseRunDetail {
   expectedHeaderChecks?: string;
   expectedJsonPathChecks?: string;
   expectedMaxResponseTime?: number;
+  expectationSource?: string;
+  requirementCode?: string;
+  primaryRequirementId?: string;
+  expectedProvenance?: string;
 }
 
 export interface TestRunDetailResponse {
@@ -219,6 +223,10 @@ interface BackendTestCaseRunDetail {
   bodyNotContainsPassed?: boolean;
   jsonPathChecksPassed?: boolean;
   responseTimePassed?: boolean;
+  expectationSource?: string;
+  requirementCode?: string;
+  primaryRequirementId?: string;
+  expectedProvenance?: string;
 }
 
 interface BackendTestRunDetail {
@@ -355,6 +363,14 @@ const mapBackendTestCaseRunDetail = (
     (detail as any).expectedMaxResponseTime ?? (detail as any).ExpectedMaxResponseTime,
   expectedResponse:
     (detail as any).expectedResponse ?? (detail as any).ExpectedResponse,
+  expectationSource:
+    (detail as any).expectationSource ?? (detail as any).ExpectationSource,
+  requirementCode:
+    (detail as any).requirementCode ?? (detail as any).RequirementCode,
+  primaryRequirementId:
+    (detail as any).primaryRequirementId ?? (detail as any).PrimaryRequirementId,
+  expectedProvenance:
+    (detail as any).expectedProvenance ?? (detail as any).ExpectedProvenance,
 });
 
 const mapBackendRunDetail = (

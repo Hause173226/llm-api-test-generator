@@ -42,6 +42,7 @@ import testRunService, {
 } from "../services/testRunService";
 import { testSuiteService } from "../services/testSuiteService";
 import { apiService } from "../services/apiService";
+import ExpectedAuditPanel from "../components/test-runs/ExpectedAuditPanel";
 
 export default function TestRunsPage() {
   const { t } = useTranslation();
@@ -996,6 +997,22 @@ export default function TestRunsPage() {
                                                       </span>
                                                     )}
                                                   </p>
+                                                  <ExpectedAuditPanel
+                                                    title="Expected audit"
+                                                    compact
+                                                    expectedStatus={testCase.expectedStatus}
+                                                    bodyContains={testCase.expectedBodyContains}
+                                                    bodyNotContains={testCase.expectedBodyNotContains}
+                                                    jsonPathChecks={testCase.expectedJsonPathChecks}
+                                                    headerChecks={testCase.expectedHeaderChecks}
+                                                    maxResponseTime={testCase.expectedMaxResponseTime}
+                                                    expectedProvenance={testCase.expectedProvenance}
+                                                    expectationSource={testCase.expectationSource}
+                                                    requirementCode={testCase.requirementCode}
+                                                    actualStatusCode={testCase.httpStatusCode}
+                                                    responseBodyPreview={testCase.responseBodyPreview}
+                                                    responseHeaders={testCase.responseHeaders}
+                                                  />
                                                   {/* Check results row — hide for skipped cases */}
                                                   {statusLower !== "skipped" &&
                                                     (testCase.checksPerformed !=

@@ -40,6 +40,10 @@ export interface TestCase {
     bodyNotContains?: string;
     jsonPathChecks?: string;
     maxResponseTime?: number | null;
+    expectationSource?: string | null;
+    requirementCode?: string | null;
+    primaryRequirementId?: string | null;
+    expectedProvenance?: string | null;
   };
   variables?: Array<{
     variableName?: string;
@@ -88,6 +92,7 @@ export interface TestCaseExpectationInput {
   bodyNotContains?: string;
   jsonPathChecks?: string;
   maxResponseTime?: number | null;
+  expectedProvenance?: string | null;
 }
 
 export interface TestCaseVariableInput {
@@ -169,6 +174,10 @@ const normalizeTestCase = (item: any): TestCase => {
       bodyNotContains: expectation?.bodyNotContains || expectation?.BodyNotContains,
       jsonPathChecks: expectation?.jsonPathChecks || expectation?.JsonPathChecks,
       maxResponseTime: expectation?.maxResponseTime ?? expectation?.MaxResponseTime,
+      expectationSource: expectation?.expectationSource || expectation?.ExpectationSource,
+      requirementCode: expectation?.requirementCode || expectation?.RequirementCode,
+      primaryRequirementId: expectation?.primaryRequirementId || expectation?.PrimaryRequirementId,
+      expectedProvenance: expectation?.expectedProvenance || expectation?.ExpectedProvenance,
     },
       // SRS traceability fields (populated for suggestions and approved test cases)
       // These will be undefined when not returned by the backend.
