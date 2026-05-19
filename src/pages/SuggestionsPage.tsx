@@ -25,6 +25,7 @@ import {
   showSuccessToast,
 } from "../utils/errorHandler";
 import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
+import ExpectedAuditPanel from "../components/test-runs/ExpectedAuditPanel";
 
 interface FailureExplanationModel {
   testSuiteId: string;
@@ -985,6 +986,23 @@ export default function SuggestionsPage() {
                                           {testCase.expectedStatus || "—"}
                                         </div>
                                       </div>
+
+                                      <ExpectedAuditPanel
+                                        title="Expected audit"
+                                        compact
+                                        expectedStatus={testCase.expectedStatus}
+                                        bodyContains={testCase.expectedBodyContains}
+                                        bodyNotContains={testCase.expectedBodyNotContains}
+                                        jsonPathChecks={testCase.expectedJsonPathChecks}
+                                        headerChecks={testCase.expectedHeaderChecks}
+                                        maxResponseTime={testCase.expectedMaxResponseTime}
+                                        expectedProvenance={testCase.expectedProvenance}
+                                        expectationSource={testCase.expectationSource}
+                                        requirementCode={testCase.requirementCode}
+                                        actualStatusCode={testCase.httpStatusCode}
+                                        responseBodyPreview={testCase.responseBodyPreview}
+                                        responseHeaders={testCase.responseHeaders}
+                                      />
 
                                       {testCase.schemaMatched != null && (
                                         <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">

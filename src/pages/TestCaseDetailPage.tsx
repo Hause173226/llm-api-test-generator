@@ -32,6 +32,7 @@ import { cn } from "../lib/utils";
 import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 import { useProject } from "../contexts/ProjectContext";
 import { useEnvironments } from "../hooks/useEnvironments";
+import ExpectedAuditPanel from "../components/test-runs/ExpectedAuditPanel";
 
 interface Assertion {
   id: string;
@@ -1255,9 +1256,22 @@ export default function TestCaseDetailPage() {
               if (!hasAny) return null;
 
               return (
+                <div className="space-y-3">
+                <ExpectedAuditPanel
+                  expectedStatus={rawExp.expectedStatus}
+                  bodyContains={rawExp.bodyContains}
+                  bodyNotContains={rawExp.bodyNotContains}
+                  jsonPathChecks={rawExp.jsonPathChecks}
+                  headerChecks={rawExp.headerChecks}
+                  variables={(testCase as any)?.variables}
+                  maxResponseTime={rawExp.maxResponseTime}
+                  expectedProvenance={rawExp.expectedProvenance}
+                  expectationSource={rawExp.expectationSource}
+                  requirementCode={rawExp.requirementCode}
+                />
                 <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800">
                   <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
-                    Evidence — Expected Checks
+                    Legacy Expected Checks
                   </h2>
                   <div className="space-y-2">
                     {expectedStatusList && expectedStatusList.length > 0 && (
@@ -1372,6 +1386,7 @@ export default function TestCaseDetailPage() {
                       </div>
                     )}
                   </div>
+                </div>
                 </div>
               );
             })()}
@@ -1591,7 +1606,7 @@ export default function TestCaseDetailPage() {
               <div className="space-y-1">
                 {consoleOutput.length === 0 ? (
                   <p className="text-slate-600">
-                    Waiting for test execution...
+                    No execution yet. Run this test case to see request, response, and validation logs here.
                   </p>
                 ) : (
                   consoleOutput.map((log, idx) => {
