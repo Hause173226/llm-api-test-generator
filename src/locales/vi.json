@@ -332,7 +332,17 @@
       },
       "actions": {
         "view": "Xem Chi tiết",
-        "delete": "Xóa"
+        "delete": "Xóa",
+        "activate": "Kích hoạt",
+        "deactivate": "Tắt"
+      },
+      "status": {
+        "active": "Đang hoạt động",
+        "inactive": "Không hoạt động",
+        "activatedToast": "Đã kích hoạt {{name}}",
+        "deactivatedToast": "Đã tắt {{name}}",
+        "activateError": "Không thể kích hoạt đặc tả",
+        "deactivateError": "Không thể tắt đặc tả"
       },
       "pagination": "Hiển thị {{current}} trên {{total}} Đặc tả Đã đăng ký"
     },

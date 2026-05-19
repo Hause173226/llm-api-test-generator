@@ -144,6 +144,32 @@ export function useSpecifications(projectId: string) {
     }
   };
 
+  const activateSpecification = async (specId: string) => {
+    try {
+      const activated = await specificationService.activateSpecification(
+        projectId,
+        specId,
+      );
+      await fetchSpecifications();
+      return activated;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const deactivateSpecification = async (specId: string) => {
+    try {
+      const deactivated = await specificationService.deactivateSpecification(
+        projectId,
+        specId,
+      );
+      await fetchSpecifications();
+      return deactivated;
+    } catch (err) {
+      throw err;
+    }
+  };
+
   // FE-18: Restore a soft-deleted specification
   const restoreSpecification = async (specId: string) => {
     try {
@@ -184,6 +210,8 @@ export function useSpecifications(projectId: string) {
     pollParseStatus,
     updateSpecification,
     deleteSpecification,
+    activateSpecification,
+    deactivateSpecification,
     restoreSpecification,
     createManualSpecification,
   };
