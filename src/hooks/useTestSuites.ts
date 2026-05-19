@@ -3,6 +3,7 @@ import {
   testSuiteService,
   TestSuite,
   CreateTestSuiteRequest,
+  UpdateTestSuiteRequest,
 } from '../services/testSuiteService';
 import { handleError } from '../utils/errorHandler';
 
@@ -50,7 +51,7 @@ export function useTestSuites(projectId: string) {
 
   const updateTestSuite = async (
     testSuiteId: string,
-    data: Partial<CreateTestSuiteRequest>
+    data: UpdateTestSuiteRequest
   ) => {
     try {
       const updated = await testSuiteService.updateTestSuite(projectId, testSuiteId, data);

@@ -52,6 +52,17 @@ export interface CreateTestSuiteRequest {
   rowVersion?: string;
 }
 
+export interface UpdateTestSuiteRequest {
+  name: string;
+  description?: string;
+  apiSpecId?: string;
+  generationType?: 'Auto' | 'Manual' | 'LLMAssisted';
+  selectedEndpointIds: string[];
+  endpointBusinessContexts?: Record<string, string>;
+  globalBusinessRules?: string;
+  rowVersion: string;
+}
+
 export interface GenerateTestSuiteRequest {
   name: string;
   specificationId: string;
@@ -188,7 +199,7 @@ class TestSuiteService {
   async updateTestSuite(
     projectId: string,
     suiteId: string,
-    data: Partial<CreateTestSuiteRequest>
+    data: UpdateTestSuiteRequest
   ): Promise<TestSuite> {
     const payload = {
       name: data.name,
@@ -201,10 +212,11 @@ class TestSuiteService {
       rowVersion: data.rowVersion,
     };
 
-    return await apiService.put<TestSuite>(
+    const response = await apiService.put<TestSuite>(
       `/projects/${projectId}/test-suites/${suiteId}`,
       payload
     );
+    return normalizeTestSuite(response);
   }
 
   async deleteTestSuite(projectId: string, suiteId: string, rowVersion: string): Promise<void> {

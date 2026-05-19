@@ -15,6 +15,8 @@ import {
   AlertTriangle,
   RefreshCw,
   RotateCcw,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
@@ -58,6 +60,8 @@ export default function SpecificationPage() {
     uploadSpecification,
     pollParseStatus,
     deleteSpecification,
+    activateSpecification,
+    deactivateSpecification,
     restoreSpecification,
     createManualSpecification,
   } = useSpecifications(projectId);
@@ -68,6 +72,7 @@ export default function SpecificationPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSpec, setSelectedSpec] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [togglingSpecId, setTogglingSpecId] = useState<string | null>(null);
 
   // Fetch project details
   useEffect(() => {
@@ -223,6 +228,41 @@ export default function SpecificationPage() {
     }
   };
 
+  const handleToggleSpecificationStatus = async (spec: {
+    id: string;
+    name: string;
+    isActive?: boolean;
+  }) => {
+    const isCurrentlyActive = spec.isActive === true;
+
+    try {
+      setTogglingSpecId(spec.id);
+      if (isCurrentlyActive) {
+        await deactivateSpecification(spec.id);
+        showSuccessToast(
+          t("specifications.recent.status.deactivatedToast", {
+            name: spec.name,
+          }),
+        );
+      } else {
+        await activateSpecification(spec.id);
+        showSuccessToast(
+          t("specifications.recent.status.activatedToast", {
+            name: spec.name,
+          }),
+        );
+      }
+    } catch {
+      showErrorToast(
+        isCurrentlyActive
+          ? t("specifications.recent.status.deactivateError")
+          : t("specifications.recent.status.activateError"),
+      );
+    } finally {
+      setTogglingSpecId(null);
+    }
+  };
+
   const getParseStatusBadge = (status: string) => {
     switch (status) {
       case "Success":
@@ -253,6 +293,24 @@ export default function SpecificationPage() {
           </span>
         );
     }
+  };
+
+  const getSpecificationStatusBadge = (isActive?: boolean) => {
+    if (isActive === true) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          {t("specifications.recent.status.active")}
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+        {t("specifications.recent.status.inactive")}
+      </span>
+    );
   };
 
   const getSpecIcon = (type: string) => {
@@ -423,6 +481,9 @@ export default function SpecificationPage() {
                   <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
                     {t("specifications.recent.table.parseStatus")}
                   </th>
+                  <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                    {t("specifications.recent.table.status")}
+                  </th>
                   <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-right">
                     {t("specifications.recent.table.actions")}
                   </th>
@@ -431,7 +492,7 @@ export default function SpecificationPage() {
               <tbody className="divide-y divide-surface-container-low dark:divide-slate-800">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
                     </td>
                   </tr>
@@ -441,7 +502,7 @@ export default function SpecificationPage() {
                   trashedSpecifications.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-6 py-12 text-center text-on-surface-variant"
                       >
                         Trash is empty
@@ -490,6 +551,9 @@ export default function SpecificationPage() {
                           <td className="px-6 py-6">
                             {getParseStatusBadge(spec.parseStatus)}
                           </td>
+                          <td className="px-6 py-6">
+                            {getSpecificationStatusBadge(spec.isActive)}
+                          </td>
                           <td className="px-6 py-6 text-right">
                             <button
                               onClick={async () => {
@@ -515,7 +579,7 @@ export default function SpecificationPage() {
                 ) : !specifications || specifications.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-6 py-12 text-center text-on-surface-variant"
                     >
                       {t("specifications.recent.noSpecs")}
@@ -568,7 +632,31 @@ export default function SpecificationPage() {
                         <td className="px-6 py-6">
                           {getParseStatusBadge(spec.parseStatus)}
                         </td>
+                        <td className="px-6 py-6">
+                          {getSpecificationStatusBadge(spec.isActive)}
+                        </td>
                         <td className="px-6 py-6 text-right space-x-3">
+                          <button
+                            onClick={() => handleToggleSpecificationStatus(spec)}
+                            disabled={togglingSpecId === spec.id}
+                            className={cn(
+                              "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+                              spec.isActive === true
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-emerald-600 dark:text-emerald-400",
+                            )}
+                          >
+                            {togglingSpecId === spec.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : spec.isActive === true ? (
+                              <PowerOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Power className="w-3.5 h-3.5" />
+                            )}
+                            {spec.isActive === true
+                              ? t("specifications.recent.actions.deactivate")
+                              : t("specifications.recent.actions.activate")}
+                          </button>
                           <button
                             onClick={() => {
                               setSelectedSpec(spec);

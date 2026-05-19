@@ -99,6 +99,54 @@ describe("specificationService cache", () => {
     expect(refreshed[0].name).toBe("New");
   });
 
+  it("calls the activate endpoint and invalidates the specification cache", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse([{ id: "spec-1", name: "OpenAPI", isActive: false }]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ id: "spec-1", name: "OpenAPI", isActive: true }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse([{ id: "spec-1", name: "OpenAPI", isActive: true }]),
+      );
+
+    await specificationService.getSpecifications("project-1");
+    await specificationService.activateSpecification("project-1", "spec-1");
+    const refreshed = await specificationService.getSpecifications("project-1");
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[1][0])).toContain(
+      "/api/projects/project-1/specifications/spec-1/activate",
+    );
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "PUT" });
+    expect(refreshed[0].isActive).toBe(true);
+  });
+
+  it("calls the deactivate endpoint and invalidates the specification cache", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse([{ id: "spec-1", name: "OpenAPI", isActive: true }]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ id: "spec-1", name: "OpenAPI", isActive: false }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse([{ id: "spec-1", name: "OpenAPI", isActive: false }]),
+      );
+
+    await specificationService.getSpecifications("project-1");
+    await specificationService.deactivateSpecification("project-1", "spec-1");
+    const refreshed = await specificationService.getSpecifications("project-1");
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[1][0])).toContain(
+      "/api/projects/project-1/specifications/spec-1/deactivate",
+    );
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "PUT" });
+    expect(refreshed[0].isActive).toBe(false);
+  });
+
   it("clears pending requests after failure so later calls can retry", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ message: "failed" }, 500))
