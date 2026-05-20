@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, X, Pencil, Filter, Loader2, Route, Clock, BookOpen, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal";
 import { cn } from "../../lib/utils";
 import { SuiteSuggestionModel } from "../../services/testSuiteLlmSuggestionService";
@@ -92,6 +93,7 @@ export default function SuggestionReviewPanel({
   srsCoverageSummary = null,
 }: SuggestionReviewPanelProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>(
     [],
   );
@@ -452,37 +454,7 @@ export default function SuggestionReviewPanel({
 
   return (
     <div className="space-y-4">
-      {srsCoverageSummary && srsCoverageSummary.totalRequirements > 0 && (
-        <div className="rounded-xl border border-cyan-300/40 bg-cyan-50/40 dark:bg-cyan-950/20 dark:border-cyan-700/40 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-bold text-cyan-800 dark:text-cyan-300">
-              SRS Coverage: {srsCoverageSummary.coveragePercent}% ({srsCoverageSummary.coveredRequirements}/{srsCoverageSummary.totalRequirements})
-            </p>
-            <span className="text-xs text-cyan-700 dark:text-cyan-400">
-              Uncovered: {srsCoverageSummary.uncoveredRequirements}
-            </span>
-          </div>
-          {Array.isArray(srsCoverageSummary.coveredItems) &&
-            srsCoverageSummary.coveredItems.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {srsCoverageSummary.coveredItems.slice(0, 8).map((item, idx) => (
-                  <span
-                    key={item.requirementId || `${item.requirementCode || "req"}-${idx}`}
-                    title={item.title || item.requirementCode || "Covered requirement"}
-                    className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40"
-                  >
-                    {item.requirementCode || "REQ"}
-                  </span>
-                ))}
-                {srsCoverageSummary.coveredItems.length > 8 && (
-                  <span className="text-[10px] text-cyan-700 dark:text-cyan-400">
-                    +{srsCoverageSummary.coveredItems.length - 8} more
-                  </span>
-                )}
-              </div>
-            )}
-        </div>
-      )}
+     
 
       {/* SRS Trust Banner — shown when all/some suggestions have SRS context */}
       {srsLinkedCount > 0 && (
@@ -491,12 +463,15 @@ export default function SuggestionReviewPanel({
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
               {srsLinkedCount === suggestions.length
-                ? "All suggestions generated with SRS context"
-                : `${srsLinkedCount} of ${suggestions.length} suggestions generated with SRS context`}
+                ? t("suggestions.reviewPanel.srs.all")
+                : t("suggestions.reviewPanel.srs.partial", {
+                    linked: srsLinkedCount,
+                    total: suggestions.length,
+                  })}
             </p>
             {srsDocTitles.length > 0 && (
               <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
-                Based on:{" "}
+                {t("suggestions.reviewPanel.srs.basedOn")}{" "}
                 {srsDocTitles.map((title, i) => (
                   <span key={title}>
                     {i > 0 && ", "}
@@ -507,7 +482,7 @@ export default function SuggestionReviewPanel({
             )}
           </div>
           <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600/40">
-            SRS-ALIGNED
+            {t("suggestions.reviewPanel.srs.aligned")}
           </span>
         </div>
       )}
@@ -517,12 +492,15 @@ export default function SuggestionReviewPanel({
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-amber-700 dark:text-amber-300" />
             <span className="text-sm font-bold text-amber-900 dark:text-amber-100">
-              Viewing Historical Generation #{viewingGenerationNumber}
+              {t("suggestions.reviewPanel.history.title", {
+                number: viewingGenerationNumber,
+              })}
             </span>
           </div>
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-            You are viewing suggestions from a previous generation. Current
-            generation is #{currentGenerationNumber}.
+            {t("suggestions.reviewPanel.history.desc", {
+              number: currentGenerationNumber,
+            })}
           </p>
         </div>
       )}
@@ -532,7 +510,7 @@ export default function SuggestionReviewPanel({
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
             <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
-              AI Review Filters
+              {t("suggestions.reviewPanel.filters.title")}
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -545,8 +523,8 @@ export default function SuggestionReviewPanel({
               >
                 <Check className="w-3.5 h-3.5" />
                 {allPendingSelected
-                  ? "Unselect all pending"
-                  : "Select all pending"}
+                  ? t("suggestions.reviewPanel.actions.unselectPending")
+                  : t("suggestions.reviewPanel.actions.selectPending")}
               </button>
             )}
             {supersededSuggestions.length > 0 && (
@@ -560,8 +538,8 @@ export default function SuggestionReviewPanel({
                 {selectedSupersededSuggestions.length ===
                   supersededSuggestions.length &&
                 supersededSuggestions.length > 0
-                  ? "Unselect all superseded"
-                  : "Select all superseded"}
+                  ? t("suggestions.reviewPanel.actions.unselectSuperseded")
+                  : t("suggestions.reviewPanel.actions.selectSuperseded")}
               </button>
             )}
             {(hasSelectedSupersededSuggestions ||
@@ -743,12 +721,13 @@ export default function SuggestionReviewPanel({
                           getStatusBadgeClass(suggestion.reviewStatus),
                         )}
                       >
-                        {suggestion.reviewStatus || "Pending"}
+                        {suggestion.reviewStatus ||
+                          t("suggestions.reviewPanel.status.pending")}
                       </span>
                       <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300 text-[10px] font-black tracking-wider border border-slate-200 dark:border-slate-400/20">
                         {suggestion.testType ||
                           suggestion.suggestionType ||
-                          "Unknown"}
+                          t("suggestions.reviewPanel.common.unknown")}
                       </span>
                       {suggestion.hasSrsContext && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/25">
@@ -759,27 +738,31 @@ export default function SuggestionReviewPanel({
                       {coverageState === "FULL" && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-cyan-100 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-400/25">
                           <ShieldCheck className="w-2.5 h-2.5" />
-                          Covered {coveredRequirementCount}
+                          {t("suggestions.reviewPanel.coverage.covered", {
+                            count: coveredRequirementCount,
+                          })}
                         </span>
                       )}
                       {coverageState === "SRS_ONLY" && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/25">
                           <ShieldCheck className="w-2.5 h-2.5" />
-                          SRS (no req IDs)
+                          {t("suggestions.reviewPanel.coverage.srsOnly")}
                         </span>
                       )}
                       {draftEdits[suggestion.id] && (
                         <span className="px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black tracking-wider border border-cyan-400/25">
-                          Edited
+                          {t("suggestions.reviewPanel.common.edited")}
                         </span>
                       )}
                     </div>
 
                     <p className="text-sm font-bold text-on-surface">
-                      {suggestion.suggestedName || "Untitled suggestion"}
+                      {suggestion.suggestedName ||
+                        t("suggestions.reviewPanel.common.untitled")}
                     </p>
                     <p className="text-xs text-on-surface-variant mt-1">
-                      {suggestion.suggestedDescription || "No description"}
+                      {suggestion.suggestedDescription ||
+                        t("suggestions.reviewPanel.common.noDescription")}
                     </p>
 
                     {/* SRS requirement coverage — shown only when SRS context available */}
@@ -789,7 +772,7 @@ export default function SuggestionReviewPanel({
                         <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
                           {suggestion.srsDocumentTitle
                             ? `${suggestion.srsDocumentTitle}:`
-                            : "SRS:"}
+                            : t("suggestions.reviewPanel.srs.shortLabel")}
                         </span>
                         {suggestion.coveredRequirements &&
                         suggestion.coveredRequirements.length > 0 ? (
@@ -805,17 +788,21 @@ export default function SuggestionReviewPanel({
                         ) : suggestion.coveredRequirementIds &&
                           suggestion.coveredRequirementIds.length > 0 ? (
                           <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
-                            {suggestion.coveredRequirementIds.length} req(s)
+                            {t("suggestions.reviewPanel.coverage.reqCount", {
+                              count: suggestion.coveredRequirementIds.length,
+                            })}
                           </span>
                         ) : (
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-500 italic">
-                            SRS-aligned
+                            {t("suggestions.reviewPanel.srs.aligned")}
                           </span>
                         )}
                         {suggestion.coveredRequirements &&
                           suggestion.coveredRequirements.length > 4 && (
                             <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                              +{suggestion.coveredRequirements.length - 4} more
+                              {t("suggestions.reviewPanel.common.moreCount", {
+                                count: suggestion.coveredRequirements.length - 4,
+                              })}
                             </span>
                           )}
                       </div>
@@ -823,7 +810,9 @@ export default function SuggestionReviewPanel({
 
                     <div className="mt-2 flex items-center gap-2 text-[11px] text-on-surface-variant">
                       <Route className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />
-                      <span className="font-semibold">Endpoint:</span>
+                      <span className="font-semibold">
+                        {t("suggestions.reviewPanel.common.endpoint")}:
+                      </span>
                       {endpoint ? (
                         <>
                           <span
@@ -835,12 +824,13 @@ export default function SuggestionReviewPanel({
                             {endpoint.method || "UNKNOWN"}
                           </span>
                           <span className="text-cyan-800 dark:text-cyan-100/90 font-mono break-all">
-                            {endpoint.path || "Unknown path"}
+                            {endpoint.path ||
+                              t("suggestions.reviewPanel.common.unknownPath")}
                           </span>
                         </>
                       ) : (
                         <span className="text-slate-600 dark:text-slate-400">
-                          Unknown endpoint
+                          {t("suggestions.reviewPanel.common.unknownEndpoint")}
                         </span>
                       )}
                     </div>
@@ -873,7 +863,7 @@ export default function SuggestionReviewPanel({
                             onClick={() => openDetails(suggestion)}
                             className="px-3 py-1.5 rounded-md bg-surface-container-high text-on-surface text-xs font-bold flex items-center gap-1 cursor-pointer"
                           >
-                            View details
+                            {t("suggestions.reviewPanel.actions.viewDetails")}
                           </button>
                         )}
                     </div>
@@ -886,8 +876,11 @@ export default function SuggestionReviewPanel({
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant/20 px-3 py-2 text-xs text-on-surface-variant">
             <div className="flex items-center gap-2">
               <span>
-                Showing {fromIndex}-{toIndex} of{" "}
-                {filteredByCoverageSuggestions.length}
+                {t("suggestions.reviewPanel.pagination.showing", {
+                  from: fromIndex,
+                  to: toIndex,
+                  total: filteredByCoverageSuggestions.length,
+                })}
               </span>
               <select
                 value={pageSize}
@@ -898,9 +891,21 @@ export default function SuggestionReviewPanel({
                 }}
                 className="px-2 py-1 rounded bg-surface-container-low dark:bg-slate-800 border border-outline-variant/20 dark:border-slate-600 text-on-surface"
               >
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-                <option value={50}>50 / page</option>
+                <option value={10}>
+                  {t("suggestions.reviewPanel.pagination.pageSize", {
+                    count: 10,
+                  })}
+                </option>
+                <option value={20}>
+                  {t("suggestions.reviewPanel.pagination.pageSize", {
+                    count: 20,
+                  })}
+                </option>
+                <option value={50}>
+                  {t("suggestions.reviewPanel.pagination.pageSize", {
+                    count: 50,
+                  })}
+                </option>
               </select>
             </div>
 
@@ -911,10 +916,13 @@ export default function SuggestionReviewPanel({
                 disabled={safeCurrentPage <= 1}
                 className="px-3 py-1 rounded bg-surface-container-high text-on-surface disabled:opacity-50"
               >
-                Prev
+                {t("suggestions.reviewPanel.pagination.prev")}
               </button>
               <span>
-                Page {safeCurrentPage}/{totalPages}
+                {t("suggestions.reviewPanel.pagination.page", {
+                  current: safeCurrentPage,
+                  total: totalPages,
+                })}
               </span>
               <button
                 type="button"
@@ -924,7 +932,7 @@ export default function SuggestionReviewPanel({
                 disabled={safeCurrentPage >= totalPages}
                 className="px-3 py-1 rounded bg-surface-container-high text-on-surface disabled:opacity-50"
               >
-                Next
+                {t("suggestions.reviewPanel.pagination.next")}
               </button>
             </div>
           </div>
@@ -935,7 +943,7 @@ export default function SuggestionReviewPanel({
         suggestions.length > 0 &&
         filteredByCoverageSuggestions.length === 0 && (
           <div className="rounded-lg border border-outline-variant/20 p-4 text-sm text-on-surface-variant">
-            No suggestions match current SRS coverage filter.
+            {t("suggestions.reviewPanel.empty.noMatchCoverage")}
           </div>
         )}
 
@@ -946,7 +954,7 @@ export default function SuggestionReviewPanel({
           setIsRejectModalOpen(false);
           setBulkRejectNotes("");
         }}
-        title="Reject Selected Test Cases"
+        title={t("suggestions.reviewPanel.modal.rejectSelected.title")}
         footer={
           <>
             <button
@@ -957,7 +965,7 @@ export default function SuggestionReviewPanel({
               disabled={isReviewingSuggestion}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleBulkRejectSelected}
@@ -969,26 +977,29 @@ export default function SuggestionReviewPanel({
               ) : (
                 <X className="w-4 h-4" />
               )}
-              Confirm Reject
+              {t("suggestions.reviewPanel.modal.rejectSelected.confirm")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-sm text-on-surface-variant">
-            Reject {selectedPendingSuggestions.length} selected pending test
-            case{selectedPendingSuggestions.length > 1 ? "s" : ""}.
+            {t("suggestions.reviewPanel.modal.rejectSelected.desc", {
+              count: selectedPendingSuggestions.length,
+            })}
           </p>
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-              Review Notes (required)
+              {t("suggestions.reviewPanel.modal.reviewNotesRequired")}
             </label>
             <textarea
               value={bulkRejectNotes}
               onChange={(e) => setBulkRejectNotes(e.target.value)}
               rows={4}
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-              placeholder="Explain why these suggestions should be rejected"
+              placeholder={t(
+                "suggestions.reviewPanel.modal.rejectSelected.placeholder",
+              )}
             />
           </div>
         </div>
@@ -1004,8 +1015,8 @@ export default function SuggestionReviewPanel({
         }}
         title={
           reviewMode === "Reject"
-            ? "Reject LLM Suggestion"
-            : "Edit LLM Suggestion"
+            ? t("suggestions.reviewPanel.modal.review.titleReject")
+            : t("suggestions.reviewPanel.modal.review.titleEdit")
         }
         footer={
           <>
@@ -1018,7 +1029,7 @@ export default function SuggestionReviewPanel({
               disabled={isReviewingSuggestion}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               onClick={submitReview}
@@ -1032,7 +1043,9 @@ export default function SuggestionReviewPanel({
               ) : (
                 <Check className="w-4 h-4" />
               )}
-              {reviewMode === "Reject" ? "Confirm Reject" : "Save Edit"}
+              {reviewMode === "Reject"
+                ? t("suggestions.reviewPanel.modal.review.confirmReject")
+                : t("suggestions.reviewPanel.modal.review.saveEdit")}
             </button>
           </>
         }
@@ -1042,40 +1055,46 @@ export default function SuggestionReviewPanel({
             <>
               <div>
                 <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                  Name
+                  {t("suggestions.reviewPanel.modal.review.name")}
                 </label>
                 <input
                   value={modifyName}
                   onChange={(e) => setModifyName(e.target.value)}
                   className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-                  placeholder="Suggestion name"
+                  placeholder={t(
+                    "suggestions.reviewPanel.modal.review.namePlaceholder",
+                  )}
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                  Description
+                  {t("suggestions.reviewPanel.modal.review.description")}
                 </label>
                 <textarea
                   value={modifyDescription}
                   onChange={(e) => setModifyDescription(e.target.value)}
                   rows={3}
                   className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-                  placeholder="Suggestion description"
+                  placeholder={t(
+                    "suggestions.reviewPanel.modal.review.descriptionPlaceholder",
+                  )}
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                    Test Type
+                    {t("suggestions.reviewPanel.modal.review.testType")}
                   </label>
                   <select
                     value={modifyTestType}
                     onChange={(e) => setModifyTestType(e.target.value)}
                     className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
                   >
-                    <option value="">Keep existing</option>
+                    <option value="">
+                      {t("suggestions.reviewPanel.modal.review.keepExisting")}
+                    </option>
                     {[
                       "HappyPath",
                       "Boundary",
@@ -1092,14 +1111,16 @@ export default function SuggestionReviewPanel({
 
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                    Priority
+                    {t("suggestions.reviewPanel.modal.review.priority")}
                   </label>
                   <select
                     value={modifyPriority}
                     onChange={(e) => setModifyPriority(e.target.value)}
                     className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
                   >
-                    <option value="">Keep existing</option>
+                    <option value="">
+                      {t("suggestions.reviewPanel.modal.review.keepExisting")}
+                    </option>
                     {["Low", "Medium", "High", "Critical"].map((priority) => (
                       <option key={priority} value={priority}>
                         {priority}
@@ -1111,13 +1132,15 @@ export default function SuggestionReviewPanel({
 
               <div>
                 <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                  Tags (comma separated)
+                  {t("suggestions.reviewPanel.modal.review.tags")}
                 </label>
                 <input
                   value={modifyTagsText}
                   onChange={(e) => setModifyTagsText(e.target.value)}
                   className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-                  placeholder="boundary, llm-suggested"
+                  placeholder={t(
+                    "suggestions.reviewPanel.modal.review.tagsPlaceholder",
+                  )}
                 />
               </div>
             </>
@@ -1125,8 +1148,10 @@ export default function SuggestionReviewPanel({
 
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-              Review Notes{" "}
-              {reviewMode === "Reject" ? "(required)" : "(optional)"}
+              {t("suggestions.reviewPanel.modal.review.notes")}{" "}
+              {reviewMode === "Reject"
+                ? t("suggestions.reviewPanel.modal.review.required")
+                : t("suggestions.reviewPanel.modal.review.optional")}
             </label>
             <textarea
               value={reviewNotes}
@@ -1135,8 +1160,8 @@ export default function SuggestionReviewPanel({
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               placeholder={
                 reviewMode === "Reject"
-                  ? "Explain why this suggestion should be rejected"
-                  : "Reason for modifications"
+                  ? t("suggestions.reviewPanel.modal.review.rejectPlaceholder")
+                  : t("suggestions.reviewPanel.modal.review.modifyPlaceholder")
               }
             />
           </div>

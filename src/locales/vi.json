@@ -540,6 +540,62 @@
       "envStaging": "Môi trường Staging",
       "envProd": "Môi trường Sản xuất",
       "endpointsLabel": "Chọn các Điểm cuối API"
+    },
+    "detailToast": {
+      "chooseEndpoint": "Vui lòng chọn ít nhất một endpoint để thêm.",
+      "noValidEndpoint": "Không có endpoint hợp lệ được chọn.",
+      "addedEndpoints": "Đã thêm {{count}} endpoint vào Bước 1.",
+      "missingProjectSpec": "Thiếu ngữ cảnh project/spec.",
+      "endpointPathRequired": "Đường dẫn endpoint là bắt buộc.",
+      "createEndpointMissingId": "Tạo endpoint thất bại: thiếu endpoint id.",
+      "manualEndpointAdded": "Đã tạo endpoint thủ công và thêm vào Bước 1.",
+      "suiteSaved": "Đã lưu cấu hình suite thành công",
+      "orderApproved": "Phê duyệt thứ tự thành công",
+      "aiPreviewRegenerated": "Đã tạo lại AI preview sau khi phê duyệt.",
+      "orderSavedButApproveFailed": "Đã lưu thứ tự nhưng phê duyệt thất bại. Vui lòng phê duyệt thủ công trước khi review AI.",
+      "srsLinked": "Đã liên kết tài liệu SRS.",
+      "srsUnlinked": "Đã hủy liên kết tài liệu SRS.",
+      "generatingInProgress": "Đề xuất LLM đang được sinh.",
+      "generationCompletedNoValidSuggestions": "Đã sinh xong nhưng không có gợi ý hợp lệ nào vượt qua kiểm tra contract nghiêm ngặt.",
+      "suggestionsReady": "Đề xuất LLM đã sẵn sàng.",
+      "generationCancelled": "Việc sinh gợi ý LLM đã bị hủy.",
+      "generationFailed": "Sinh gợi ý LLM thất bại.",
+      "noApiSpec": "Suite được chọn không có đặc tả API.",
+      "moveToStep3Title": "Chuyển sang Bước 3: Test Cases",
+      "moveToStep3Message": "Tất cả gợi ý đã được review. Đang chuẩn bị test cases...",
+      "moveToStep3Label": "Bước 2 sang Bước 3",
+      "missingRowVersion": "Thiếu rowVersion để review. Vui lòng tải lại trang và thử lại.",
+      "editedSuggestionApproved": "Đã phê duyệt gợi ý sau khi chỉnh sửa.",
+      "suggestionApproved": "Phê duyệt gợi ý thành công.",
+      "suggestionReviewed": "Review gợi ý thành công.",
+      "noSuggestionsForFilter": "Không có gợi ý nào cho bộ lọc hiện tại.",
+      "noSuggestionsForRestore": "Chưa chọn gợi ý nào để khôi phục.",
+      "noSuggestionsForReject": "Chưa chọn gợi ý nào để từ chối.",
+      "noSuggestionsRejected": "Không có gợi ý nào bị từ chối. Vui lòng kiểm tra lỗi và thử lại.",
+      "noSuggestionsForApprove": "Chưa chọn gợi ý nào để phê duyệt.",
+      "noSuggestionsApproved": "Không có gợi ý nào được phê duyệt. Vui lòng kiểm tra lỗi và thử lại.",
+      "reviewNotesRequired": "Bắt buộc nhập ghi chú review khi từ chối hàng loạt.",
+      "step1Title": "Bước 1: Cấu hình",
+      "step1HelperPending": "Thay đổi endpoint đang chờ phê duyệt",
+      "step1HelperApproved": "Thứ tự đã được phê duyệt và AI preview đã sẵn sàng",
+      "step1HelperNeedApprove": "Phê duyệt thứ tự để tạo AI preview",
+      "step2Title": "Bước 2: AI Review",
+      "step2HelperGenerate": "Tạo gợi ý AI",
+      "step2HelperStatus": "{{pending}} đang chờ, {{approved}} đã phê duyệt",
+      "step3Title": "Bước 3: Test Cases",
+      "step3HelperReady": "{{count}} test case đã sẵn sàng",
+      "step3HelperEmpty": "Chưa có test case nào",
+      "saveApproveOrder": "Lưu & Phê duyệt thứ tự",
+      "approveOrder": "Phê duyệt thứ tự",
+      "needApproveBeforeReview": "Hoàn thành Bước 1 bằng cách nhấn Phê duyệt thứ tự trước khi sang AI Review.",
+      "completePreviousSteps": "Hoàn thành các bước trước đó trước khi mở Test Cases.",
+      "current": "Hiện tại",
+      "available": "Khả dụng",
+      "locked": "Bị khóa",
+      "workflowProgress": "Tiến độ quy trình: Bước {{current}}/3",
+      "pendingAi": "AI đang chờ: {{count}}",
+      "approvedCount": "Đã phê duyệt: {{count}}",
+      "rejectedCount": "Đã từ chối: {{count}}"
     }
   },
   "testCaseStudio": {
@@ -802,30 +858,30 @@
   },
   "failureExplanation": {
     "title": "Giải thích Thất bại",
-    "subtitle": "Phân tích nguyên nhân gốc rễ tự động cho các lượt thực thi kiểm thử API thất bại.",
+    "subtitle": "Phân tích nguyên nhân gốc rễ được hỗ trợ bởi LLM cho các lần thực thi kiểm thử thất bại.",
     "reAnalyze": "Phân tích lại Thất bại",
     "analysis": {
-      "title": "Phân tích Nguyên nhân Gốc rễ bằng Trí tuệ Nhân tạo",
+      "title": "Phân tích Nguyên nhân Gốc rễ bằng LLM",
       "expected": "Hành vi Mong đợi",
-      "suggested": "Giải pháp Đề xuất",
-      "payloadComparison": "So sánh Dữ liệu Yêu cầu",
-      "actual": "Yêu cầu Thực tế (Thất bại)",
-      "expectedRequest": "Yêu cầu Mong đợi (Thành công)"
+      "suggested": "Sửa lỗi Đề xuất",
+      "payloadComparison": "So sánh Dữ liệu Gửi đi",
+      "actual": "Yêu cầu Thực tế",
+      "expectedRequest": "Yêu cầu Mong đợi"
     },
     "impact": {
-      "title": "Phân tích Tác động",
+      "title": "Tác động Kinh doanh",
       "risk": "Mức độ Rủi ro",
       "critical": "Nghiêm trọng",
       "affected": "Người dùng bị Ảnh hưởng",
-      "generatePr": "Tạo PR Sửa lỗi"
+      "generatePr": "Tạo Bản sửa lỗi Pull Request"
     },
     "similar": {
-      "title": "Thất bại Tương tự",
+      "title": "Các Thất bại Tương tự",
       "match": "Khớp"
     },
     "selfHealing": {
-      "title": "Mẹo Tự phục hồi",
-      "tip": "Bật <0>Tự động Sửa lỗi</0> cho bộ này để cho phép LLM tự động cập nhật các trường hợp kiểm thử khi lược đồ API thay đổi."
+      "title": "Tự chữa lành",
+      "tip": "Bật <1>Tự động Sửa lỗi</1> cho bộ kiểm thử này để cho phép LLM tự động cập nhật các kịch bản kiểm thử khi lược đồ API thay đổi."
     }
   },
   "settings": {
@@ -955,34 +1011,6 @@
       "finalization": "Bước 03: Hoàn tất"
     }
   },
-  "failureExplanation": {
-    "title": "Giải thích Thất bại",
-    "subtitle": "Phân tích nguyên nhân gốc rễ được hỗ trợ bởi LLM cho các lần thực thi kiểm thử thất bại.",
-    "reAnalyze": "Phân tích lại Thất bại",
-    "analysis": {
-      "title": "Phân tích Nguyên nhân Gốc rễ bằng LLM",
-      "expected": "Hành vi Mong đợi",
-      "suggested": "Sửa lỗi Đề xuất",
-      "payloadComparison": "So sánh Dữ liệu Gửi đi",
-      "actual": "Yêu cầu Thực tế",
-      "expectedRequest": "Yêu cầu Mong đợi"
-    },
-    "impact": {
-      "title": "Tác động Kinh doanh",
-      "risk": "Mức độ Rủi ro",
-      "critical": "Nghiêm trọng",
-      "affected": "Người dùng bị Ảnh hưởng",
-      "generatePr": "Tạo Bản sửa lỗi Pull Request"
-    },
-    "similar": {
-      "title": "Các Thất bại Tương tự",
-      "match": "Khớp"
-    },
-    "selfHealing": {
-      "title": "Tự chữa lành",
-      "tip": "Bật <1>Tự động Sửa lỗi</1> cho bộ kiểm thử này để cho phép LLM tự động cập nhật các kịch bản kiểm thử khi lược đồ API thay đổi."
-    }
-  },
   "suggestions": {
     "title": "Chi tiết Excute",
     "subtitle": "Công cụ trí tuệ tự trị của chúng tôi đã phân tích các đặc tả API và kết quả kiểm thử của bạn để xác định các lỗ hổng bao phủ và tối ưu hóa quan trọng.",
@@ -1074,6 +1102,86 @@
       "title": "Bạn muốn tạo toàn bộ bộ kiểm thử một cách tự động?",
       "desc": "LLM của chúng tôi có thể phân tích toàn bộ đặc tả API của bạn và tạo ra một bộ kiểm thử hồi quy toàn diện trong vài giây.",
       "launch": "Kích hoạt Trình tạo Tự trị"
+    },
+    "reviewPanel": {
+      "srs": {
+        "all": "Tất cả gợi ý được tạo có ngữ cảnh SRS",
+        "partial": "{{linked}} trên {{total}} gợi ý được tạo có ngữ cảnh SRS",
+        "basedOn": "Dựa trên:",
+        "aligned": "Đã căn chỉnh SRS",
+        "shortLabel": "SRS:"
+      },
+      "history": {
+        "title": "Đang xem lịch sử lần sinh #{{number}}",
+        "desc": "Bạn đang xem gợi ý từ một lần sinh trước đó. Lần sinh hiện tại là #{{number}}."
+      },
+      "filters": {
+        "title": "Bộ lọc AI Review"
+      },
+      "actions": {
+        "selectPending": "Chọn tất cả pending",
+        "unselectPending": "Bỏ chọn tất cả pending",
+        "selectSuperseded": "Chọn tất cả superseded",
+        "unselectSuperseded": "Bỏ chọn tất cả superseded",
+        "viewDetails": "Xem chi tiết"
+      },
+      "status": {
+        "pending": "Đang chờ"
+      },
+      "common": {
+        "unknown": "Không xác định",
+        "edited": "Đã chỉnh sửa",
+        "untitled": "Gợi ý chưa đặt tên",
+        "noDescription": "Không có mô tả",
+        "moreCount": "+{{count}} mục khác",
+        "endpoint": "Endpoint",
+        "unknownPath": "Đường dẫn không xác định",
+        "unknownEndpoint": "Endpoint không xác định"
+      },
+      "coverage": {
+        "covered": "Bao phủ {{count}}",
+        "srsOnly": "SRS (không có req ID)",
+        "reqCount": "{{count}} yêu cầu"
+      },
+      "pagination": {
+        "showing": "Hiển thị {{from}}-{{to}} trên {{total}}",
+        "pageSize": "{{count}} / trang",
+        "prev": "Trước",
+        "next": "Sau",
+        "page": "Trang {{current}}/{{total}}"
+      },
+      "empty": {
+        "noMatchCoverage": "Không có gợi ý nào khớp bộ lọc độ bao phủ SRS hiện tại."
+      },
+      "modal": {
+        "rejectSelected": {
+          "title": "Từ chối các test case đã chọn",
+          "confirm": "Xác nhận từ chối",
+          "desc": "Từ chối {{count}} test case đang chờ đã chọn.",
+          "placeholder": "Giải thích lý do từ chối các gợi ý này"
+        },
+        "reviewNotesRequired": "Ghi chú review (bắt buộc)",
+        "review": {
+          "titleReject": "Từ chối gợi ý LLM",
+          "titleEdit": "Chỉnh sửa gợi ý LLM",
+          "confirmReject": "Xác nhận từ chối",
+          "saveEdit": "Lưu chỉnh sửa",
+          "name": "Tên",
+          "namePlaceholder": "Tên gợi ý",
+          "description": "Mô tả",
+          "descriptionPlaceholder": "Mô tả gợi ý",
+          "testType": "Loại test",
+          "priority": "Độ ưu tiên",
+          "keepExisting": "Giữ giá trị hiện tại",
+          "tags": "Tags (phân tách bằng dấu phẩy)",
+          "tagsPlaceholder": "boundary, llm-suggested",
+          "notes": "Ghi chú review",
+          "required": "(bắt buộc)",
+          "optional": "(tùy chọn)",
+          "rejectPlaceholder": "Giải thích lý do từ chối gợi ý này",
+          "modifyPlaceholder": "Lý do chỉnh sửa"
+        }
+      }
     }
   },
   "overlay": {
