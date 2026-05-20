@@ -316,8 +316,8 @@ const RequestBuilder: React.FC = () => {
         onClick={() => setActiveTab(tab)}
         className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 text-sm rounded-lg border transition-all ${
           active
-            ? "bg-indigo-600 text-white border-indigo-600"
-            : "bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
+            ? "bg-primary text-on-primary border-primary"
+            : "bg-surface-container text-on-surface-variant dark:bg-slate-800 dark:text-slate-300 border-outline-variant/20 dark:border-slate-700 hover:bg-surface-container-high dark:hover:bg-slate-700"
         }`}
       >
         {label}
@@ -374,11 +374,11 @@ const RequestBuilder: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-[110px_minmax(0,1fr)] lg:grid-cols-[110px_minmax(0,1fr)_auto] gap-2 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
+      <div className="grid grid-cols-1 sm:grid-cols-[110px_minmax(0,1fr)] lg:grid-cols-[110px_minmax(0,1fr)_auto] gap-2 rounded-2xl border border-outline-variant/20 dark:border-slate-700 bg-surface-container-low dark:bg-slate-900 p-3">
         <select
           value={requestConfig.method}
           onChange={onMethodChange}
-          className={`w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold ${methodColor}`}
+          className={`w-full px-3 py-2 rounded-lg border border-outline-variant/20 dark:border-slate-700 bg-surface-container dark:bg-slate-800 font-semibold ${methodColor}`}
         >
           {HTTP_METHODS.map((method) => (
             <option key={method} value={method}>
@@ -397,21 +397,21 @@ const RequestBuilder: React.FC = () => {
               t("manualTesting.urlPlaceholder") ||
               "https://api.example.com/path"
             }
-            className="w-full min-w-0 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/70 font-mono"
+            className="w-full min-w-0 px-3 py-2 rounded-lg border border-outline-variant/20 dark:border-slate-700 bg-surface-container-lowest dark:bg-slate-950/70 font-mono text-on-surface"
           />
 
           <div className="relative" ref={variableMenuRef}>
             <button
               type="button"
               onClick={() => setIsVariableMenuOpen((prev) => !prev)}
-              className="h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold"
+              className="h-10 px-3 rounded-lg border border-outline-variant/20 dark:border-slate-700 bg-surface-container-lowest dark:bg-slate-900 text-on-surface dark:text-slate-200 hover:bg-surface-container dark:hover:bg-slate-800 text-sm font-semibold"
               title="Insert environment variable"
             >
               {"{}"}
             </button>
 
             {isVariableMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 max-h-56 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg z-20 p-1">
+              <div className="absolute right-0 mt-2 w-64 max-h-56 overflow-y-auto rounded-lg border border-outline-variant/20 dark:border-slate-700 bg-surface-container-lowest dark:bg-slate-900 shadow-lg z-20 p-1">
                 {availableVariables.length === 0 && (
                   <div className="px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400">
                     No variables in active environment
@@ -451,7 +451,7 @@ const RequestBuilder: React.FC = () => {
 
         <button
           onClick={onSend}
-          className="w-full sm:col-span-2 lg:col-span-1 lg:w-auto px-5 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors"
+          className="w-full sm:col-span-2 lg:col-span-1 lg:w-auto px-5 py-2 rounded-xl bg-primary text-on-primary font-semibold hover:brightness-110 transition-colors"
         >
           {t("manualTesting.send")}
         </button>
@@ -474,7 +474,7 @@ const RequestBuilder: React.FC = () => {
         {tabButton("body", t("manualTesting.body"))}
       </div>
 
-      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-4">
+      <div className="rounded-2xl border border-outline-variant/20 dark:border-slate-700 bg-surface-container-low dark:bg-slate-800/40 p-4">
         {activeTab === "params" && (
           <KeyValueEditor
             items={params}

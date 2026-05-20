@@ -976,13 +976,13 @@ const SavedRequestsPanel: React.FC = () => {
   };
 
   return (
-    <div>
-      <div>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-outline-variant/20 dark:border-slate-700 bg-surface-container-low dark:bg-slate-900/60 p-3 space-y-3">
         <div className="space-y-1">
-          <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <label className="text-base font-bold text-on-surface dark:text-slate-100">
             {t("manualTesting.projects")}
           </label>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-on-surface-variant dark:text-slate-400 leading-relaxed">
             {t("manualTesting.projectsHint")}
           </p>
         </div>
@@ -991,7 +991,7 @@ const SavedRequestsPanel: React.FC = () => {
           <button
             onClick={() => setIsProjectModalOpen(true)}
             disabled={isLoading}
-            className="w-full shrink-0 whitespace-nowrap px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-60"
+            className="w-full shrink-0 whitespace-nowrap px-3 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-60 shadow-sm"
           >
             New Project
           </button>
@@ -1000,7 +1000,7 @@ const SavedRequestsPanel: React.FC = () => {
         <select
           value={selectedProjectId}
           onChange={(e) => setSelectedProjectId(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          className="w-full px-3 py-2.5 rounded-xl border border-outline-variant/30 dark:border-slate-500 bg-surface-container-lowest dark:bg-slate-900 text-on-surface dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
         >
           <option value="">{t("manualTesting.selectProject")}</option>
           {projects.map((project) => (
@@ -1012,11 +1012,11 @@ const SavedRequestsPanel: React.FC = () => {
 
         {hasProjectSelected && (
           <>
-            <div className="space-y-1 pt-1 border-t border-slate-200/80 dark:border-slate-800">
-              <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <div className="space-y-1 pt-3 mt-1 border-t border-outline-variant/20 dark:border-slate-700">
+              <label className="text-base font-bold text-on-surface dark:text-slate-100">
                 {t("manualTesting.testSuites")}
               </label>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-on-surface-variant dark:text-slate-400 leading-relaxed">
                 {t("manualTesting.testSuitesHint")}
               </p>
             </div>
@@ -1024,7 +1024,7 @@ const SavedRequestsPanel: React.FC = () => {
             <button
               onClick={() => setIsSuiteModalOpen(true)}
               disabled={isLoading || !selectedProjectId}
-              className="w-full px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-60"
+              className="w-full px-3 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-60 shadow-sm"
             >
               New Suite
             </button>
@@ -1032,7 +1032,7 @@ const SavedRequestsPanel: React.FC = () => {
             <select
               value={selectedSuiteId}
               onChange={(e) => setSelectedSuiteId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border-0 bg-transparent text-slate-900 dark:text-slate-100"
+              className="w-full px-3 py-2.5 rounded-xl border border-outline-variant/30 dark:border-slate-500 bg-surface-container-lowest dark:bg-slate-900 text-on-surface dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
             >
               <option value="">{t("manualTesting.selectSuite")}</option>
               {suites.map((suite) => (
@@ -1046,15 +1046,15 @@ const SavedRequestsPanel: React.FC = () => {
       </div>
 
       {hasSuiteSelected && (
-        <div className="space-y-3 pt-1">
+        <div className="space-y-3 pt-1 rounded-2xl border border-outline-variant/20 dark:border-slate-700 bg-surface-container-low dark:bg-slate-900/60 p-3">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="text-xs uppercase tracking-widest text-on-surface-variant dark:text-slate-400 font-semibold">
                 {t("manualTesting.savedTestCases")}
               </div>
               <button
                 onClick={handleNewTestCase}
-                className="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-2 py-1 rounded-md border border-outline-variant/20 dark:border-slate-700 bg-surface-container-lowest dark:bg-slate-900 text-on-surface dark:text-slate-200 text-sm font-semibold hover:bg-surface-container dark:hover:bg-slate-800"
                 title={t("manualTesting.newTestCase")}
               >
                 +
@@ -1072,10 +1072,10 @@ const SavedRequestsPanel: React.FC = () => {
                 <div
                   key={testCase.id}
                   onClick={() => applyTestCaseToBuilder(testCase)}
-                  className={`px-2 py-2 rounded cursor-pointer transition-colors ${
+                  className={`px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors border ${
                     testCase.id === activeTestCaseId
-                      ? "bg-indigo-100/60 dark:bg-indigo-950/40 border-l-2 border-indigo-600"
-                      : "hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
+                      ? "bg-primary/10 dark:bg-indigo-950/40 border-primary/40"
+                      : "border-transparent hover:bg-surface-container dark:hover:bg-slate-700/30"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -1128,16 +1128,16 @@ const SavedRequestsPanel: React.FC = () => {
         </div>
       )}
 
-      <div className="space-y-3 pt-1">
+      <div className="space-y-3 pt-1 rounded-2xl border border-outline-variant/20 dark:border-slate-700 bg-surface-container-low dark:bg-slate-900/60 p-3">
         <div className="space-y-1">
-          <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <label className="text-base font-bold text-on-surface dark:text-slate-100">
             {t("manualTesting.activeEnvironment")}
           </label>
         </div>
 
         <button
           onClick={openCreateEnvironmentModal}
-          className="w-full px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+          className="w-full px-3 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:brightness-110 transition-colors shadow-sm"
         >
           New Environment
         </button>
@@ -1149,7 +1149,7 @@ const SavedRequestsPanel: React.FC = () => {
               environments.find((item) => item.id === e.target.value) || null;
             setActiveEnvironment(found);
           }}
-          className="w-full px-3 py-2 rounded-lg border-0 bg-transparent text-slate-900 dark:text-slate-100"
+          className="w-full px-3 py-2.5 rounded-xl border border-outline-variant/30 dark:border-slate-400 bg-surface-container-lowest dark:bg-slate-900 text-on-surface dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
         >
           <option value="">{t("manualTesting.noEnvironment")}</option>
           {environments.map((env) => (
@@ -1160,13 +1160,13 @@ const SavedRequestsPanel: React.FC = () => {
         </select>
 
         {!activeEnvironment && (
-          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-sm text-on-surface-variant dark:text-slate-400">
             {t("manualTesting.noEnvironment")}
           </div>
         )}
 
         {activeEnvironment && (
-          <div className="mt-2 p-2.5 rounded-xl border border-indigo-400 bg-indigo-50/70 dark:border-indigo-500/50 dark:bg-indigo-900/20">
+          <div className="mt-2 p-3 rounded-xl border border-primary/40 bg-primary/10 dark:border-indigo-500/50 dark:bg-indigo-900/20">
             <div className="flex items-center justify-between gap-2">
               <div
                 className="truncate font-medium text-sm"
@@ -1174,7 +1174,7 @@ const SavedRequestsPanel: React.FC = () => {
               >
                 {activeEnvironment.name}
               </div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary text-on-primary">
                 ACTIVE
               </span>
             </div>
