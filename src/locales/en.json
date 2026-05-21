@@ -332,7 +332,17 @@
       },
       "actions": {
         "view": "View Details",
-        "delete": "Delete"
+        "delete": "Delete",
+        "activate": "Activate",
+        "deactivate": "Deactivate"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "activatedToast": "Activated {{name}}",
+        "deactivatedToast": "Deactivated {{name}}",
+        "activateError": "Failed to activate specification",
+        "deactivateError": "Failed to deactivate specification"
       },
       "pagination": "Showing {{current}} of {{total}} Registered Specifications"
     },

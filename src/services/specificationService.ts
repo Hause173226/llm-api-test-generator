@@ -16,6 +16,7 @@ export interface Specification {
   updatedAt: string;
   createdDateTime?: string;
   updatedDateTime?: string;
+  isActive?: boolean;
   // FE-18: soft-delete support
   isDeleted?: boolean;
   deletedAt?: string | null;
@@ -229,8 +230,11 @@ const specificationService = {
   },
 
   // Activate a specification
-  activateSpecification: async (projectId: string, specId: string): Promise<any> => {
-    const activated = await apiService.put(
+  activateSpecification: async (
+    projectId: string,
+    specId: string,
+  ): Promise<Specification> => {
+    const activated = await apiService.put<Specification>(
       `/projects/${projectId}/specifications/${specId}/activate`,
     );
     invalidateSpecificationCache(projectId);
@@ -238,8 +242,11 @@ const specificationService = {
   },
 
   // Deactivate a specification
-  deactivateSpecification: async (projectId: string, specId: string): Promise<any> => {
-    const deactivated = await apiService.put(
+  deactivateSpecification: async (
+    projectId: string,
+    specId: string,
+  ): Promise<Specification> => {
+    const deactivated = await apiService.put<Specification>(
       `/projects/${projectId}/specifications/${specId}/deactivate`,
     );
     invalidateSpecificationCache(projectId);
