@@ -512,6 +512,62 @@
       "deleted": "Test suite deleted successfully",
       "cloned": "Test suite cloned successfully"
     },
+    "detailToast": {
+      "chooseEndpoint": "Please choose at least one endpoint to add.",
+      "noValidEndpoint": "No valid endpoints selected.",
+      "addedEndpoints": "Added {{count}} endpoint(s) to Step 1.",
+      "missingProjectSpec": "Missing project/spec context.",
+      "endpointPathRequired": "Endpoint path is required.",
+      "createEndpointMissingId": "Create endpoint failed: missing endpoint id.",
+      "manualEndpointAdded": "Manual endpoint created and added to Step 1.",
+      "suiteSaved": "Suite configuration saved successfully",
+      "orderApproved": "Order approved successfully",
+      "aiPreviewRegenerated": "AI preview regenerated after approval.",
+      "orderSavedButApproveFailed": "Order saved but approval failed. Please approve manually before AI review.",
+      "srsLinked": "SRS document linked.",
+      "srsUnlinked": "SRS document unlinked.",
+      "generatingInProgress": "LLM suggestions are already generating.",
+      "generationCompletedNoValidSuggestions": "Generation completed but no valid suggestions passed strict contract checks.",
+      "suggestionsReady": "LLM suggestions are ready.",
+      "generationCancelled": "LLM suggestion generation was cancelled.",
+      "generationFailed": "LLM suggestion generation failed.",
+      "noApiSpec": "Selected test suite does not have an API specification.",
+      "moveToStep3Title": "Moving to Step 3: Test Cases",
+      "moveToStep3Message": "All suggestions reviewed. Preparing your test cases...",
+      "moveToStep3Label": "Step 2 to Step 3",
+      "missingRowVersion": "Missing rowVersion for review. Please refresh and try again.",
+      "editedSuggestionApproved": "Edited suggestion approved successfully.",
+      "suggestionApproved": "Suggestion approved successfully.",
+      "suggestionReviewed": "Suggestion reviewed successfully.",
+      "noSuggestionsForFilter": "No suggestions available for current filters.",
+      "noSuggestionsForRestore": "No suggestions selected for restore.",
+      "noSuggestionsForReject": "No suggestions selected for reject.",
+      "noSuggestionsRejected": "No suggestions were rejected. Check for errors and try again.",
+      "noSuggestionsForApprove": "No suggestions selected for approve.",
+      "noSuggestionsApproved": "No suggestions were approved. Check for errors and try again.",
+      "reviewNotesRequired": "Review notes are required for bulk reject.",
+      "step1Title": "Step 1: Configure",
+      "step1HelperPending": "Endpoint changes pending approval",
+      "step1HelperApproved": "Order approved and AI preview is available",
+      "step1HelperNeedApprove": "Approve order to generate AI preview",
+      "step2Title": "Step 2: AI Review",
+      "step2HelperGenerate": "Generate AI suggestions",
+      "step2HelperStatus": "{{pending}} pending, {{approved}} approved",
+      "step3Title": "Step 3: Test Cases",
+      "step3HelperReady": "{{count}} test cases ready",
+      "step3HelperEmpty": "No test cases yet",
+      "saveApproveOrder": "Save & Approve Order",
+      "approveOrder": "Approve Order",
+      "needApproveBeforeReview": "Complete Step 1 by clicking Approve Order before moving to AI Review.",
+      "completePreviousSteps": "Complete previous steps before opening Test Cases.",
+      "current": "Current",
+      "available": "Available",
+      "locked": "Locked",
+      "workflowProgress": "Workflow Progress: Step {{current}}/3",
+      "pendingAi": "Pending AI: {{count}}",
+      "approvedCount": "Approved: {{count}}",
+      "rejectedCount": "Rejected: {{count}}"
+    },
     "addNew": {
       "title": "Add New Test Suite",
       "subtitle": "Create a custom collection of endpoints"
@@ -802,30 +858,30 @@
   },
   "failureExplanation": {
     "title": "Failure Explanation",
-    "subtitle": "Autonomous root-cause analysis for failed API test executions.",
-    "reAnalyze": "Re-Analyze Failures",
+    "subtitle": "LLM-powered root cause analysis for failed test executions.",
+    "reAnalyze": "Re-Analyze Failure",
     "analysis": {
-      "title": "AI Root Cause Analysis",
+      "title": "LLM Root Cause Analysis",
       "expected": "Expected Behavior",
-      "suggested": "Suggested Resolution",
-      "payloadComparison": "Request Payload Comparison",
-      "actual": "Actual Request (Failed)",
-      "expectedRequest": "Expected Request (Success)"
+      "suggested": "Suggested Fix",
+      "payloadComparison": "Payload Comparison",
+      "actual": "Actual Request",
+      "expectedRequest": "Expected Request"
     },
     "impact": {
-      "title": "Impact Analysis",
+      "title": "Business Impact",
       "risk": "Risk Level",
       "critical": "Critical",
       "affected": "Affected Users",
-      "generatePr": "Generate Fix PR"
+      "generatePr": "Generate Pull Request Fix"
     },
     "similar": {
       "title": "Similar Failures",
       "match": "Match"
     },
     "selfHealing": {
-      "title": "Self-Healing Tip",
-      "tip": "Enable <0>Auto-Fix</0> for this suite to allow the LLM to automatically update test cases when API schemas change."
+      "title": "Self-Healing",
+      "tip": "Enable <1>Auto-Fix</1> for this suite to allow the LLM to automatically update test cases when API schemas change."
     }
   },
   "settings": {
@@ -955,34 +1011,6 @@
       "finalization": "Step 03: Finalization"
     }
   },
-  "failureExplanation": {
-    "title": "Failure Explanation",
-    "subtitle": "LLM-powered root cause analysis for failed test executions.",
-    "reAnalyze": "Re-Analyze Failure",
-    "analysis": {
-      "title": "LLM Root Cause Analysis",
-      "expected": "Expected Behavior",
-      "suggested": "Suggested Fix",
-      "payloadComparison": "Payload Comparison",
-      "actual": "Actual Request",
-      "expectedRequest": "Expected Request"
-    },
-    "impact": {
-      "title": "Business Impact",
-      "risk": "Risk Level",
-      "critical": "Critical",
-      "affected": "Affected Users",
-      "generatePr": "Generate Pull Request Fix"
-    },
-    "similar": {
-      "title": "Similar Failures",
-      "match": "Match"
-    },
-    "selfHealing": {
-      "title": "Self-Healing",
-      "tip": "Enable <1>Auto-Fix</1> for this suite to allow the LLM to automatically update test cases when API schemas change."
-    }
-  },
   "suggestions": {
     "title": "Execute Details",
     "subtitle": "Our autonomous intelligence engine has analyzed your API specifications and test results to identify critical coverage gaps and optimizations.",
@@ -1074,6 +1102,86 @@
       "title": "Want to generate an entire test suite autonomously?",
       "desc": "Our LLM can analyze your entire API specification and generate a comprehensive regression suite in seconds.",
       "launch": "Launch Autonomous Generator"
+    },
+    "reviewPanel": {
+      "srs": {
+        "all": "All suggestions generated with SRS context",
+        "partial": "{{linked}} of {{total}} suggestions generated with SRS context",
+        "basedOn": "Based on:",
+        "aligned": "SRS-aligned",
+        "shortLabel": "SRS:"
+      },
+      "history": {
+        "title": "Viewing Historical Generation #{{number}}",
+        "desc": "You are viewing suggestions from a previous generation. Current generation is #{{number}}."
+      },
+      "filters": {
+        "title": "AI Review Filters"
+      },
+      "actions": {
+        "selectPending": "Select all pending",
+        "unselectPending": "Unselect all pending",
+        "selectSuperseded": "Select all superseded",
+        "unselectSuperseded": "Unselect all superseded",
+        "viewDetails": "View details"
+      },
+      "status": {
+        "pending": "Pending"
+      },
+      "common": {
+        "unknown": "Unknown",
+        "edited": "Edited",
+        "untitled": "Untitled suggestion",
+        "noDescription": "No description",
+        "moreCount": "+{{count}} more",
+        "endpoint": "Endpoint",
+        "unknownPath": "Unknown path",
+        "unknownEndpoint": "Unknown endpoint"
+      },
+      "coverage": {
+        "covered": "Covered {{count}}",
+        "srsOnly": "SRS (no req IDs)",
+        "reqCount": "{{count}} req(s)"
+      },
+      "pagination": {
+        "showing": "Showing {{from}}-{{to}} of {{total}}",
+        "pageSize": "{{count}} / page",
+        "prev": "Prev",
+        "next": "Next",
+        "page": "Page {{current}}/{{total}}"
+      },
+      "empty": {
+        "noMatchCoverage": "No suggestions match current SRS coverage filter."
+      },
+      "modal": {
+        "rejectSelected": {
+          "title": "Reject Selected Test Cases",
+          "confirm": "Confirm Reject",
+          "desc": "Reject {{count}} selected pending test case(s).",
+          "placeholder": "Explain why these suggestions should be rejected"
+        },
+        "reviewNotesRequired": "Review Notes (required)",
+        "review": {
+          "titleReject": "Reject LLM Suggestion",
+          "titleEdit": "Edit LLM Suggestion",
+          "confirmReject": "Confirm Reject",
+          "saveEdit": "Save Edit",
+          "name": "Name",
+          "namePlaceholder": "Suggestion name",
+          "description": "Description",
+          "descriptionPlaceholder": "Suggestion description",
+          "testType": "Test Type",
+          "priority": "Priority",
+          "keepExisting": "Keep existing",
+          "tags": "Tags (comma separated)",
+          "tagsPlaceholder": "boundary, llm-suggested",
+          "notes": "Review Notes",
+          "required": "(required)",
+          "optional": "(optional)",
+          "rejectPlaceholder": "Explain why this suggestion should be rejected",
+          "modifyPlaceholder": "Reason for modifications"
+        }
+      }
     }
   },
   "overlay": {

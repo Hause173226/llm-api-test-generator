@@ -622,9 +622,9 @@ export default function TestSuiteDetailPage() {
       setIsTabPinned(false);
       setOverlayState({
         isVisible: true,
-        title: "Moving to Step 3: Test Cases",
-        message: "All suggestions reviewed. Preparing your test cases...",
-        stepLabel: "Step 2 → Step 3",
+        title: t("testSuites.detailToast.moveToStep3Title"),
+        message: t("testSuites.detailToast.moveToStep3Message"),
+        stepLabel: t("testSuites.detailToast.moveToStep3Label"),
       });
       const timer = setTimeout(() => {
         setActiveTab("testcases");
@@ -717,7 +717,7 @@ export default function TestSuiteDetailPage() {
 
   const handleAddEndpointsFromSpec = () => {
     if (selectedEndpointIdsToAdd.length === 0) {
-      showInfoToast("Please choose at least one endpoint to add.");
+      showInfoToast(t("testSuites.detailToast.chooseEndpoint"));
       return;
     }
 
@@ -726,7 +726,7 @@ export default function TestSuiteDetailPage() {
       selectedSet.has(endpoint.id),
     );
     if (toAdd.length === 0) {
-      showInfoToast("No valid endpoints selected.");
+      showInfoToast(t("testSuites.detailToast.noValidEndpoint"));
       return;
     }
 
@@ -738,18 +738,20 @@ export default function TestSuiteDetailPage() {
     setHasChanges(true);
     setSelectedEndpointIdsToAdd([]);
     setAddEndpointModalOpen(false);
-    showSuccessToast(`Added ${toAdd.length} endpoint(s) to Step 1.`);
+    showSuccessToast(
+      t("testSuites.detailToast.addedEndpoints", { count: toAdd.length }),
+    );
   };
 
   const handleCreateManualEndpoint = async () => {
     if (!projectId || !suite?.apiSpecId) {
-      showErrorToast("Missing project/spec context.");
+      showErrorToast(t("testSuites.detailToast.missingProjectSpec"));
       return;
     }
 
     const path = manualEndpointForm.path.trim();
     if (!path) {
-      showErrorToast("Endpoint path is required.");
+      showErrorToast(t("testSuites.detailToast.endpointPathRequired"));
       return;
     }
 
@@ -779,7 +781,7 @@ export default function TestSuiteDetailPage() {
       };
 
       if (!normalized.id) {
-        showErrorToast("Create endpoint failed: missing endpoint id.");
+        showErrorToast(t("testSuites.detailToast.createEndpointMissingId"));
         return;
       }
 
@@ -795,7 +797,7 @@ export default function TestSuiteDetailPage() {
       setHasChanges(true);
       setManualEndpointForm({ method: "GET", path: "", description: "" });
       setManualEndpointModalOpen(false);
-      showSuccessToast("Manual endpoint created and added to Step 1.");
+      showSuccessToast(t("testSuites.detailToast.manualEndpointAdded"));
     } catch (err) {
       handleError(err);
     } finally {
@@ -1048,7 +1050,7 @@ export default function TestSuiteDetailPage() {
 
       // Update suite with new rowVersion, but keep other fields like testCaseCount
       setSuite({ ...suite, ...updatedSuite });
-      showSuccessToast("Suite configuration saved successfully");
+      showSuccessToast(t("testSuites.detailToast.suiteSaved"));
       setHasChanges(false);
       // Update savedOrder to reflect the newly committed order
       savedOrderRef.current = endpoints.map((ep) => ep.id);
@@ -1099,7 +1101,7 @@ export default function TestSuiteDetailPage() {
             },
           );
           setHasApprovedOrderOnce(true);
-          showSuccessToast("Order approved successfully");
+          showSuccessToast(t("testSuites.detailToast.orderApproved"));
 
           // Fire-and-forget so that isSubmitting can clear
           setTimeout(() => {
@@ -1107,7 +1109,7 @@ export default function TestSuiteDetailPage() {
               source: "auto",
               forceRefresh: true,
               checkGate: false,
-              successToast: "AI preview regenerated after approval.",
+              successToast: t("testSuites.detailToast.aiPreviewRegenerated"),
             }).catch((e) => console.error("Background generation failed", e));
           }, 0);
         }
@@ -1115,7 +1117,7 @@ export default function TestSuiteDetailPage() {
         // If auto-approve fails, show a warning but don't fail the whole operation
         console.error("Auto-approve failed:", approveErr);
         showErrorToast(
-          "Order saved but approval failed. Please approve manually before AI review.",
+          t("testSuites.detailToast.orderSavedButApproveFailed"),
         );
       }
 
@@ -1248,7 +1250,7 @@ export default function TestSuiteDetailPage() {
   const beginSuggestionGeneration = (source: "manual" | "auto") => {
     if (isGeneratingSuggestionsRef.current) {
       if (source === "manual") {
-        showInfoToast("LLM suggestions are already generating.");
+        showInfoToast(t("testSuites.detailToast.generatingInProgress"));
       }
       return false;
     }
@@ -1340,16 +1342,17 @@ export default function TestSuiteDetailPage() {
           });
           if (finalized.length === 0) {
             showInfoToast(
-              "Generation completed but no valid suggestions passed strict contract checks.",
+              t("testSuites.detailToast.generationCompletedNoValidSuggestions"),
             );
           } else {
             showSuccessToast(
-              activeGenerationJob.successToast || "LLM suggestions are ready.",
+              activeGenerationJob.successToast ||
+                t("testSuites.detailToast.suggestionsReady"),
             );
           }
         } else if (generationPolling.terminalStatus === "Cancelled") {
           removeGenerationRun(activeGenerationJob.runId);
-          showInfoToast("LLM suggestion generation was cancelled.");
+          showInfoToast(t("testSuites.detailToast.generationCancelled"));
         } else {
           removeGenerationRun(activeGenerationJob.runId);
           const latest = await testSuiteLlmSuggestionService.getGenerationStatus(
@@ -1357,7 +1360,7 @@ export default function TestSuiteDetailPage() {
             activeGenerationJob.jobId,
           );
           showErrorToast(
-            latest.errorMessage || "LLM suggestion generation failed.",
+            latest.errorMessage || t("testSuites.detailToast.generationFailed"),
           );
         }
       } catch (err) {
@@ -1400,7 +1403,7 @@ export default function TestSuiteDetailPage() {
     successToast?: string;
   }) => {
     if (!suite || !suiteId || !suite.apiSpecId) {
-      showErrorToast("Selected test suite does not have an API specification.");
+      showErrorToast(t("testSuites.detailToast.noApiSpec"));
       return false;
     }
 
@@ -1467,7 +1470,7 @@ export default function TestSuiteDetailPage() {
 
       if (alreadyHasPendingSuggestions) {
         await refreshSuggestionBuckets();
-        showSuccessToast("LLM suggestions are ready.");
+        showSuccessToast(t("testSuites.detailToast.suggestionsReady"));
       } else {
         handleError(err);
       }
@@ -1484,7 +1487,7 @@ export default function TestSuiteDetailPage() {
       source: "manual",
       forceRefresh,
       checkGate: true,
-      successToast: "LLM suggestions are ready.",
+      successToast: t("testSuites.detailToast.suggestionsReady"),
     });
   };
 
@@ -1536,9 +1539,9 @@ export default function TestSuiteDetailPage() {
     if (!hasPending && hasCases) {
       setOverlayState({
         isVisible: true,
-        title: "Moving to Step 3: Test Cases",
-        message: "All suggestions reviewed. Preparing your test cases...",
-        stepLabel: "Step 2 → Step 3",
+        title: t("testSuites.detailToast.moveToStep3Title"),
+        message: t("testSuites.detailToast.moveToStep3Message"),
+        stepLabel: t("testSuites.detailToast.moveToStep3Label"),
       });
       setTimeout(() => {
         setActiveTab("testcases");
@@ -1576,7 +1579,7 @@ export default function TestSuiteDetailPage() {
 
       if (!latest.rowVersion) {
         showErrorToast(
-          "Missing rowVersion for review. Please refresh and try again.",
+          t("testSuites.detailToast.missingRowVersion"),
         );
         return;
       }
@@ -1621,7 +1624,7 @@ export default function TestSuiteDetailPage() {
 
       if (!latest.rowVersion) {
         showErrorToast(
-          "Missing rowVersion for review. Please refresh and try again.",
+          t("testSuites.detailToast.missingRowVersion"),
         );
         return false;
       }
@@ -1638,7 +1641,7 @@ export default function TestSuiteDetailPage() {
 
       const nextSuggestions = mergeSuggestionIntoList(allSuggestions, result);
       applySuggestionToLocalState(result);
-      showSuccessToast("Suggestion reviewed successfully.");
+      showSuccessToast(t("testSuites.detailToast.suggestionReviewed"));
       maybeAutoNavigateToTestCases(nextSuggestions, testCases);
       return true;
     } catch (err) {
@@ -1657,7 +1660,7 @@ export default function TestSuiteDetailPage() {
 
     const hasFilteredSuggestions = displayedSuggestions.length > 0;
     if (!hasFilteredSuggestions) {
-      showInfoToast("No suggestions available for current filters.");
+      showInfoToast(t("testSuites.detailToast.noSuggestionsForFilter"));
       return;
     }
 
@@ -1694,7 +1697,7 @@ export default function TestSuiteDetailPage() {
   const handleBulkRestore = async (suggestionIds: string[]) => {
     if (!suiteId) return;
     if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
-      showInfoToast("No suggestions selected for restore.");
+      showInfoToast(t("testSuites.detailToast.noSuggestionsForRestore"));
       return;
     }
 
@@ -1723,7 +1726,7 @@ export default function TestSuiteDetailPage() {
   ) => {
     if (!suiteId) return;
     if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
-      showInfoToast("No suggestions selected for reject.");
+      showInfoToast(t("testSuites.detailToast.noSuggestionsForReject"));
       return;
     }
 
@@ -1795,7 +1798,7 @@ export default function TestSuiteDetailPage() {
         );
       } else {
         showErrorToast(
-          "No suggestions were rejected. Check for errors and try again.",
+          t("testSuites.detailToast.noSuggestionsRejected"),
         );
       }
 
@@ -1810,7 +1813,7 @@ export default function TestSuiteDetailPage() {
   const handleBulkApprove = async (suggestionIds: string[]) => {
     if (!suiteId) return;
     if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) {
-      showInfoToast("No suggestions selected for approve.");
+      showInfoToast(t("testSuites.detailToast.noSuggestionsForApprove"));
       return;
     }
 
@@ -1900,7 +1903,7 @@ export default function TestSuiteDetailPage() {
         );
       } else {
         showErrorToast(
-          "No suggestions were approved. Check for errors and try again.",
+          t("testSuites.detailToast.noSuggestionsApproved"),
         );
       }
 
@@ -1914,7 +1917,7 @@ export default function TestSuiteDetailPage() {
 
   const handleBulkRejectConfirm = async () => {
     if (!bulkRejectNotes.trim()) {
-      showErrorToast("Review notes are required for bulk reject.");
+      showErrorToast(t("testSuites.detailToast.reviewNotesRequired"));
       return;
     }
     setBulkRejectModalOpen(false);
@@ -1958,21 +1961,24 @@ export default function TestSuiteDetailPage() {
   }> = [
     {
       id: "details",
-      title: "Step 1: Configure",
+      title: t("testSuites.detailToast.step1Title"),
       helper: hasChanges
-        ? "Endpoint changes pending approval"
+        ? t("testSuites.detailToast.step1HelperPending")
         : allSuggestions.length > 0
-          ? "Order approved and AI preview is available"
-          : "Approve order to generate AI preview",
+          ? t("testSuites.detailToast.step1HelperApproved")
+          : t("testSuites.detailToast.step1HelperNeedApprove"),
       isDone: isStep1Completed,
     },
     {
       id: "suggestions",
-      title: "Step 2: AI Review",
+      title: t("testSuites.detailToast.step2Title"),
       helper:
         reviewableSuggestions.length === 0
-          ? "Generate AI suggestions"
-          : `${pendingSuggestionsCount} pending, ${approvedSuggestionsCount} approved`,
+          ? t("testSuites.detailToast.step2HelperGenerate")
+          : t("testSuites.detailToast.step2HelperStatus", {
+              pending: pendingSuggestionsCount,
+              approved: approvedSuggestionsCount,
+            }),
       isDone:
         reviewableSuggestions.length > 0 &&
         pendingSuggestionsCount === 0 &&
@@ -1980,10 +1986,12 @@ export default function TestSuiteDetailPage() {
     },
     {
       id: "testcases",
-      title: "Step 3: Test Cases",
+      title: t("testSuites.detailToast.step3Title"),
       helper: hasAnyTestCases
-        ? `${testCases.length || suite?.testCaseCount || 0} test cases ready`
-        : "No test cases yet",
+        ? t("testSuites.detailToast.step3HelperReady", {
+            count: testCases.length || suite?.testCaseCount || 0,
+          })
+        : t("testSuites.detailToast.step3HelperEmpty"),
       isDone: hasAnyTestCases,
     },
   ];
@@ -2664,8 +2672,8 @@ export default function TestSuiteDetailPage() {
                 >
                   <Save className="w-5 h-5" />
                   {hasChanges && hasApprovedOrderOnce
-                    ? "Save & Approve Order"
-                    : "Approve Order"}
+                    ? t("testSuites.detailToast.saveApproveOrder")
+                    : t("testSuites.detailToast.approveOrder")}
                 </button>
               )}
             </div>
@@ -2688,11 +2696,11 @@ export default function TestSuiteDetailPage() {
                       if (!isAccessible) {
                         if (step.id === "suggestions") {
                           showInfoToast(
-                            "Complete Step 1 by clicking Approve Order before moving to AI Review.",
+                            t("testSuites.detailToast.needApproveBeforeReview"),
                           );
                         } else {
                           showInfoToast(
-                            "Complete previous steps before opening Test Cases.",
+                            t("testSuites.detailToast.completePreviousSteps"),
                           );
                         }
                         return;
@@ -2719,10 +2727,10 @@ export default function TestSuiteDetailPage() {
                     </p>
                     <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mt-2">
                       {isActive
-                        ? "Current"
+                        ? t("testSuites.detailToast.current")
                         : isAccessible
-                          ? "Available"
-                          : "Locked"}
+                          ? t("testSuites.detailToast.available")
+                          : t("testSuites.detailToast.locked")}
                     </p>
                   </button>
                 );
@@ -2731,17 +2739,25 @@ export default function TestSuiteDetailPage() {
 
             <div className="mt-4 rounded-xl bg-surface-container-low dark:bg-slate-800/60 p-3 flex flex-wrap items-center gap-3 justify-between">
               <p className="text-sm font-semibold text-on-surface">
-                Workflow Progress: Step {activeStepIndex + 1}/3
+                {t("testSuites.detailToast.workflowProgress", {
+                  current: activeStepIndex + 1,
+                })}
               </p>
               <div className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
                 <span className="px-2 py-1 rounded-md bg-amber-100 text-amber-800">
-                  Pending AI: {pendingSuggestionsCount}
+                  {t("testSuites.detailToast.pendingAi", {
+                    count: pendingSuggestionsCount,
+                  })}
                 </span>
                 <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-800">
-                  Approved: {approvedSuggestionsCount}
+                  {t("testSuites.detailToast.approvedCount", {
+                    count: approvedSuggestionsCount,
+                  })}
                 </span>
                 <span className="px-2 py-1 rounded-md bg-rose-100 text-rose-800">
-                  Rejected: {rejectedSuggestionsCount}
+                  {t("testSuites.detailToast.rejectedCount", {
+                    count: rejectedSuggestionsCount,
+                  })}
                 </span>
               </div>
             </div>
