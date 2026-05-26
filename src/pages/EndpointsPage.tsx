@@ -269,7 +269,10 @@ export default function EndpointsPage() {
       }
 
       showSuccessToast(
-        t("endpoints.toast.suiteCreated", { name: suiteName, count: selectedEndpoints.size }),
+        t("endpoints.toast.suiteCreated", {
+          name: suiteName,
+          count: selectedEndpoints.size,
+        }),
       );
       setIsCreateSuiteModalOpen(false);
       setSuiteName("");
@@ -315,7 +318,9 @@ export default function EndpointsPage() {
   };
 
   const getStatusText = (isActive: boolean) => {
-    return isActive ? t("endpoints.status.active") : t("endpoints.status.inactive");
+    return isActive
+      ? t("endpoints.status.active")
+      : t("endpoints.status.inactive");
   };
 
   const getStatusColor = (isActive: boolean) => {
@@ -368,7 +373,9 @@ export default function EndpointsPage() {
                 className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all shadow-lg cursor-pointer"
               >
                 <Plus className="w-5 h-5" />
-                {t("endpoints.createSuiteButton", { count: selectedEndpoints.size })}
+                {t("endpoints.createSuiteButton", {
+                  count: selectedEndpoints.size,
+                })}
               </button>
             )}
             <button
@@ -397,7 +404,7 @@ export default function EndpointsPage() {
             >
               {specifications.map((spec) => (
                 <option key={spec.id} value={spec.id}>
-                  {spec.name} 
+                  {spec.name}
                 </option>
               ))}
             </select>
@@ -456,14 +463,14 @@ export default function EndpointsPage() {
             <p className="text-sm text-on-surface-variant">
               {t("projects.showing")}{" "}
               {endpoints.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}{" "}
-              {t("projects.to")}{" "}
-              {Math.min(currentPage * pageSize, totalCount)}{" "}
-              {t("projects.of")} {totalCount}{" "}
-              {t("endpoints.endpointsCount")}
+              {t("projects.to")} {Math.min(currentPage * pageSize, totalCount)}{" "}
+              {t("projects.of")} {totalCount} {t("endpoints.endpointsCount")}
             </p>
           </div>
           <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1.5 rounded-full">
-            {t("endpoints.activeCount", { count: endpoints.filter((e) => e.isActive).length })}
+            {t("endpoints.activeCount", {
+              count: endpoints.filter((e) => e.isActive).length,
+            })}
           </span>
         </div>
 
@@ -475,7 +482,9 @@ export default function EndpointsPage() {
             </div>
           ) : endpoints.length === 0 ? (
             <div className="bg-surface-container-lowest dark:bg-slate-900 p-12 rounded-xl border border-outline-variant/10 dark:border-slate-800 text-center">
-              <p className="text-on-surface-variant">No endpoints found</p>
+              <p className="text-on-surface-variant">
+                {t("pages.EndpointsPage.no_endpoints_found")}
+              </p>
             </div>
           ) : (
             endpoints.map((endpoint) => (
@@ -666,11 +675,11 @@ export default function EndpointsPage() {
               }
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
             >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
-              <option value="PATCH">PATCH</option>
+              <option value="GET">{t("pages.EndpointsPage.get")}</option>
+              <option value="POST">{t("pages.EndpointsPage.post")}</option>
+              <option value="PUT">{t("pages.EndpointsPage.put")}</option>
+              <option value="DELETE">{t("pages.EndpointsPage.delete")}</option>
+              <option value="PATCH">{t("pages.EndpointsPage.patch")}</option>
             </select>
           </div>
           <div className="space-y-2">
@@ -733,9 +742,17 @@ export default function EndpointsPage() {
       </Modal>
 
       {/* Create Test Suite Modal */}
-      {/* Global spinner khi đang tạo test suite */}
+      {/* Global spinner khi submit */}
       {isSubmitting && (
-        <GlobalSpinner label={t("endpoints.modal.creating")} />
+        <GlobalSpinner
+          label={
+            isEditModalOpen
+              ? t("endpoints.modal.updating")
+              : isDeleteModalOpen
+                ? t("endpoints.modal.deleting")
+                : t("endpoints.modal.creating")
+          }
+        />
       )}
 
       {/* Create Test Suite Modal */}

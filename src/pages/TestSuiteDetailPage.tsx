@@ -6,7 +6,7 @@ import {
   useLocation,
   Link,
 } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   GripVertical,
@@ -109,8 +109,7 @@ export default function TestSuiteDetailPage() {
   const tabFromQuery = (searchParams.get("tab") || "details").toLowerCase();
 
   useEffect(() => {
-    isRouteActiveRef.current =
-      location.pathname === `/test-suites/${suiteId}`;
+    isRouteActiveRef.current = location.pathname === `/test-suites/${suiteId}`;
   }, [location.pathname, suiteId]);
 
   const SUPPRESS_NOT_FOUND_WINDOW_MS = 8000;
@@ -1116,9 +1115,7 @@ export default function TestSuiteDetailPage() {
       } catch (approveErr) {
         // If auto-approve fails, show a warning but don't fail the whole operation
         console.error("Auto-approve failed:", approveErr);
-        showErrorToast(
-          t("testSuites.detailToast.orderSavedButApproveFailed"),
-        );
+        showErrorToast(t("testSuites.detailToast.orderSavedButApproveFailed"));
       }
 
       return true;
@@ -1201,7 +1198,9 @@ export default function TestSuiteDetailPage() {
     }
   };
 
-  const refreshSuggestionBuckets = async (): Promise<SuiteSuggestionModel[]> => {
+  const refreshSuggestionBuckets = async (): Promise<
+    SuiteSuggestionModel[]
+  > => {
     if (!suiteId) return [];
 
     try {
@@ -1276,7 +1275,9 @@ export default function TestSuiteDetailPage() {
     // Backend can report Completed slightly before freshly generated suggestions
     // are visible in list API. Retry briefly so Step 2 can render immediately.
     const previousCount = allSuggestions.length;
-    const runStartedAt = run?.generatedAt ? new Date(run.generatedAt).getTime() : 0;
+    const runStartedAt = run?.generatedAt
+      ? new Date(run.generatedAt).getTime()
+      : 0;
     const hasFreshItems = (items: SuiteSuggestionModel[]) =>
       items.some((item) => {
         const value = item.createdDateTime || item.updatedDateTime;
@@ -1355,10 +1356,11 @@ export default function TestSuiteDetailPage() {
           showInfoToast(t("testSuites.detailToast.generationCancelled"));
         } else {
           removeGenerationRun(activeGenerationJob.runId);
-          const latest = await testSuiteLlmSuggestionService.getGenerationStatus(
-            suiteId!,
-            activeGenerationJob.jobId,
-          );
+          const latest =
+            await testSuiteLlmSuggestionService.getGenerationStatus(
+              suiteId!,
+              activeGenerationJob.jobId,
+            );
           showErrorToast(
             latest.errorMessage || t("testSuites.detailToast.generationFailed"),
           );
@@ -1578,9 +1580,7 @@ export default function TestSuiteDetailPage() {
       const latest = await getLatestSuggestion(suggestion);
 
       if (!latest.rowVersion) {
-        showErrorToast(
-          t("testSuites.detailToast.missingRowVersion"),
-        );
+        showErrorToast(t("testSuites.detailToast.missingRowVersion"));
         return;
       }
 
@@ -1623,9 +1623,7 @@ export default function TestSuiteDetailPage() {
       const latest = await getLatestSuggestion(suggestion);
 
       if (!latest.rowVersion) {
-        showErrorToast(
-          t("testSuites.detailToast.missingRowVersion"),
-        );
+        showErrorToast(t("testSuites.detailToast.missingRowVersion"));
         return false;
       }
 
@@ -1797,9 +1795,7 @@ export default function TestSuiteDetailPage() {
           `Reject processed. Rejected ${processed} suggestion(s).`,
         );
       } else {
-        showErrorToast(
-          t("testSuites.detailToast.noSuggestionsRejected"),
-        );
+        showErrorToast(t("testSuites.detailToast.noSuggestionsRejected"));
       }
 
       maybeAutoNavigateToTestCases(nextSuggestions, testCases);
@@ -1877,10 +1873,14 @@ export default function TestSuiteDetailPage() {
             return { id, ok: false, reason: "missing-rowVersion" } as const;
           }
 
-          const updated = await testSuiteLlmSuggestionService.review(suiteId, id, {
-            action: "Approve",
-            rowVersion: latest.rowVersion,
-          });
+          const updated = await testSuiteLlmSuggestionService.review(
+            suiteId,
+            id,
+            {
+              action: "Approve",
+              rowVersion: latest.rowVersion,
+            },
+          );
           applySuggestionToLocalState(updated);
 
           return { id, ok: true } as const;
@@ -1902,9 +1902,7 @@ export default function TestSuiteDetailPage() {
           `Approve processed. Approved ${processed} suggestion(s).`,
         );
       } else {
-        showErrorToast(
-          t("testSuites.detailToast.noSuggestionsApproved"),
-        );
+        showErrorToast(t("testSuites.detailToast.noSuggestionsApproved"));
       }
 
       maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
@@ -2395,12 +2393,15 @@ export default function TestSuiteDetailPage() {
               onClick={fetchData}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
             >
-              Try Again
+              {t("pages.TestSuiteDetailPage.try_again")}
             </button>
           </div>
         </div>
       </MainLayout>
     );
+    {
+      t("pages.TestSuiteDetailPage.confirm_reject_all");
+    }
   }
 
   if (!suite) {
@@ -2410,7 +2411,9 @@ export default function TestSuiteDetailPage() {
         breadcrumbs={breadcrumbs}
       >
         <div className="text-center py-20">
-          <p className="text-on-surface-variant">Test suite not found</p>
+          <p className="text-on-surface-variant">
+            {t("pages.TestSuiteDetailPage.test_suite_not_found")}
+          </p>
         </div>
       </MainLayout>
     );
@@ -2418,7 +2421,9 @@ export default function TestSuiteDetailPage() {
 
   return (
     <>
-      {isSubmitting && <GlobalSpinner label="Đang xử lý..." />}
+      {isSubmitting && (
+        <GlobalSpinner label={t("testSuites.detailToast.savingSuite")} />
+      )}
 
       {/* Bulk Reject Modal */}
       <Modal
@@ -2434,7 +2439,7 @@ export default function TestSuiteDetailPage() {
               disabled={isBulkReviewingSuggestions}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("pages.TestSuiteDetailPage.cancel")}
             </button>
             <button
               onClick={handleBulkRejectConfirm}
@@ -2446,27 +2451,29 @@ export default function TestSuiteDetailPage() {
               ) : (
                 <X className="w-4 h-4" />
               )}
-              Confirm Reject All
+              {t("pages.TestSuiteDetailPage.confirm_reject_all")}
             </button>
           </>
         }
       >
         <div className="space-y-3">
           <p className="text-sm text-on-surface-variant">
-            This will reject all{" "}
-            <span className="font-bold text-on-surface">
-              {
-                displayedSuggestions.filter(
+            <Trans
+              i18nKey="pages.TestSuiteDetailPage.bulk_reject_description"
+              values={{
+                count: displayedSuggestions.filter(
                   (s) =>
                     String(s.reviewStatus || "").toLowerCase() === "pending",
-                ).length
-              }
-            </span>{" "}
-            pending suggestions matching current filters.
+                ).length,
+              }}
+              components={{
+                bold: <span className="font-bold text-on-surface" />,
+              }}
+            />
           </p>
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-              Review Notes (required)
+              {t("pages.TestSuiteDetailPage.review_notes_required")}
             </label>
             <textarea
               value={bulkRejectNotes}
@@ -2474,7 +2481,9 @@ export default function TestSuiteDetailPage() {
               rows={3}
               autoFocus
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-              placeholder="Explain why these suggestions should be rejected"
+              placeholder={t(
+                "pages.TestSuiteDetailPage.review_notes_placeholder",
+              )}
             />
           </div>
         </div>
@@ -2483,21 +2492,23 @@ export default function TestSuiteDetailPage() {
       <Modal
         isOpen={addEndpointModalOpen}
         onClose={() => setAddEndpointModalOpen(false)}
-        title="Add Endpoints From Spec"
+        title={t("pages.TestSuiteDetailPage.add_endpoints_from_spec_title")}
         footer={
           <>
             <button
               onClick={() => setAddEndpointModalOpen(false)}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
             >
-              Cancel
+              {t("pages.TestSuiteDetailPage.cancel")}
             </button>
             <button
               onClick={handleAddEndpointsFromSpec}
               disabled={selectedEndpointIdsToAdd.length === 0}
               className="px-8 py-3 bg-primary dark:bg-indigo-600 text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add Selected ({selectedEndpointIdsToAdd.length})
+              {t("pages.TestSuiteDetailPage.add_selected", {
+                count: selectedEndpointIdsToAdd.length,
+              })}
             </button>
           </>
         }
@@ -2505,7 +2516,9 @@ export default function TestSuiteDetailPage() {
         <div className="space-y-3">
           {availableSpecEndpoints.length === 0 ? (
             <p className="text-sm text-on-surface-variant">
-              All endpoints from this spec are already in Step 1.
+              {t(
+                "pages.TestSuiteDetailPage.all_endpoints_from_this_spec_are_already",
+              )}
             </p>
           ) : (
             <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
@@ -2556,7 +2569,7 @@ export default function TestSuiteDetailPage() {
         onClose={() => {
           if (!isCreatingEndpoint) setManualEndpointModalOpen(false);
         }}
-        title="Add Manual Endpoint"
+        title={t("pages.TestSuiteDetailPage.add_manual_endpoint_title")}
         footer={
           <>
             <button
@@ -2564,7 +2577,7 @@ export default function TestSuiteDetailPage() {
               disabled={isCreatingEndpoint}
               className="px-6 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("pages.TestSuiteDetailPage.cancel")}
             </button>
             <button
               onClick={handleCreateManualEndpoint}
@@ -2576,7 +2589,7 @@ export default function TestSuiteDetailPage() {
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              Create Endpoint
+              {t("pages.TestSuiteDetailPage.create_endpoint")}
             </button>
           </>
         }
@@ -2585,7 +2598,7 @@ export default function TestSuiteDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                Method
+                {t("pages.TestSuiteDetailPage.method")}
               </label>
               <select
                 value={manualEndpointForm.method}
@@ -2597,16 +2610,26 @@ export default function TestSuiteDetailPage() {
                 }
                 className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="PATCH">PATCH</option>
-                <option value="DELETE">DELETE</option>
+                <option value="GET">
+                  {t("pages.TestSuiteDetailPage.get")}
+                </option>
+                <option value="POST">
+                  {t("pages.TestSuiteDetailPage.post")}
+                </option>
+                <option value="PUT">
+                  {t("pages.TestSuiteDetailPage.put")}
+                </option>
+                <option value="PATCH">
+                  {t("pages.TestSuiteDetailPage.patch")}
+                </option>
+                <option value="DELETE">
+                  {t("pages.TestSuiteDetailPage.delete")}
+                </option>
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                Path
+                {t("pages.TestSuiteDetailPage.path")}
               </label>
               <input
                 value={manualEndpointForm.path}
@@ -2617,13 +2640,15 @@ export default function TestSuiteDetailPage() {
                   }))
                 }
                 className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-                placeholder="/api/products/{id}"
+                placeholder={t(
+                  "pages.TestSuiteDetailPage.manual_endpoint_path_placeholder",
+                )}
               />
             </div>
           </div>
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-              Description
+              {t("pages.TestSuiteDetailPage.description")}
             </label>
             <textarea
               rows={3}
@@ -2635,7 +2660,9 @@ export default function TestSuiteDetailPage() {
                 }))
               }
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-              placeholder="Optional description"
+              placeholder={t(
+                "pages.TestSuiteDetailPage.manual_endpoint_description_placeholder",
+              )}
             />
           </div>
         </div>
@@ -2655,7 +2682,6 @@ export default function TestSuiteDetailPage() {
           {/* Header */}
           <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mt-4">
             <div className="space-y-2 ">
-             
               <h1 className="text-4xl font-bold tracking-tight text-on-surface">
                 {suite.name}
               </h1>
@@ -2744,7 +2770,7 @@ export default function TestSuiteDetailPage() {
                 })}
               </p>
               <div className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
-                <span className="px-2 py-1 rounded-md bg-amber-100 text-amber-800">
+                <span className="px-2 py-1 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
                   {t("testSuites.detailToast.pendingAi", {
                     count: pendingSuggestionsCount,
                   })}
@@ -2754,7 +2780,7 @@ export default function TestSuiteDetailPage() {
                     count: approvedSuggestionsCount,
                   })}
                 </span>
-                <span className="px-2 py-1 rounded-md bg-rose-100 text-rose-800">
+                <span className="px-2 py-1 rounded-md bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200">
                   {t("testSuites.detailToast.rejectedCount", {
                     count: rejectedSuggestionsCount,
                   })}
@@ -2804,13 +2830,13 @@ export default function TestSuiteDetailPage() {
                               <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
                                 Approved: {item.approvedSuggestions}
                               </span>
-                              <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                              <span className="px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
                                 Pending: {item.pendingSuggestions}
                               </span>
-                              <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                              <span className="px-2 py-1 rounded bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200">
                                 Rejected: {item.rejectedSuggestions}
                               </span>
-                              <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                              <span className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
                                 Superseded: {item.supersededSuggestions}
                               </span>
                               <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">
@@ -2956,16 +2982,16 @@ export default function TestSuiteDetailPage() {
                                     <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
                                       Total: {item.totalSuggestions}
                                     </span>
-                                    <span className="px-2 py-1 rounded bg-amber-100 text-amber-800">
+                                    <span className="px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
                                       Pending: {item.pendingSuggestions}
                                     </span>
                                     <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">
                                       Approved: {item.approvedSuggestions}
                                     </span>
-                                    <span className="px-2 py-1 rounded bg-rose-100 text-rose-800">
+                                    <span className="px-2 py-1 rounded bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200">
                                       Rejected: {item.rejectedSuggestions}
                                     </span>
-                                    <span className="px-2 py-1 rounded bg-slate-200 text-slate-700">
+                                    <span className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
                                       Superseded: {item.supersededSuggestions}
                                     </span>
                                   </div>
@@ -3064,7 +3090,7 @@ export default function TestSuiteDetailPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors border border-amber-200/60 dark:border-amber-700/30"
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      SRS Documents
+                      {t("pages.TestSuiteDetailPage.srs_documents")}
                     </Link>
                   )}
                   {linkedSrsDocId && suiteId && (
@@ -3073,7 +3099,7 @@ export default function TestSuiteDetailPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors border border-emerald-200/60 dark:border-emerald-700/30"
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      Traceability
+                      {t("pages.TestSuiteDetailPage.traceability")}
                     </Link>
                   )}
                   <select
@@ -3082,7 +3108,9 @@ export default function TestSuiteDetailPage() {
                     disabled={isLinkingSrsDoc}
                     className="px-3 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface disabled:opacity-60"
                   >
-                    <option value="">— Bỏ liên kết —</option>
+                    <option value="">
+                      {t("pages.TestSuiteDetailPage.unlink_option")}
+                    </option>
                     {srsDocuments.map((doc) => (
                       <option key={doc.id} value={doc.id}>
                         {doc.title}
@@ -3101,7 +3129,9 @@ export default function TestSuiteDetailPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
                   <input
                     className="w-full pl-10 pr-4 py-2 bg-surface-container-low dark:bg-slate-800 rounded-lg border-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 text-sm text-on-surface"
-                    placeholder="Search endpoints..."
+                    placeholder={t(
+                      "pages.TestSuiteDetailPage.search_endpoints_placeholder",
+                    )}
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -3109,7 +3139,7 @@ export default function TestSuiteDetailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-2">
-                    Method
+                    {t("pages.TestSuiteDetailPage.method")}
                   </span>
                   {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map(
                     (method) => (

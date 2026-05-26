@@ -54,7 +54,9 @@ export default function GenerationRunExecutePage() {
   const { selectedProject } = useProject();
 
   const projectId = selectedProject?.id || searchParams.get("projectId") || "";
-  const batchLabel = searchParams.get("batchLabel") || "Generated Item";
+  const batchLabel =
+    searchParams.get("batchLabel") ||
+    t("pages.GenerationRunExecutePage.generated_item");
   const generatedAt = searchParams.get("generatedAt") || "";
   const rawIds = searchParams.get("testCaseIds") || "";
 
@@ -502,7 +504,11 @@ export default function GenerationRunExecutePage() {
     if (!suiteId) return;
 
     if (environments.length === 0) {
-      showErrorToast("No execution environment found for this project");
+      showErrorToast(
+        t(
+          "pages.GenerationRunExecutePage.no_execution_environment_found_for_project",
+        ),
+      );
       return;
     }
 
@@ -606,7 +612,7 @@ export default function GenerationRunExecutePage() {
   }, [suiteId, projectId, batchTestCaseIds]);
 
   return (
-    <MainLayout title="Run Generated Test Cases">
+    <MainLayout title={t("pages.GenerationRunExecutePage.title")}>
       <Modal
         isOpen={manualTestCaseModalOpen}
         onClose={() => {
@@ -614,7 +620,7 @@ export default function GenerationRunExecutePage() {
             setManualTestCaseModalOpen(false);
           }
         }}
-        title="Add Manual Test Case"
+        title={t("pages.GenerationRunExecutePage.manual_test_case_title")}
         footer={
           <>
             <button
@@ -623,7 +629,7 @@ export default function GenerationRunExecutePage() {
               disabled={isCreatingManualTestCase}
               className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-700 text-on-surface text-sm font-semibold disabled:opacity-60"
             >
-              Cancel
+              {t("pages.GenerationRunExecutePage.cancel")}
             </button>
             <button
               type="button"
@@ -636,7 +642,7 @@ export default function GenerationRunExecutePage() {
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              Add Test Case
+              {t("pages.GenerationRunExecutePage.add_test_case")}
             </button>
           </>
         }
@@ -644,7 +650,7 @@ export default function GenerationRunExecutePage() {
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-              Name
+              {t("pages.GenerationRunExecutePage.name")}
             </label>
             <input
               value={manualTestCaseForm.name}
@@ -661,7 +667,7 @@ export default function GenerationRunExecutePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                Method
+                {t("pages.GenerationRunExecutePage.method")}
               </label>
               <select
                 value={manualTestCaseForm.method}
@@ -673,18 +679,32 @@ export default function GenerationRunExecutePage() {
                 }
                 className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
               >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="PATCH">PATCH</option>
-                <option value="DELETE">DELETE</option>
-                <option value="HEAD">HEAD</option>
-                <option value="OPTIONS">OPTIONS</option>
+                <option value="GET">
+                  {t("pages.GenerationRunExecutePage.get")}
+                </option>
+                <option value="POST">
+                  {t("pages.GenerationRunExecutePage.post")}
+                </option>
+                <option value="PUT">
+                  {t("pages.GenerationRunExecutePage.put")}
+                </option>
+                <option value="PATCH">
+                  {t("pages.GenerationRunExecutePage.patch")}
+                </option>
+                <option value="DELETE">
+                  {t("pages.GenerationRunExecutePage.delete")}
+                </option>
+                <option value="HEAD">
+                  {t("pages.GenerationRunExecutePage.head")}
+                </option>
+                <option value="OPTIONS">
+                  {t("pages.GenerationRunExecutePage.options")}
+                </option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                Expected Status
+                {t("pages.GenerationRunExecutePage.expected_status")}
               </label>
               <input
                 type="number"
@@ -704,7 +724,7 @@ export default function GenerationRunExecutePage() {
 
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-              Endpoint URL
+              {t("pages.GenerationRunExecutePage.endpoint_url")}
             </label>
             <input
               value={manualTestCaseForm.endpointUrl}
@@ -715,13 +735,15 @@ export default function GenerationRunExecutePage() {
                 }))
               }
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-              placeholder="/api/products"
+              placeholder={t(
+                "pages.GenerationRunExecutePage.endpoint_url_placeholder",
+              )}
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-              Description
+              {t("pages.GenerationRunExecutePage.description")}
             </label>
             <textarea
               rows={3}
@@ -733,7 +755,9 @@ export default function GenerationRunExecutePage() {
                 }))
               }
               className="w-full px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low dark:bg-slate-800 text-on-surface"
-              placeholder="Optional description"
+              placeholder={t(
+                "pages.GenerationRunExecutePage.description_placeholder",
+              )}
             />
           </div>
         </div>
@@ -765,10 +789,10 @@ export default function GenerationRunExecutePage() {
             className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface text-sm font-semibold flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Suite
+            {t("pages.GenerationRunExecutePage.back_to_suite")}
           </button>
           <div className="text-sm text-on-surface-variant">
-            Suite:{" "}
+            {t("pages.GenerationRunExecutePage.suite")}{" "}
             <span className="font-semibold text-on-surface">
               {suiteName || "N/A"}
             </span>
@@ -778,23 +802,25 @@ export default function GenerationRunExecutePage() {
         <section className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-sm p-5 space-y-5">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-widest font-bold text-on-surface-variant">
-              Generation Context
+              {t("pages.GenerationRunExecutePage.generation_context")}
             </p>
             <h1 className="text-2xl font-bold text-on-surface">{batchLabel}</h1>
             <p className="text-sm text-on-surface-variant">
               {generatedAt
-                ? `Generated at ${new Date(generatedAt).toLocaleString()}`
-                : "Generated item"}
+                ? t("pages.GenerationRunExecutePage.generated_at", {
+                    value: new Date(generatedAt).toLocaleString(),
+                  })
+                : t("pages.GenerationRunExecutePage.generated_item")}
             </p>
           </div>
 
           <div className="rounded-xl border border-outline-variant/10 dark:border-slate-800 p-4 bg-surface-container-low dark:bg-slate-800/40 space-y-3">
             <p className="text-xs uppercase tracking-widest font-bold text-on-surface-variant">
-              Endpoints In This Item
+              {t("pages.GenerationRunExecutePage.endpoints_in_this_item")}
             </p>
             {endpointList.length === 0 ? (
               <p className="text-sm text-on-surface-variant">
-                No endpoint detected yet.
+                {t("pages.GenerationRunExecutePage.no_endpoint_detected_yet")}
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -813,7 +839,9 @@ export default function GenerationRunExecutePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-xl border border-outline-variant/10 dark:border-slate-800 p-4 bg-surface-container-low dark:bg-slate-800/40">
               <p className="text-xs uppercase tracking-widest font-bold text-on-surface-variant mb-2">
-                Total Test Cases In This Item
+                {t(
+                  "pages.GenerationRunExecutePage.total_test_cases_in_this_item",
+                )}
               </p>
               <p className="text-3xl font-black text-on-surface">
                 {testCases.length}
@@ -821,7 +849,7 @@ export default function GenerationRunExecutePage() {
             </div>
             <div className="rounded-xl border border-outline-variant/10 dark:border-slate-800 p-4 bg-surface-container-low dark:bg-slate-800/40">
               <p className="text-xs uppercase tracking-widest font-bold text-on-surface-variant mb-2">
-                Selected To Execute
+                {t("pages.GenerationRunExecutePage.selected_to_execute")}
               </p>
               <p className="text-3xl font-black text-on-surface">
                 {selectedTestCaseIds.length}
@@ -831,12 +859,14 @@ export default function GenerationRunExecutePage() {
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Select Environment
+              {t("pages.GenerationRunExecutePage.select_environment")}
             </label>
             {environments.length === 0 ? (
               <div className="rounded-xl border border-amber-300/40 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-4 flex items-center justify-between gap-3">
                 <p className="text-sm text-amber-800 dark:text-amber-300">
-                  No environment found. Create one to execute test cases.
+                  {t(
+                    "pages.GenerationRunExecutePage.no_environment_found_create_one_to_execu",
+                  )}
                 </p>
                 <button
                   type="button"
@@ -844,7 +874,7 @@ export default function GenerationRunExecutePage() {
                   className="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Create Environment
+                  {t("pages.GenerationRunExecutePage.create_environment")}
                 </button>
               </div>
             ) : (
@@ -857,7 +887,11 @@ export default function GenerationRunExecutePage() {
                   {environments.map((env) => (
                     <option key={env.id} value={env.id}>
                       {env.name}
-                      {env.isDefault ? " (default)" : ""}
+                      {env.isDefault
+                        ? t(
+                            "pages.GenerationRunExecutePage.default_environment_suffix",
+                          )
+                        : ""}
                     </option>
                   ))}
                 </select>
@@ -865,7 +899,9 @@ export default function GenerationRunExecutePage() {
                   type="button"
                   onClick={() => setIsEnvModalOpen(true)}
                   className="shrink-0 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                  title="Create new environment"
+                  title={t(
+                    "pages.GenerationRunExecutePage.create_environment_tooltip",
+                  )}
                 >
                   <Plus className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 </button>
@@ -876,17 +912,21 @@ export default function GenerationRunExecutePage() {
           {isLoading ? (
             <div className="py-10 flex items-center justify-center text-on-surface-variant gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />
-              Loading generated test cases...
+              {t("pages.GenerationRunExecutePage.loading_generated_test_cases")}
             </div>
           ) : testCases.length === 0 ? (
             <div className="rounded-xl border border-amber-300/40 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-4 text-amber-800 dark:text-amber-300 text-sm">
-              This generated item has no available test cases to execute.
+              {t(
+                "pages.GenerationRunExecutePage.this_generated_item_has_no_available_tes",
+              )}
             </div>
           ) : (
             <>
               <div className="rounded-xl border border-outline-variant/10 dark:border-slate-800 bg-surface-container-low dark:bg-slate-800/40 p-3 flex items-center justify-between gap-3">
                 <p className="text-sm text-on-surface-variant">
-                  Add a manual test case directly from this run page.
+                  {t(
+                    "pages.GenerationRunExecutePage.add_a_manual_test_case_directly_from_thi",
+                  )}
                 </p>
                 <button
                   type="button"
@@ -899,7 +939,7 @@ export default function GenerationRunExecutePage() {
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
-                  Add Test Case
+                  {t("pages.GenerationRunExecutePage.add_test_case")}
                 </button>
               </div>
 
@@ -908,7 +948,7 @@ export default function GenerationRunExecutePage() {
                 <div className="flex items-center gap-2 mb-3">
                   <Filter className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
                   <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
-                    Test Case Filters
+                    {t("pages.GenerationRunExecutePage.test_case_filters")}
                   </span>
                   {(searchQuery ||
                     filterMethod ||
@@ -924,7 +964,7 @@ export default function GenerationRunExecutePage() {
                       }}
                       className="ml-auto text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
                     >
-                      Clear filters
+                      {t("pages.GenerationRunExecutePage.clear_filters")}
                     </button>
                   )}
                 </div>
@@ -935,7 +975,9 @@ export default function GenerationRunExecutePage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search test cases by name or description..."
+                    placeholder={t(
+                      "pages.GenerationRunExecutePage.search_placeholder",
+                    )}
                     className="w-full pl-9 pr-4 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all placeholder:text-on-surface-variant/60"
                   />
                 </div>
@@ -946,7 +988,9 @@ export default function GenerationRunExecutePage() {
                     onChange={(e) => setFilterMethod(e.target.value)}
                     className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
                   >
-                    <option value="">All methods</option>
+                    <option value="">
+                      {t("pages.GenerationRunExecutePage.all_methods")}
+                    </option>
                     {uniqueMethods.map((m) => (
                       <option key={m} value={m}>
                         {m}
@@ -959,7 +1003,9 @@ export default function GenerationRunExecutePage() {
                     onChange={(e) => setFilterTestType(e.target.value)}
                     className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
                   >
-                    <option value="">All test types</option>
+                    <option value="">
+                      {t("pages.GenerationRunExecutePage.all_test_types")}
+                    </option>
                     {uniqueTestTypes.map((tt) => (
                       <option key={tt} value={tt}>
                         {tt}
@@ -972,7 +1018,9 @@ export default function GenerationRunExecutePage() {
                     onChange={(e) => setFilterEndpoint(e.target.value)}
                     className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
                   >
-                    <option value="">All endpoints</option>
+                    <option value="">
+                      {t("pages.GenerationRunExecutePage.all_endpoints")}
+                    </option>
                     {uniqueEndpoints.map((ep) => (
                       <option key={ep} value={ep}>
                         {ep}
@@ -986,8 +1034,13 @@ export default function GenerationRunExecutePage() {
                   filterEndpoint ||
                   filterTestType) && (
                   <p className="text-xs text-on-surface-variant mt-2">
-                    Showing {filteredTestCases.length} of {testCases.length}{" "}
-                    test cases
+                    {t(
+                      "pages.GenerationRunExecutePage.showing_filtered_testcases",
+                      {
+                        filtered: filteredTestCases.length,
+                        total: testCases.length,
+                      },
+                    )}
                   </p>
                 )}
               </div>
@@ -1001,20 +1054,24 @@ export default function GenerationRunExecutePage() {
                       className="text-xs font-semibold text-on-surface-variant hover:underline flex items-center gap-1"
                     >
                       <Square className="w-3.5 h-3.5" />
-                      Clear
+                      {t("pages.GenerationRunExecutePage.clear")}
                     </button>
                     <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
                       {environments.length === 0 && !isLoading && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
-                          No execution environment found.{" "}
+                          {t(
+                            "pages.GenerationRunExecutePage.no_execution_environment_found",
+                          )}{" "}
                           <button
                             type="button"
                             className="underline font-semibold"
                             onClick={() => setIsEnvModalOpen(true)}
                           >
-                            Create one
+                            {t("pages.GenerationRunExecutePage.create_one")}
                           </button>{" "}
-                          to run tests.
+                          {t(
+                            "pages.GenerationRunExecutePage.to_run_tests_suffix",
+                          )}
                         </p>
                       )}
                       <button
@@ -1031,7 +1088,10 @@ export default function GenerationRunExecutePage() {
                           <Loader2 className="w-4 h-4 animate-spin" />
                         )}
                         <Play className="w-4 h-4" />
-                        Execute All ({testCases.length})
+                        {t(
+                          "pages.GenerationRunExecutePage.execute_all_testcases_length",
+                          { testCases },
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1046,7 +1106,10 @@ export default function GenerationRunExecutePage() {
                     className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
                     <CheckSquare className="w-3.5 h-3.5" />
-                    Select all ({filteredTestCases.length})
+                    {t(
+                      "pages.GenerationRunExecutePage.select_all_filteredtestcases_length",
+                      { filteredTestCases },
+                    )}
                   </button>
                 )}
               </div>
@@ -1054,7 +1117,9 @@ export default function GenerationRunExecutePage() {
               <div className="space-y-2">
                 {filteredTestCases.length === 0 ? (
                   <div className="py-6 text-center text-sm text-on-surface-variant">
-                    No test cases match the current filters.
+                    {t(
+                      "pages.GenerationRunExecutePage.no_test_cases_match_the_current_filters",
+                    )}
                   </div>
                 ) : null}
                 {filteredTestCases.map((testCase) => {
@@ -1079,7 +1144,10 @@ export default function GenerationRunExecutePage() {
                               {testCase.name}
                             </p>
                             <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1 font-semibold truncate">
-                              Endpoint: {endpointLabel}
+                              {t(
+                                "pages.GenerationRunExecutePage.endpoint_endpointlabel",
+                                { endpointLabel },
+                              )}
                             </p>
                             {testCase.description && (
                               <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">
@@ -1102,7 +1170,7 @@ export default function GenerationRunExecutePage() {
                           }}
                           className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-700 text-on-surface text-sm font-semibold"
                         >
-                          Open
+                          {t("pages.GenerationRunExecutePage.open")}
                         </button>
                       </div>
                     </div>
@@ -1115,15 +1183,15 @@ export default function GenerationRunExecutePage() {
           <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
             {environments.length === 0 && !isLoading && (
               <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
-                No execution environment found.{" "}
+                {t("pages.GenerationRunExecutePage.no_execution_environment_found")}{" "}
                 <button
                   type="button"
                   className="underline font-semibold"
                   onClick={() => setIsEnvModalOpen(true)}
                 >
-                  Create one
+                  {t("pages.GenerationRunExecutePage.create_one")}
                 </button>{" "}
-                to run tests.
+                {t("pages.GenerationRunExecutePage.to_run_tests_suffix")}
               </p>
             )}
             <button
@@ -1153,7 +1221,10 @@ export default function GenerationRunExecutePage() {
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <Play className="w-4 h-4" />
-              Execute All ({testCases.length})
+              {t(
+                "pages.GenerationRunExecutePage.execute_all_testcases_length",
+                { testCases },
+              )}
             </button>
           </div>
         </section>
@@ -1186,7 +1257,9 @@ export default function GenerationRunExecutePage() {
                 onChange={(e) =>
                   setEnvForm({ ...envForm, name: e.target.value })
                 }
-                placeholder="Environment name"
+                placeholder={t(
+                  "pages.GenerationRunExecutePage.env_name_placeholder",
+                )}
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
 
@@ -1197,7 +1270,9 @@ export default function GenerationRunExecutePage() {
                 onChange={(e) =>
                   setEnvForm({ ...envForm, baseUrl: e.target.value })
                 }
-                placeholder="Base URL (e.g. https://api.example.com)"
+                placeholder={t(
+                  "pages.GenerationRunExecutePage.env_base_url_placeholder",
+                )}
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
 
@@ -1223,9 +1298,7 @@ export default function GenerationRunExecutePage() {
                 {showEnvVarsSection && (
                   <div className="mt-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
-                      {
-                        "Define variables and use them via {{variableName}} syntax."
-                      }
+                      {t("pages.GenerationRunExecutePage.variables_help")}
                     </p>
                     <div className="space-y-2">
                       {Object.entries(envForm.variables).map(([key, value]) => (
@@ -1254,14 +1327,16 @@ export default function GenerationRunExecutePage() {
                                 },
                               }))
                             }
-                            placeholder="Value"
+                            placeholder={t(
+                              "pages.GenerationRunExecutePage.variable_value_placeholder",
+                            )}
                             className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <button
                             onClick={() => removeEnvVar(key)}
                             className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
                           >
-                            Remove
+                            {t("pages.GenerationRunExecutePage.remove")}
                           </button>
                         </div>
                       ))}
@@ -1276,25 +1351,29 @@ export default function GenerationRunExecutePage() {
                           type="text"
                           value={envVarKey}
                           onChange={(e) => setEnvVarKey(e.target.value)}
-                          placeholder="Key"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.variable_key_placeholder",
+                          )}
                           className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
                           type="text"
                           value={envVarValue}
                           onChange={(e) => setEnvVarValue(e.target.value)}
-                          placeholder="Value"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.variable_value_placeholder",
+                          )}
                           className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <span className="text-sm font-medium px-2 py-1 invisible">
-                          Remove
+                          {t("pages.GenerationRunExecutePage.remove")}
                         </span>
                       </div>
                       <button
                         onClick={addEnvVar}
                         className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer"
                       >
-                        + Add
+                        {t("pages.GenerationRunExecutePage.add")}
                       </button>
                     </div>
                   </div>
@@ -1316,7 +1395,7 @@ export default function GenerationRunExecutePage() {
                     <ChevronRight className="w-4 h-4 text-slate-500" />
                   )}
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    Headers
+                    {t("pages.GenerationRunExecutePage.headers")}
                   </span>
                   <span className="text-xs text-slate-400">
                     ({Object.keys(envForm.headers).length})
@@ -1325,7 +1404,9 @@ export default function GenerationRunExecutePage() {
                 {showEnvHeadersSection && (
                   <div className="mt-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
-                      Custom headers sent with every request.
+                      {t(
+                        "pages.GenerationRunExecutePage.custom_headers_sent_with_every_request",
+                      )}
                     </p>
                     <div className="space-y-2">
                       {Object.entries(envForm.headers).map(([key, value]) => (
@@ -1354,14 +1435,16 @@ export default function GenerationRunExecutePage() {
                                 },
                               }))
                             }
-                            placeholder="Value"
+                            placeholder={t(
+                              "pages.GenerationRunExecutePage.header_value_placeholder",
+                            )}
                             className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <button
                             onClick={() => removeEnvHeader(key)}
                             className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
                           >
-                            Remove
+                            {t("pages.GenerationRunExecutePage.remove")}
                           </button>
                         </div>
                       ))}
@@ -1376,25 +1459,29 @@ export default function GenerationRunExecutePage() {
                           type="text"
                           value={envHeaderKey}
                           onChange={(e) => setEnvHeaderKey(e.target.value)}
-                          placeholder="Header name"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.header_key_placeholder",
+                          )}
                           className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
                           type="text"
                           value={envHeaderValue}
                           onChange={(e) => setEnvHeaderValue(e.target.value)}
-                          placeholder="Value"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.header_value_placeholder",
+                          )}
                           className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <span className="text-sm font-medium px-2 py-1 invisible">
-                          Remove
+                          {t("pages.GenerationRunExecutePage.remove")}
                         </span>
                       </div>
                       <button
                         onClick={addEnvHeader}
                         className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 px-1 py-1 cursor-pointer"
                       >
-                        + Add
+                        {t("pages.GenerationRunExecutePage.add")}
                       </button>
                     </div>
                   </div>
@@ -1415,7 +1502,7 @@ export default function GenerationRunExecutePage() {
                   )}
                   <ShieldCheck className="w-4 h-4 text-indigo-600" />
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    Authentication
+                    {t("pages.GenerationRunExecutePage.authentication")}
                   </span>
                   <span className="text-xs text-slate-400">
                     ({envForm.authConfig.authType})
@@ -1433,12 +1520,22 @@ export default function GenerationRunExecutePage() {
                       }
                       className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="None">None</option>
-                      <option value="BearerToken">Bearer Token</option>
-                      <option value="Basic">Basic</option>
-                      <option value="ApiKey">API Key</option>
+                      <option value="None">
+                        {t("manualTesting.authNone")}
+                      </option>
+                      <option value="BearerToken">
+                        {t("manualTesting.authBearer")}
+                      </option>
+                      <option value="Basic">
+                        {t("manualTesting.authBasic")}
+                      </option>
+                      <option value="ApiKey">
+                        {t("manualTesting.authApiKey")}
+                      </option>
                       <option value="OAuth2ClientCredentials">
-                        OAuth2 Client Credentials
+                        {t(
+                          "pages.GenerationRunExecutePage.oauth2_client_credentials",
+                        )}
                       </option>
                     </select>
 
@@ -1452,7 +1549,9 @@ export default function GenerationRunExecutePage() {
                               headerName: e.target.value || null,
                             })
                           }
-                          placeholder="Header Name (default: Authorization)"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.auth_header_name_placeholder",
+                          )}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
@@ -1461,7 +1560,9 @@ export default function GenerationRunExecutePage() {
                           onChange={(e) =>
                             updateEnvAuth({ token: e.target.value || null })
                           }
-                          placeholder="Token"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.auth_token_placeholder",
+                          )}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
@@ -1475,7 +1576,9 @@ export default function GenerationRunExecutePage() {
                           onChange={(e) =>
                             updateEnvAuth({ username: e.target.value || null })
                           }
-                          placeholder="Username"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.auth_username_placeholder",
+                          )}
                           className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
@@ -1484,7 +1587,9 @@ export default function GenerationRunExecutePage() {
                           onChange={(e) =>
                             updateEnvAuth({ password: e.target.value || null })
                           }
-                          placeholder="Password"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.auth_password_placeholder",
+                          )}
                           className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
@@ -1501,7 +1606,9 @@ export default function GenerationRunExecutePage() {
                                 apiKeyName: e.target.value || null,
                               })
                             }
-                            placeholder="API Key Name"
+                            placeholder={t(
+                              "pages.GenerationRunExecutePage.auth_api_key_name_placeholder",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <input
@@ -1512,7 +1619,9 @@ export default function GenerationRunExecutePage() {
                                 apiKeyValue: e.target.value || null,
                               })
                             }
-                            placeholder="API Key Value"
+                            placeholder={t(
+                              "pages.GenerationRunExecutePage.auth_api_key_value_placeholder",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
@@ -1526,8 +1635,12 @@ export default function GenerationRunExecutePage() {
                           }
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
-                          <option value="Header">Header</option>
-                          <option value="Query">Query</option>
+                          <option value="Header">
+                            {t("manualTesting.header")}
+                          </option>
+                          <option value="Query">
+                            {t("manualTesting.query")}
+                          </option>
                         </select>
                       </div>
                     )}
@@ -1541,7 +1654,9 @@ export default function GenerationRunExecutePage() {
                           onChange={(e) =>
                             updateEnvAuth({ tokenUrl: e.target.value || null })
                           }
-                          placeholder="Token URL"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.auth_token_url_placeholder",
+                          )}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <div className="grid grid-cols-2 gap-3">
@@ -1553,7 +1668,9 @@ export default function GenerationRunExecutePage() {
                                 clientId: e.target.value || null,
                               })
                             }
-                            placeholder="Client ID"
+                            placeholder={t(
+                              "pages.GenerationRunExecutePage.auth_client_id_placeholder",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <input
@@ -1564,7 +1681,9 @@ export default function GenerationRunExecutePage() {
                                 clientSecret: e.target.value || null,
                               })
                             }
-                            placeholder="Client Secret"
+                            placeholder={t(
+                              "pages.GenerationRunExecutePage.auth_client_secret_placeholder",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
@@ -1581,7 +1700,9 @@ export default function GenerationRunExecutePage() {
                                 : [],
                             })
                           }
-                          placeholder="Scopes (comma separated)"
+                          placeholder={t(
+                            "pages.GenerationRunExecutePage.auth_scopes_placeholder",
+                          )}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
@@ -1605,7 +1726,9 @@ export default function GenerationRunExecutePage() {
                   htmlFor="envDefaultCheck"
                   className="text-sm text-slate-700 dark:text-slate-300"
                 >
-                  Set as default environment
+                  {t(
+                    "pages.GenerationRunExecutePage.set_as_default_environment",
+                  )}
                 </label>
               </div>
 
@@ -1618,7 +1741,7 @@ export default function GenerationRunExecutePage() {
                   }}
                   className="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
-                  Cancel
+                  {t("pages.GenerationRunExecutePage.cancel")}
                 </button>
                 <button
                   onClick={handleCreateEnvironment}

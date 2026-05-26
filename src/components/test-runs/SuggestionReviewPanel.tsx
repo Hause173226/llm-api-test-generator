@@ -1,6 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, X, Pencil, Filter, Loader2, Route, Clock, BookOpen, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Check,
+  X,
+  Pencil,
+  Filter,
+  Loader2,
+  Route,
+  Clock,
+  BookOpen,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal";
 import { cn } from "../../lib/utils";
@@ -46,7 +58,10 @@ export interface SuggestionReviewPanelProps {
   onBulkRestore?: (suggestionIds: string[]) => Promise<void>;
   isBulkRestoringSuggestions?: boolean;
   onBulkApprove?: (suggestionIds: string[]) => Promise<void>;
-  onBulkReject?: (suggestionIds: string[], reviewNotes: string) => Promise<void>;
+  onBulkReject?: (
+    suggestionIds: string[],
+    reviewNotes: string,
+  ) => Promise<void>;
   isBulkApprovingSuggestions?: boolean;
   isHistoricalView?: boolean;
   currentGenerationNumber?: number;
@@ -160,7 +175,13 @@ export default function SuggestionReviewPanel({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [draftStatus, draftTestType, draftEndpoint, draftCoverage, suggestions.length]);
+  }, [
+    draftStatus,
+    draftTestType,
+    draftEndpoint,
+    draftCoverage,
+    suggestions.length,
+  ]);
 
   const pendingSuggestions = useMemo(
     () =>
@@ -454,8 +475,6 @@ export default function SuggestionReviewPanel({
 
   return (
     <div className="space-y-4">
-     
-
       {/* SRS Trust Banner — shown when all/some suggestions have SRS context */}
       {srsLinkedCount > 0 && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-emerald-300/60 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-950/30">
@@ -475,7 +494,9 @@ export default function SuggestionReviewPanel({
                 {srsDocTitles.map((title, i) => (
                   <span key={title}>
                     {i > 0 && ", "}
-                    <span className="font-mono font-semibold">&ldquo;{title}&rdquo;</span>
+                    <span className="font-mono font-semibold">
+                      &ldquo;{title}&rdquo;
+                    </span>
                   </span>
                 ))}
               </p>
@@ -607,11 +628,21 @@ export default function SuggestionReviewPanel({
             }}
             className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
           >
-            <option value="">All statuses</option>
-            <option value="Pending">Pending (Current queue)</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Superseded">Superseded</option>
+            <option value="">
+              {t("suggestions.reviewPanel.filters.allStatuses")}
+            </option>
+            <option value="Pending">
+              {t("suggestions.reviewPanel.filters.pendingCurrent")}
+            </option>
+            <option value="Approved">
+              {t("suggestions.reviewPanel.filters.approved")}
+            </option>
+            <option value="Rejected">
+              {t("suggestions.reviewPanel.filters.rejected")}
+            </option>
+            <option value="Superseded">
+              {t("suggestions.reviewPanel.filters.superseded")}
+            </option>
           </select>
 
           <select
@@ -628,7 +659,9 @@ export default function SuggestionReviewPanel({
             }}
             className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
           >
-            <option value="">All test types</option>
+            <option value="">
+              {t("suggestions.reviewPanel.filters.allTestTypes")}
+            </option>
             {uniqueSuggestionTypes.map((testType) => (
               <option key={testType} value={testType}>
                 {testType}
@@ -650,7 +683,9 @@ export default function SuggestionReviewPanel({
             }}
             className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
           >
-            <option value="">All endpoints</option>
+            <option value="">
+              {t("suggestions.reviewPanel.filters.allEndpoints")}
+            </option>
             {endpoints.map((endpoint) => (
               <option key={endpoint.id} value={endpoint.id}>
                 {endpoint.method} {endpoint.path}
@@ -663,18 +698,42 @@ export default function SuggestionReviewPanel({
             onChange={(e) => setDraftCoverage(e.target.value)}
             className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
           >
-            <option value="">All SRS coverage</option>
-            <option value="FULL">Covered requirements</option>
-            <option value="SRS_ONLY">SRS-aligned (no req IDs)</option>
-            <option value="NO_SRS">No SRS context</option>
+            <option value="">
+              {t("suggestions.reviewPanel.filters.allSrsCoverage")}
+            </option>
+            <option value="FULL">
+              {t("suggestions.reviewPanel.filters.coveredRequirements")}
+            </option>
+            <option value="SRS_ONLY">
+              {t("suggestions.reviewPanel.filters.srsAlignedNoReqIds")}
+            </option>
+            <option value="NO_SRS">
+              {t("suggestions.reviewPanel.filters.noSrsContext")}
+            </option>
           </select>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-on-surface-variant">
-          <span>Total: {filteredByCoverageSuggestions.length}</span>
-          <span>Pending: {suggestionStats.pending}</span>
-          <span>Approved: {suggestionStats.approved}</span>
-          <span>Rejected: {suggestionStats.rejected}</span>
+          <span>
+            {t("suggestions.reviewPanel.stats.total", {
+              count: filteredByCoverageSuggestions.length,
+            })}
+          </span>
+          <span>
+            {t("suggestions.reviewPanel.stats.pending", {
+              count: suggestionStats.pending,
+            })}
+          </span>
+          <span>
+            {t("suggestions.reviewPanel.stats.approved", {
+              count: suggestionStats.approved,
+            })}
+          </span>
+          <span>
+            {t("suggestions.reviewPanel.stats.rejected", {
+              count: suggestionStats.rejected,
+            })}
+          </span>
         </div>
       </div>
 
@@ -684,10 +743,10 @@ export default function SuggestionReviewPanel({
             <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
             <div>
               <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
-                Loading LLM suggestions...
+                {t("suggestions.reviewPanel.loading.title")}
               </p>
               <p className="text-xs text-indigo-500 dark:text-indigo-400">
-                Suggestions will appear here when complete.
+                {t("suggestions.reviewPanel.loading.subtitle")}
               </p>
             </div>
           </div>
@@ -776,15 +835,17 @@ export default function SuggestionReviewPanel({
                         </span>
                         {suggestion.coveredRequirements &&
                         suggestion.coveredRequirements.length > 0 ? (
-                          suggestion.coveredRequirements.slice(0, 4).map((req) => (
-                            <span
-                              key={req.id}
-                              title={req.title}
-                              className="px-1.5 py-0.5 rounded text-[9px] font-black font-mono bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40"
-                            >
-                              {req.code}
-                            </span>
-                          ))
+                          suggestion.coveredRequirements
+                            .slice(0, 4)
+                            .map((req) => (
+                              <span
+                                key={req.id}
+                                title={req.title}
+                                className="px-1.5 py-0.5 rounded text-[9px] font-black font-mono bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40"
+                              >
+                                {req.code}
+                              </span>
+                            ))
                         ) : suggestion.coveredRequirementIds &&
                           suggestion.coveredRequirementIds.length > 0 ? (
                           <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
@@ -801,7 +862,8 @@ export default function SuggestionReviewPanel({
                           suggestion.coveredRequirements.length > 4 && (
                             <span className="text-[10px] text-slate-500 dark:text-slate-400">
                               {t("suggestions.reviewPanel.common.moreCount", {
-                                count: suggestion.coveredRequirements.length - 4,
+                                count:
+                                  suggestion.coveredRequirements.length - 4,
                               })}
                             </span>
                           )}
