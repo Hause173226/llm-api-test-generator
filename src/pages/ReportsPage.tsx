@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, Plus, Loader2, BarChart2, Clock } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Plus,
+  Loader2,
+  BarChart2,
+  Clock,
+} from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { useReports } from "../hooks/useReports";
 import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
@@ -128,7 +135,11 @@ export default function ReportsPage() {
     if (success) {
       showSuccessToast(t("reports.success.generated"));
       setShowGenerateModal(false);
-      setFormData({ reportType: "Detailed", format: "Excel", recentHistoryLimit: 5 });
+      setFormData({
+        reportType: "Detailed",
+        format: "Excel",
+        recentHistoryLimit: 5,
+      });
     }
   };
 
@@ -250,13 +261,16 @@ export default function ReportsPage() {
                 {reports.map((report) => {
                   const cov = report.coverage;
                   const formatBadgeColor: Record<string, string> = {
-                    Excel: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                    Excel:
+                      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
                     PDF: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
                     HTML: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
                     JSON: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
                     CSV: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
                   };
-                  const badgeClass = formatBadgeColor[report.format] ?? "bg-surface-container text-on-surface-variant";
+                  const badgeClass =
+                    formatBadgeColor[report.format] ??
+                    "bg-surface-container text-on-surface-variant";
 
                   return (
                     <div
@@ -274,7 +288,9 @@ export default function ReportsPage() {
                               <h4 className="font-bold text-on-surface">
                                 {report.name || report.reportType}
                               </h4>
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${badgeClass}`}>
+                              <span
+                                className={`text-xs font-bold px-2 py-0.5 rounded-lg ${badgeClass}`}
+                              >
                                 {report.format}
                               </span>
                             </div>
@@ -295,7 +311,8 @@ export default function ReportsPage() {
                                   </span>
                                 </span>
                                 <span className="text-xs text-on-surface-variant">
-                                  {cov.testedEndpoints ?? 0} / {cov.totalEndpoints ?? 0} endpoints
+                                  {cov.testedEndpoints ?? 0} /{" "}
+                                  {cov.totalEndpoints ?? 0} endpoints
                                 </span>
                                 {(cov.uncoveredPaths?.length ?? 0) > 0 && (
                                   <span className="text-xs text-red-500 dark:text-red-400 font-semibold">
@@ -309,7 +326,8 @@ export default function ReportsPage() {
                             {report.expiresAt && (
                               <p className="flex items-center gap-1 text-xs text-on-surface-variant mt-1">
                                 <Clock className="w-3 h-3" />
-                                Expires {new Date(report.expiresAt).toLocaleString()}
+                                Expires{" "}
+                                {new Date(report.expiresAt).toLocaleString()}
                               </p>
                             )}
                           </div>
@@ -349,7 +367,7 @@ export default function ReportsPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                  Report Type
+                  {t("pages.ReportsPage.report_type")}
                 </label>
                 <select
                   value={formData.reportType}
@@ -358,15 +376,21 @@ export default function ReportsPage() {
                   }
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 >
-                  <option value="Summary">Summary</option>
-                  <option value="Detailed">Detailed</option>
-                  <option value="Coverage">Coverage</option>
+                  <option value="Summary">
+                    {t("pages.ReportsPage.summary")}
+                  </option>
+                  <option value="Detailed">
+                    {t("pages.ReportsPage.detailed")}
+                  </option>
+                  <option value="Coverage">
+                    {t("pages.ReportsPage.coverage")}
+                  </option>
                 </select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                  Format
+                  {t("pages.ReportsPage.format")}
                 </label>
                 <select
                   value={formData.format}
@@ -375,17 +399,19 @@ export default function ReportsPage() {
                   }
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 >
-                  <option value="Excel">Excel (.xlsx)</option>
-                  <option value="PDF">PDF</option>
-                  <option value="HTML">HTML</option>
-                  <option value="JSON">JSON</option>
-                  <option value="CSV">CSV</option>
+                  <option value="Excel">
+                    {t("pages.ReportsPage.excel_xlsx")}
+                  </option>
+                  <option value="PDF">{t("pages.ReportsPage.pdf")}</option>
+                  <option value="HTML">{t("pages.ReportsPage.html")}</option>
+                  <option value="JSON">{t("pages.ReportsPage.json")}</option>
+                  <option value="CSV">{t("pages.ReportsPage.csv")}</option>
                 </select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                  Recent History Limit
+                  {t("pages.ReportsPage.recent_history_limit")}
                 </label>
                 <input
                   type="number"
@@ -393,7 +419,10 @@ export default function ReportsPage() {
                   max={20}
                   value={formData.recentHistoryLimit}
                   onChange={(e) =>
-                    setFormData({ ...formData, recentHistoryLimit: Math.max(1, Number(e.target.value)) })
+                    setFormData({
+                      ...formData,
+                      recentHistoryLimit: Math.max(1, Number(e.target.value)),
+                    })
                   }
                   className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-4 focus:ring-primary-fixed text-on-surface font-bold text-sm"
                 />

@@ -372,7 +372,7 @@ export default function BillingPage() {
                         <span className="text-4xl font-bold text-on-surface">
                           ${plan.price || 0}
                         </span>
-                       
+
                         <span className="text-on-surface-variant font-medium">
                           /
                           {t(

@@ -175,8 +175,16 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
       path: "/endpoints",
     },
     { icon: Layers, label: t("common.testSuites"), path: "/test-suites" },
-    { icon: FileText, label: "SRS Documents", path: "/srs-documents" },
-    { icon: ShieldCheck, label: "Traceability", path: "/traceability" },
+    {
+      icon: FileText,
+      label: t("pages.SrsDocumentsPage.srs_documents"),
+      path: "/srs-documents",
+    },
+    {
+      icon: ShieldCheck,
+      label: t("pages.TraceabilityPage.traceability"),
+      path: "/traceability",
+    },
     { icon: PlayCircle, label: t("common.testExecutionRuns"), path: "/runs" },
 
     { icon: Settings2, label: t("common.environments"), path: "/environments" },
@@ -267,7 +275,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
 
         {!isCollapsed && (
           <div className="px-2 pb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Manual Workspace
+            {t("common.manualWorkspace")}
           </div>
         )}
 
@@ -278,9 +286,9 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
                 <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               </div>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center leading-tight">
-                Manual
+                {t("common.manualWorkspaceCollapsedLine1")}
                 <br />
-                Workspace
+                {t("common.manualWorkspaceCollapsedLine2")}
               </span>
             </div>
           ) : (
@@ -385,7 +393,9 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
               <div className="flex items-center gap-2 min-w-0">
                 <FolderOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
-                  {selectedProject ? selectedProject.name : "Select Project"}
+                  {selectedProject
+                    ? selectedProject.name
+                    : t("common.selectProject")}
                 </span>
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
@@ -399,7 +409,7 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
                   clearSelectedProject();
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-                aria-label="Clear selected project"
+                aria-label={t("common.clearSelectedProject")}
               >
                 <X className="w-3 h-3 text-slate-400" />
               </button>
@@ -410,11 +420,11 @@ export default function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
               <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-lg max-h-64 overflow-y-auto z-50">
                 {isLoadingProjects ? (
                   <div className="p-4 text-center text-sm text-slate-500">
-                    Loading projects...
+                    {t("common.loadingProjects")}
                   </div>
                 ) : projects.length === 0 ? (
                   <div className="p-4 text-center text-sm text-slate-500">
-                    No projects found
+                    {t("common.noProjectsFound")}
                   </div>
                 ) : (
                   projects.map((project) => (

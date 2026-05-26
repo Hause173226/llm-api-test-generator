@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   ArrowRight,
@@ -44,52 +45,21 @@ import {
 import { cn } from "../lib/utils";
 import { useTestSuites } from "../hooks/useTestSuites";
 
-const sourceTypeLabel: Record<number, string> = {
-  0: "TextInput",
-  1: "FileUpload",
-  2: "Url",
-};
-
-const analysisJobStatusLabel: Record<number, string> = {
-  0: "Queued",
-  1: "Triggering",
-  2: "Processing",
-  3: "Completed",
-  4: "Failed",
-};
-
-const analysisJobTypeLabel: Record<number, string> = {
-  0: "InitialAnalysis",
-  1: "ClarificationRefinement",
-};
-
-const analysisStatusLabel: Record<number, string> = {
-  0: "Pending",
-  1: "Processing",
-  2: "Completed",
-  3: "Failed",
-};
-
 const analysisStatusTone: Record<number, string> = {
-  0: "bg-amber-100 text-amber-800",
-  1: "bg-blue-100 text-blue-800",
-  2: "bg-emerald-100 text-emerald-800",
-  3: "bg-rose-100 text-rose-800",
-};
-
-const requirementTypeLabel: Record<number, string> = {
-  0: "Functional",
-  1: "NonFunctional",
-  2: "Security",
-  3: "Performance",
-  4: "Constraint",
+  0: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
+  1: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200",
+  2: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200",
+  3: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200",
 };
 
 export default function SrsDocumentsPage() {
+  const { t } = useTranslation();
   const { selectedProject } = useProject();
   const projectId = selectedProject?.id || "";
   const navigate = useNavigate();
-  const breadcrumbs = useProjectBreadcrumbs("SRS Documents");
+  const breadcrumbs = useProjectBreadcrumbs(
+    t("pages.SrsDocumentsPage.srs_documents"),
+  );
 
   const [documents, setDocuments] = useState<SrsDocument[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<SrsDocument | null>(
@@ -267,9 +237,7 @@ export default function SrsDocumentsPage() {
       if (pollCount > MAX_POLLS) {
         window.clearInterval(timer);
         setIsAnalyzing(false);
-        showErrorToast(
-          "Analysis timed out after 5 minutes. The job may have failed on the n8n side.",
-        );
+        showErrorToast(t("pages.SrsDocumentsPage.analysis_timeout"));
         return;
       }
       try {
@@ -287,7 +255,8 @@ export default function SrsDocumentsPage() {
           setIsAnalyzing(false);
           if (job.status === 4) {
             showErrorToast(
-              job.errorMessage || "Analysis failed. Please try again.",
+              job.errorMessage ||
+                t("pages.SrsDocumentsPage.analysis_failed_try_again"),
             );
           }
         }
@@ -303,15 +272,15 @@ export default function SrsDocumentsPage() {
   const createDocument = async () => {
     if (!projectId) return;
     if (!createForm.title.trim()) {
-      showErrorToast("SRS title is required.");
+      showErrorToast(t("pages.SrsDocumentsPage.srs_title_required"));
       return;
     }
     if (createForm.sourceType === 0 && !createForm.rawContent.trim()) {
-      showErrorToast("Please paste SRS content for TextInput.");
+      showErrorToast(t("pages.SrsDocumentsPage.paste_srs_content"));
       return;
     }
     if (createForm.sourceType === 1 && !createForm.storageFileId.trim()) {
-      showErrorToast("Vui lòng chọn và tải file lên trước.");
+      showErrorToast(t("pages.SrsDocumentsPage.upload_file_first"));
       return;
     }
 
@@ -324,7 +293,9 @@ export default function SrsDocumentsPage() {
         storageFileId:
           createForm.sourceType === 1 ? createForm.storageFileId.trim() : null,
       });
-      showSuccessToast("SRS document created successfully.");
+      showSuccessToast(
+        t("pages.SrsDocumentsPage.srs_document_created_success"),
+      );
       setDocuments((prev) => [created, ...prev]);
       setSelectedDocument(created);
       setIsCreateOpen(false);
@@ -350,7 +321,7 @@ export default function SrsDocumentsPage() {
         selectedDocument.id,
       );
       setAnalysisJobId(response.jobId);
-      showSuccessToast("Analysis job queued. Polling status now.");
+      showSuccessToast(t("pages.SrsDocumentsPage.analysis_job_queued"));
     } catch (err) {
       setIsAnalyzing(false);
       handleError(err);
@@ -383,7 +354,7 @@ export default function SrsDocumentsPage() {
         prev.map((item) => (item.id === updated.id ? updated : item)),
       );
       setSelectedRequirement(updated);
-      showSuccessToast("Requirement updated.");
+      showSuccessToast(t("pages.SrsDocumentsPage.requirement_updated"));
     } catch (err) {
       handleError(err);
     }
@@ -415,7 +386,7 @@ export default function SrsDocumentsPage() {
   const answerClarification = async (clarificationId: string) => {
     if (!selectedDocument || !selectedRequirement || !projectId) return;
     if (!clarificationAnswer.trim()) {
-      showInfoToast("Please enter an answer first.");
+      showInfoToast(t("pages.SrsDocumentsPage.enter_answer_first"));
       return;
     }
     try {
@@ -433,7 +404,7 @@ export default function SrsDocumentsPage() {
         ),
       }));
       setClarificationAnswer("");
-      showSuccessToast("Clarification answered.");
+      showSuccessToast(t("pages.SrsDocumentsPage.clarification_answered"));
     } catch (err) {
       handleError(err);
     }
@@ -450,7 +421,7 @@ export default function SrsDocumentsPage() {
       );
       setAnalysisJobId(job.jobId);
       setIsAnalyzing(true);
-      showSuccessToast("Refinement job queued.");
+      showSuccessToast(t("pages.SrsDocumentsPage.refinement_job_queued"));
     } catch (err) {
       handleError(err);
     } finally {
@@ -462,7 +433,7 @@ export default function SrsDocumentsPage() {
     if (!projectId) return;
     try {
       await srsService.deleteDocument(projectId, doc.id);
-      showSuccessToast("SRS document deleted.");
+      showSuccessToast(t("pages.SrsDocumentsPage.srs_document_deleted"));
       await loadDocuments(false);
     } catch (err) {
       handleError(err);
@@ -483,7 +454,9 @@ export default function SrsDocumentsPage() {
         prev.map((d) => (d.id === updated.id ? updated : d)),
       );
       showSuccessToast(
-        linkSuiteId ? "Đã liên kết với bộ kịch bản." : "Đã hủy liên kết.",
+        linkSuiteId
+          ? t("pages.SrsDocumentsPage.suite_linked")
+          : t("pages.SrsDocumentsPage.suite_unlinked"),
       );
     } catch (err) {
       handleError(err);
@@ -495,22 +468,32 @@ export default function SrsDocumentsPage() {
   const handleAddRequirement = async () => {
     if (!projectId || !selectedDocument) return;
     if (!addReqForm.title.trim()) {
-      showErrorToast("Title is required.");
+      showErrorToast(t("pages.SrsDocumentsPage.title_required"));
       return;
     }
     setIsAddingReq(true);
     try {
-      const created = await srsService.addRequirement(projectId, selectedDocument.id, {
-        title: addReqForm.title.trim(),
-        description: addReqForm.description.trim() || null,
-        requirementType: addReqForm.requirementType,
-        testableConstraints: addReqForm.testableConstraints.trim() || null,
-        endpointId: addReqForm.endpointId.trim() || null,
-      });
+      const created = await srsService.addRequirement(
+        projectId,
+        selectedDocument.id,
+        {
+          title: addReqForm.title.trim(),
+          description: addReqForm.description.trim() || null,
+          requirementType: addReqForm.requirementType,
+          testableConstraints: addReqForm.testableConstraints.trim() || null,
+          endpointId: addReqForm.endpointId.trim() || null,
+        },
+      );
       setRequirements((prev) => [...prev, created]);
-      showSuccessToast("Requirement added.");
+      showSuccessToast(t("pages.SrsDocumentsPage.requirement_added"));
       setIsAddReqOpen(false);
-      setAddReqForm({ title: "", description: "", requirementType: 0, testableConstraints: "", endpointId: "" });
+      setAddReqForm({
+        title: "",
+        description: "",
+        requirementType: 0,
+        testableConstraints: "",
+        endpointId: "",
+      });
     } catch (err) {
       handleError(err);
     } finally {
@@ -521,16 +504,22 @@ export default function SrsDocumentsPage() {
   const handleDeleteRequirement = (req: SrsRequirement) => {
     if (!projectId || !selectedDocument) return;
     showConfirm({
-      title: "Delete requirement",
-      message: `Delete "${req.requirementCode ?? req.title}"? All traceability links for this requirement will also be removed.`,
-      confirmLabel: "Delete",
+      title: t("pages.SrsDocumentsPage.delete_requirement_title"),
+      message: t("pages.SrsDocumentsPage.delete_requirement_message", {
+        name: req.requirementCode ?? req.title,
+      }),
+      confirmLabel: t("pages.SrsDocumentsPage.delete"),
       confirmClass: "bg-rose-600 hover:bg-rose-700 text-white",
       onConfirm: async () => {
         try {
-          await srsService.deleteRequirement(projectId, selectedDocument.id, req.id);
+          await srsService.deleteRequirement(
+            projectId,
+            selectedDocument.id,
+            req.id,
+          );
           setRequirements((prev) => prev.filter((r) => r.id !== req.id));
           if (selectedRequirement?.id === req.id) setSelectedRequirement(null);
-          showSuccessToast("Requirement deleted.");
+          showSuccessToast(t("pages.SrsDocumentsPage.requirement_deleted"));
         } catch (err) {
           handleError(err);
         }
@@ -586,9 +575,46 @@ export default function SrsDocumentsPage() {
   };
 
   const selectedSrsContent = useMemo(() => {
-    const raw = (selectedDocument as any)?.parsedMarkdown || selectedDocument?.rawContent || "";
+    const raw =
+      (selectedDocument as any)?.parsedMarkdown ||
+      selectedDocument?.rawContent ||
+      "";
     return String(raw || "").trim();
   }, [selectedDocument]);
+
+  const analysisStatusLabel: Record<number, string> = {
+    0: t("pages.SrsDocumentsPage.status_pending"),
+    1: t("pages.SrsDocumentsPage.status_processing"),
+    2: t("pages.SrsDocumentsPage.status_completed"),
+    3: t("pages.SrsDocumentsPage.status_failed"),
+  };
+
+  const sourceTypeLabel: Record<number, string> = {
+    0: t("pages.SrsDocumentsPage.textinput"),
+    1: t("pages.SrsDocumentsPage.fileupload"),
+    2: t("pages.SrsDocumentsPage.url"),
+  };
+
+  const analysisJobStatusLabel: Record<number, string> = {
+    0: t("pages.SrsDocumentsPage.job_status_queued"),
+    1: t("pages.SrsDocumentsPage.job_status_triggering"),
+    2: t("pages.SrsDocumentsPage.job_status_processing"),
+    3: t("pages.SrsDocumentsPage.job_status_completed"),
+    4: t("pages.SrsDocumentsPage.job_status_failed"),
+  };
+
+  const analysisJobTypeLabel: Record<number, string> = {
+    0: t("pages.SrsDocumentsPage.job_type_initial_analysis"),
+    1: t("pages.SrsDocumentsPage.job_type_clarification_refinement"),
+  };
+
+  const requirementTypeLabel: Record<number, string> = {
+    0: t("pages.SrsDocumentsPage.functional"),
+    1: t("pages.SrsDocumentsPage.nonfunctional"),
+    2: t("pages.SrsDocumentsPage.security"),
+    3: t("pages.SrsDocumentsPage.performance"),
+    4: t("pages.SrsDocumentsPage.constraint"),
+  };
 
   const buildRequirementEvidence = (req: SrsRequirement) => {
     const content = selectedSrsContent;
@@ -609,7 +635,9 @@ export default function SrsDocumentsPage() {
       .filter((t) => t.length >= 5)
       .slice(0, 6);
     const codeToken = (req.requirementCode || "").toLowerCase();
-    const tokens = [...new Set([codeToken, ...titleTokens, ...descTokens].filter(Boolean))];
+    const tokens = [
+      ...new Set([codeToken, ...titleTokens, ...descTokens].filter(Boolean)),
+    ];
     if (tokens.length === 0) return null;
 
     let best: { text: string; score: number } | null = null;
@@ -629,15 +657,20 @@ export default function SrsDocumentsPage() {
   };
 
   return (
-    <MainLayout title="SRS Documents" breadcrumbs={breadcrumbs}>
+    <MainLayout
+      title={t("pages.SrsDocumentsPage.srs_documents")}
+      breadcrumbs={breadcrumbs}
+    >
       <div className="space-y-8 pb-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-on-surface">
-              SRS Documents
+              {t("pages.SrsDocumentsPage.srs_documents")}
             </h1>
             <p className="text-on-surface-variant">
-              Manage SRS documents, run analysis, and review requirements.
+              {t(
+                "pages.SrsDocumentsPage.manage_srs_documents_run_analysis_and_re",
+              )}
             </p>
           </div>
           <div className="flex gap-3">
@@ -647,7 +680,7 @@ export default function SrsDocumentsPage() {
               className="px-5 py-2.5 rounded-xl bg-surface-container-high dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-semibold flex items-center gap-2 hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all"
             >
               <RefreshCw className="w-4 h-4" />
-              Refresh
+              {t("pages.SrsDocumentsPage.refresh")}
             </button>
             <button
               type="button"
@@ -655,7 +688,7 @@ export default function SrsDocumentsPage() {
               className="px-5 py-2.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <Plus className="w-4 h-4" />
-              New SRS
+              {t("pages.SrsDocumentsPage.new_srs")}
             </button>
           </div>
         </header>
@@ -663,7 +696,7 @@ export default function SrsDocumentsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
             <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
-              Documents
+              {t("pages.SrsDocumentsPage.documents")}
             </p>
             <p className="mt-2 text-3xl font-black text-on-surface">
               {documents.length}
@@ -671,7 +704,7 @@ export default function SrsDocumentsPage() {
           </div>
           <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
             <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
-              Requirements
+              {t("pages.SrsDocumentsPage.requirements")}
             </p>
             <p className="mt-2 text-3xl font-black text-on-surface">
               {requirements.length}
@@ -679,7 +712,7 @@ export default function SrsDocumentsPage() {
           </div>
           <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
             <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
-              Reviewed
+              {t("pages.SrsDocumentsPage.reviewed")}
             </p>
             <p className="mt-2 text-3xl font-black text-on-surface">
               {requirements.filter((item) => item.isReviewed).length}
@@ -687,7 +720,7 @@ export default function SrsDocumentsPage() {
           </div>
           <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-5">
             <p className="text-[11px] uppercase tracking-widest font-bold text-on-surface-variant">
-              Critical Qs
+              {t("pages.SrsDocumentsPage.critical_qs")}
             </p>
             <p className="mt-2 text-3xl font-black text-on-surface">
               {
@@ -704,10 +737,10 @@ export default function SrsDocumentsPage() {
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-lg font-bold text-on-surface">
-                  SRS Library
+                  {t("pages.SrsDocumentsPage.srs_library")}
                 </h2>
                 <p className="text-xs text-on-surface-variant">
-                  Select a document to continue
+                  {t("pages.SrsDocumentsPage.select_a_document_to_continue")}
                 </p>
               </div>
             </div>
@@ -719,7 +752,9 @@ export default function SrsDocumentsPage() {
                 </div>
               ) : documents.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-outline-variant/20 bg-surface-container-low p-6 text-sm text-on-surface-variant text-center">
-                  No SRS documents yet. Create one to start the workflow.
+                  {t(
+                    "pages.SrsDocumentsPage.no_srs_documents_yet_create_one_to_start",
+                  )}
                 </div>
               ) : (
                 documents.map((doc) => {
@@ -755,17 +790,22 @@ export default function SrsDocumentsPage() {
                           className={cn(
                             "rounded-full px-2 py-1 font-semibold",
                             analysisStatusTone[doc.analysisStatus] ||
-                              "bg-slate-100 text-slate-700",
+                              "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
                           )}
                         >
-                          {analysisStatusLabel[doc.analysisStatus] || "Unknown"}
+                          {analysisStatusLabel[doc.analysisStatus] ||
+                            t("pages.SrsDocumentsPage.unknown")}
                         </span>
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700 font-semibold">
+                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1 text-slate-700 dark:text-slate-300 font-semibold">
                           {sourceTypeLabel[doc.sourceType] ??
-                            `Source ${doc.sourceType}`}
+                            t("pages.SrsDocumentsPage.source_with_index", {
+                              sourceType: doc.sourceType,
+                            })}
                         </span>
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700 font-semibold">
-                          {doc.requirements?.length || 0} reqs
+                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1 text-slate-700 dark:text-slate-300 font-semibold">
+                          {t("pages.SrsDocumentsPage.requirement_count", {
+                            count: doc.requirements?.length || 0,
+                          })}
                         </span>
                       </div>
                     </button>
@@ -778,19 +818,27 @@ export default function SrsDocumentsPage() {
           <div className="rounded-3xl border border-outline-variant/10 bg-surface-container-lowest p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <ClipboardList className="w-4 h-4 text-indigo-600" />
-              <h3 className="font-bold text-on-surface">Workflow Checklist</h3>
+              <h3 className="font-bold text-on-surface">
+                {t("pages.SrsDocumentsPage.workflow_checklist")}
+              </h3>
             </div>
             <div className="space-y-3 text-sm">
               {[
-                ["Create document", documents.length > 0],
                 [
-                  "Analyze with LLM",
+                  t("pages.SrsDocumentsPage.workflow_create_document"),
+                  documents.length > 0,
+                ],
+                [
+                  t("pages.SrsDocumentsPage.workflow_analyze_with_llm"),
                   Boolean(
                     selectedDocument &&
                     (analysisJobId || selectedDocument.analysisStatus === 2),
                   ),
                 ],
-                ["Review requirements", requirements.some((r) => r.isReviewed)],
+                [
+                  t("pages.SrsDocumentsPage.review_requirements"),
+                  requirements.some((r) => r.isReviewed),
+                ],
               ].map(([label, done], index) => (
                 <div key={index} className="flex items-center gap-3">
                   {done ? (
@@ -828,7 +876,9 @@ export default function SrsDocumentsPage() {
         <div className="space-y-6">
           {!selectedDocument ? (
             <div className="rounded-3xl border border-dashed border-outline-variant/20 bg-surface-container-lowest p-12 text-center text-on-surface-variant">
-              Select a document or create a new SRS to start.
+              {t(
+                "pages.SrsDocumentsPage.select_a_document_or_create_a_new_srs_to",
+              )}
             </div>
           ) : (
             <>
@@ -837,33 +887,36 @@ export default function SrsDocumentsPage() {
                   <div>
                     <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-2">
                       <BookOpen className="w-4 h-4" />
-                      Document details
+                      {t("pages.SrsDocumentsPage.document_details")}
                     </div>
                     <h2 className="text-2xl font-black text-on-surface">
                       {selectedDocument.title}
                     </h2>
-              
+
                     <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
                       <span
                         className={cn(
                           "rounded-full px-2.5 py-1 font-semibold",
                           analysisStatusTone[selectedDocument.analysisStatus] ||
-                            "bg-slate-100 text-slate-700",
+                            "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
                         )}
                       >
                         {analysisStatusLabel[selectedDocument.analysisStatus] ||
-                          "Unknown"}
+                          t("pages.SrsDocumentsPage.unknown")}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">
-                        {selectedDocument.sourceType === 0
-                          ? "TextInput"
-                          : selectedDocument.sourceType === 1
-                            ? "FileUpload"
-                            : "Url"}
+                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 font-semibold text-slate-700 dark:text-slate-300">
+                        {sourceTypeLabel[selectedDocument.sourceType] ??
+                          t("pages.SrsDocumentsPage.source_with_index", {
+                            sourceType: selectedDocument.sourceType,
+                          })}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">
-                        {requirements.filter((item) => item.isReviewed).length}/
-                        {requirements.length} reviewed
+                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 font-semibold text-slate-700 dark:text-slate-300">
+                        {t("pages.SrsDocumentsPage.reviewed_count", {
+                          reviewed: requirements.filter(
+                            (item) => item.isReviewed,
+                          ).length,
+                          total: requirements.length,
+                        })}
                       </span>
                     </div>
                   </div>
@@ -884,8 +937,8 @@ export default function SrsDocumentsPage() {
                           <Wand2 className="w-4 h-4" />
                         )}
                         {selectedDocument.analysisStatus === 1 && !isAnalyzing
-                          ? "Processing…"
-                          : "Analyze"}
+                          ? t("pages.SrsDocumentsPage.processing")
+                          : t("pages.SrsDocumentsPage.analyze")}
                       </button>
                     )}
                     {selectedDocument.analysisStatus === 3 && (
@@ -896,16 +949,23 @@ export default function SrsDocumentsPage() {
                         className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 px-4 py-3 text-white font-semibold disabled:opacity-50"
                       >
                         <RefreshCw className="w-4 h-4" />
-                        Retry
+                        {t("pages.SrsDocumentsPage.retry")}
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => {
                         showConfirm({
-                          title: "Delete document",
-                          message: `Are you sure you want to delete "${selectedDocument.title}"? This action cannot be undone.`,
-                          confirmLabel: "Delete",
+                          title: t(
+                            "pages.SrsDocumentsPage.delete_document_title",
+                          ),
+                          message: t(
+                            "pages.SrsDocumentsPage.delete_document_message",
+                            {
+                              title: selectedDocument.title,
+                            },
+                          ),
+                          confirmLabel: t("pages.SrsDocumentsPage.delete"),
                           confirmClass:
                             "bg-rose-600 hover:bg-rose-700 text-white",
                           onConfirm: () => deleteDocument(selectedDocument),
@@ -914,7 +974,7 @@ export default function SrsDocumentsPage() {
                       className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-white font-semibold"
                     >
                       <Trash2 className="w-4 h-4" />
-                      Delete
+                      {t("pages.SrsDocumentsPage.delete")}
                     </button>
                   </div>
                 </div>
@@ -922,7 +982,7 @@ export default function SrsDocumentsPage() {
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="rounded-2xl bg-surface-container-low p-4">
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant">
-                      Project
+                      {t("pages.SrsDocumentsPage.project")}
                     </p>
                     <p className="mt-1 font-semibold text-on-surface">
                       {selectedProject?.name || projectId}
@@ -930,15 +990,16 @@ export default function SrsDocumentsPage() {
                   </div>
                   <div className="rounded-2xl bg-surface-container-low p-4">
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant">
-                      Analysis job
+                      {t("pages.SrsDocumentsPage.analysis_job")}
                     </p>
                     <p className="mt-1 font-semibold text-on-surface">
-                      {analysisJobId || "Not triggered"}
+                      {analysisJobId ||
+                        t("pages.SrsDocumentsPage.not_triggered")}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-surface-container-low p-4">
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant">
-                      Requirements
+                      {t("pages.SrsDocumentsPage.requirements")}
                     </p>
                     <p className="mt-1 font-semibold text-on-surface">
                       {requirements.length}
@@ -949,7 +1010,7 @@ export default function SrsDocumentsPage() {
                 {/* Link to Test Suite */}
                 <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
                   <p className="text-xs uppercase tracking-widest text-on-surface-variant mb-3">
-                    Liên kết bộ kịch bản kiểm thử
+                    {t("pages.SrsDocumentsPage.link_test_suite")}
                   </p>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="flex-1">
@@ -958,7 +1019,9 @@ export default function SrsDocumentsPage() {
                         onChange={(e) => setLinkSuiteId(e.target.value)}
                         className="w-full rounded-xl border border-outline-variant/30 bg-surface-container px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                       >
-                        <option value="">— Bỏ liên kết —</option>
+                        <option value="">
+                          {t("pages.SrsDocumentsPage.unlink_option")}
+                        </option>
                         {testSuites.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name}
@@ -968,7 +1031,7 @@ export default function SrsDocumentsPage() {
                     </div>
                     {selectedDocument.testSuiteId && (
                       <p className="text-xs text-on-surface-variant">
-                        Hiện tại:{" "}
+                        {t("pages.SrsDocumentsPage.current_label")}{" "}
                         <span className="font-medium text-primary">
                           {testSuites.find(
                             (s) => s.id === selectedDocument.testSuiteId,
@@ -990,7 +1053,9 @@ export default function SrsDocumentsPage() {
                       ) : (
                         <ArrowRight className="w-4 h-4" />
                       )}
-                      {linkSuiteId ? "Lưu liên kết" : "Hủy liên kết"}
+                      {linkSuiteId
+                        ? t("pages.SrsDocumentsPage.save_link")
+                        : t("pages.SrsDocumentsPage.remove_link")}
                     </button>
                   </div>
                 </div>
@@ -998,7 +1063,7 @@ export default function SrsDocumentsPage() {
                 <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant">
-                      Nội dung SRS đã upload
+                      {t("pages.SrsDocumentsPage.n_i_dung_srs_upload")}
                     </p>
                     {selectedSrsContent && (
                       <button
@@ -1006,19 +1071,23 @@ export default function SrsDocumentsPage() {
                         onClick={() => setShowFullSrsContent((v) => !v)}
                         className="text-xs font-semibold text-primary hover:underline"
                       >
-                        {showFullSrsContent ? "Thu gọn" : "Xem đầy đủ"}
+                        {showFullSrsContent
+                          ? t("pages.SrsDocumentsPage.collapse")
+                          : t("pages.SrsDocumentsPage.view_full")}
                       </button>
                     )}
                   </div>
                   {!selectedSrsContent ? (
                     <p className="mt-2 text-sm text-on-surface-variant">
-                      Chưa có raw content để hiển thị.
+                      {t("pages.SrsDocumentsPage.ch_a_c_raw_content_hi_n_th")}
                     </p>
                   ) : (
                     <pre
                       className={cn(
                         "mt-2 rounded-xl border border-outline-variant/20 bg-surface-container px-3 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words",
-                        showFullSrsContent ? "max-h-[420px] overflow-auto" : "max-h-32 overflow-hidden",
+                        showFullSrsContent
+                          ? "max-h-[420px] overflow-auto"
+                          : "max-h-32 overflow-hidden",
                       )}
                     >
                       {selectedSrsContent}
@@ -1031,19 +1100,18 @@ export default function SrsDocumentsPage() {
                 <div className="flex items-center gap-2">
                   <MessagesSquare className="w-4 h-4 text-indigo-600" />
                   <h3 className="text-lg font-bold text-on-surface">
-                    Analysis Job Status
+                    {t("pages.SrsDocumentsPage.analysis_job_status")}
                   </h3>
                 </div>
                 {!analysisJobId ? (
                   <div className="rounded-2xl bg-surface-container-low p-4 text-sm text-on-surface-variant">
-                    No analysis job queued yet. Trigger analysis after reviewing
-                    the document.
+                    {t("pages.SrsDocumentsPage.no_analysis_job")}
                   </div>
                 ) : selectedJob ? (
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
                     <div className="rounded-2xl bg-surface-container-low p-4">
                       <p className="text-xs text-on-surface-variant uppercase tracking-widest">
-                        Status
+                        {t("pages.SrsDocumentsPage.status")}
                       </p>
                       <p className="mt-1 font-semibold text-on-surface">
                         {analysisJobStatusLabel[selectedJob.status] ??
@@ -1052,7 +1120,7 @@ export default function SrsDocumentsPage() {
                     </div>
                     <div className="rounded-2xl bg-surface-container-low p-4">
                       <p className="text-xs text-on-surface-variant uppercase tracking-widest">
-                        Job Type
+                        {t("pages.SrsDocumentsPage.job_type")}
                       </p>
                       <p className="mt-1 font-semibold text-on-surface">
                         {analysisJobTypeLabel[selectedJob.jobType] ??
@@ -1061,7 +1129,7 @@ export default function SrsDocumentsPage() {
                     </div>
                     <div className="rounded-2xl bg-surface-container-low p-4">
                       <p className="text-xs text-on-surface-variant uppercase tracking-widest">
-                        Queued At
+                        {t("pages.SrsDocumentsPage.queued_at")}
                       </p>
                       <p className="mt-1 font-semibold text-on-surface">
                         {new Date(selectedJob.queuedAt).toLocaleString()}
@@ -1069,7 +1137,7 @@ export default function SrsDocumentsPage() {
                     </div>
                     <div className="rounded-2xl bg-surface-container-low p-4">
                       <p className="text-xs text-on-surface-variant uppercase tracking-widest">
-                        Extracted
+                        {t("pages.SrsDocumentsPage.extracted")}
                       </p>
                       <p className="mt-1 font-semibold text-on-surface">
                         {selectedJob.requirementsExtracted ?? "-"}
@@ -1077,7 +1145,7 @@ export default function SrsDocumentsPage() {
                     </div>
                     <div className="rounded-2xl bg-surface-container-low p-4">
                       <p className="text-xs text-on-surface-variant uppercase tracking-widest">
-                        Error
+                        {t("pages.SrsDocumentsPage.error")}
                       </p>
                       <p className="mt-1 font-semibold text-on-surface">
                         {selectedJob.errorMessage || "-"}
@@ -1086,8 +1154,8 @@ export default function SrsDocumentsPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 text-sm text-on-surface-variant">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Polling
-                    analysis job...
+                    <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                    {t("pages.SrsDocumentsPage.polling_analysis_job")}
                   </div>
                 )}
               </section>
@@ -1098,12 +1166,11 @@ export default function SrsDocumentsPage() {
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-indigo-600" />
                       <h3 className="text-lg font-bold text-on-surface">
-                        Requirements Review
+                        {t("pages.SrsDocumentsPage.requirements_review")}
                       </h3>
                     </div>
                     <p className="mt-1 text-sm text-on-surface-variant">
-                      Search, filter, edit, mark reviewed, and inspect
-                      clarifications.
+                      {t("pages.SrsDocumentsPage.requirements_review_desc")}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -1112,7 +1179,9 @@ export default function SrsDocumentsPage() {
                       <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search requirement..."
+                        placeholder={t(
+                          "pages.SrsDocumentsPage.search_requirement",
+                        )}
                         className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low py-2.5 pl-10 pr-4 text-sm outline-none"
                       />
                     </div>
@@ -1121,21 +1190,39 @@ export default function SrsDocumentsPage() {
                       onChange={(e) => setStatusFilter(e.target.value)}
                       className="rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-2.5 text-sm"
                     >
-                      <option value="all">All statuses</option>
-                      <option value="true">Reviewed</option>
-                      <option value="false">Not reviewed</option>
+                      <option value="all">
+                        {t("pages.SrsDocumentsPage.all_statuses")}
+                      </option>
+                      <option value="true">
+                        {t("pages.SrsDocumentsPage.reviewed")}
+                      </option>
+                      <option value="false">
+                        {t("pages.SrsDocumentsPage.not_reviewed")}
+                      </option>
                     </select>
                     <select
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
                       className="rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-2.5 text-sm"
                     >
-                      <option value="all">All types</option>
-                      <option value="0">Functional</option>
-                      <option value="1">NonFunctional</option>
-                      <option value="2">Security</option>
-                      <option value="3">Performance</option>
-                      <option value="4">Constraint</option>
+                      <option value="all">
+                        {t("pages.SrsDocumentsPage.all_types")}
+                      </option>
+                      <option value="0">
+                        {t("pages.SrsDocumentsPage.functional")}
+                      </option>
+                      <option value="1">
+                        {t("pages.SrsDocumentsPage.nonfunctional")}
+                      </option>
+                      <option value="2">
+                        {t("pages.SrsDocumentsPage.security")}
+                      </option>
+                      <option value="3">
+                        {t("pages.SrsDocumentsPage.performance")}
+                      </option>
+                      <option value="4">
+                        {t("pages.SrsDocumentsPage.constraint")}
+                      </option>
                     </select>
                     <button
                       type="button"
@@ -1143,14 +1230,16 @@ export default function SrsDocumentsPage() {
                       className="rounded-2xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white inline-flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
-                      Add
+                      {t("pages.SrsDocumentsPage.add")}
                     </button>
                   </div>
                 </div>
 
                 {filteredRequirements.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-outline-variant/20 bg-surface-container-low p-8 text-center text-sm text-on-surface-variant">
-                    No requirements found for current filters.
+                    {t(
+                      "pages.SrsDocumentsPage.no_requirements_found_for_current_filter",
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1189,27 +1278,37 @@ export default function SrsDocumentsPage() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
                                     {req.requirementCode ||
                                       `REQ-${req.id.slice(0, 4)}`}
                                   </span>
-                                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
                                     {requirementTypeLabel[
                                       req.requirementType
-                                    ] ?? `Type ${req.requirementType}`}
+                                    ] ??
+                                      t(
+                                        "pages.SrsDocumentsPage.type_with_index",
+                                        {
+                                          type: req.requirementType,
+                                        },
+                                      )}
                                   </span>
                                   {req.isReviewed ? (
                                     <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                                      Reviewed
+                                      {t("pages.SrsDocumentsPage.reviewed")}
                                     </span>
                                   ) : (
-                                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                                      Pending review
+                                    <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                                      {t(
+                                        "pages.SrsDocumentsPage.pending_review",
+                                      )}
                                     </span>
                                   )}
                                   {hasOpenCritical && (
-                                    <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
-                                      Critical clarifications
+                                    <span className="rounded-full bg-rose-100 dark:bg-rose-900/30 px-2.5 py-1 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+                                      {t(
+                                        "pages.SrsDocumentsPage.critical_clarifications",
+                                      )}
                                     </span>
                                   )}
                                 </div>
@@ -1220,12 +1319,15 @@ export default function SrsDocumentsPage() {
                                   {req.description}
                                 </p>
                                 {(() => {
-                                  const evidence = buildRequirementEvidence(req);
+                                  const evidence =
+                                    buildRequirementEvidence(req);
                                   if (!evidence) return null;
                                   return (
                                     <div className="mt-2 rounded-lg border border-cyan-200/60 dark:border-cyan-700/40 bg-cyan-50/50 dark:bg-cyan-950/20 px-2.5 py-2">
                                       <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
-                                        Evidence from SRS
+                                        {t(
+                                          "pages.SrsDocumentsPage.evidence_from_srs",
+                                        )}
                                       </p>
                                       <p className="mt-1 text-xs text-cyan-800 dark:text-cyan-200 whitespace-pre-wrap">
                                         {evidence}
@@ -1249,7 +1351,13 @@ export default function SrsDocumentsPage() {
                               }
                               className="text-xs font-semibold text-primary hover:underline"
                             >
-                              {isExpanded ? "Ẩn chi tiết requirement" : "Hiện chi tiết requirement"}
+                              {isExpanded
+                                ? t(
+                                    "pages.SrsDocumentsPage.hide_requirement_details",
+                                  )
+                                : t(
+                                    "pages.SrsDocumentsPage.show_requirement_details",
+                                  )}
                             </button>
                           </div>
 
@@ -1257,37 +1365,49 @@ export default function SrsDocumentsPage() {
                             <div className="mt-3 space-y-2 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3">
                               <div>
                                 <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
-                                  Full Description
+                                  {t("pages.SrsDocumentsPage.full_description")}
                                 </p>
                                 <p className="mt-1 text-sm text-on-surface whitespace-pre-wrap">
-                                  {req.description || "No description"}
+                                  {req.description ||
+                                    t("pages.SrsDocumentsPage.no_description")}
                                 </p>
                               </div>
 
                               <div>
                                 <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
-                                  Constraints (for test generation)
+                                  {t(
+                                    "pages.SrsDocumentsPage.constraints_for_test_generation",
+                                  )}
                                 </p>
                                 <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
-                                  {parsedConstraints || "No constraints"}
+                                  {parsedConstraints ||
+                                    t("pages.SrsDocumentsPage.no_constraints")}
                                 </pre>
                               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 <div>
                                   <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
-                                    Assumptions
+                                    {t("pages.SrsDocumentsPage.assumptions")}
                                   </p>
                                   <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
-                                    {parsedAssumptions || "No assumptions"}
+                                    {parsedAssumptions ||
+                                      t(
+                                        "pages.SrsDocumentsPage.no_assumptions",
+                                      )}
                                   </pre>
                                 </div>
                                 <div>
                                   <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">
-                                    Ambiguities / Clarification hints
+                                    {t(
+                                      "pages.SrsDocumentsPage.ambiguities_clarification_hints",
+                                    )}
                                   </p>
                                   <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
-                                    {parsedAmbiguities || "No ambiguities"}
+                                    {parsedAmbiguities ||
+                                      t(
+                                        "pages.SrsDocumentsPage.no_ambiguities",
+                                      )}
                                   </pre>
                                 </div>
                               </div>
@@ -1302,11 +1422,13 @@ export default function SrsDocumentsPage() {
                                 openRequirement(req);
                                 setIsClarifyModalOpen(true);
                               }}
-                              title="Edit this requirement"
+                              title={t(
+                                "pages.SrsDocumentsPage.edit_this_requirement",
+                              )}
                               className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
                             >
                               <Pencil className="w-4 h-4" />
-                              Edit
+                              {t("pages.SrsDocumentsPage.edit")}
                             </button>
 
                             {/* Clarifications shortcut — only when unanswered critical exist */}
@@ -1317,12 +1439,14 @@ export default function SrsDocumentsPage() {
                                   openRequirement(req);
                                   setIsClarifyModalOpen(true);
                                 }}
-                                title="View and answer clarification questions"
-                                className="inline-flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
+                                title={t(
+                                  "pages.SrsDocumentsPage.view_answer_clarifications",
+                                )}
+                                className="inline-flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
                               >
                                 <MessagesSquare className="w-4 h-4" />
-                                Clarify
-                                <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                                {t("pages.SrsDocumentsPage.clarify")}
+                                <span className="rounded-full bg-amber-200 dark:bg-amber-900/50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200">
                                   {criticalCount - answeredCritical}
                                 </span>
                               </button>
@@ -1339,8 +1463,16 @@ export default function SrsDocumentsPage() {
                                 }
                                 title={
                                   answeredCritical < criticalCount
-                                    ? `Answer all ${criticalCount} critical clarifications before refining (${answeredCritical}/${criticalCount} done)`
-                                    : "Refine this requirement with AI using your answers"
+                                    ? t(
+                                        "pages.SrsDocumentsPage.answer_all_critical_before_refining",
+                                        {
+                                          total: criticalCount,
+                                          answered: answeredCritical,
+                                        },
+                                      )
+                                    : t(
+                                        "pages.SrsDocumentsPage.refine_with_ai_using_answers",
+                                      )
                                 }
                                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                               >
@@ -1349,7 +1481,7 @@ export default function SrsDocumentsPage() {
                                 ) : (
                                   <Wand2 className="w-4 h-4" />
                                 )}
-                                Refine with AI
+                                {t("pages.SrsDocumentsPage.refine_with_ai")}
                                 {answeredCritical < criticalCount && (
                                   <span className="text-[10px] opacity-70 font-normal">
                                     {answeredCritical}/{criticalCount}
@@ -1362,12 +1494,23 @@ export default function SrsDocumentsPage() {
                             {req.isReviewed ? (
                               <button
                                 type="button"
-                                title="Click to unmark as reviewed"
+                                title={t(
+                                  "pages.SrsDocumentsPage.click_to_unmark_reviewed",
+                                )}
                                 onClick={() => {
                                   showConfirm({
-                                    title: "Unmark as reviewed",
-                                    message: `Remove the "Reviewed" status from "${req.title}"? This requirement will return to pending review.`,
-                                    confirmLabel: "Unmark",
+                                    title: t(
+                                      "pages.SrsDocumentsPage.unmark_reviewed_title",
+                                    ),
+                                    message: t(
+                                      "pages.SrsDocumentsPage.unmark_reviewed_message",
+                                      {
+                                        title: req.title,
+                                      },
+                                    ),
+                                    confirmLabel: t(
+                                      "pages.SrsDocumentsPage.unmark",
+                                    ),
                                     confirmClass:
                                       "bg-rose-600 hover:bg-rose-700 text-white",
                                     onConfirm: async () => {
@@ -1387,7 +1530,9 @@ export default function SrsDocumentsPage() {
                                           ),
                                         );
                                         showSuccessToast(
-                                          "Marked as pending review.",
+                                          t(
+                                            "pages.SrsDocumentsPage.marked_pending_review",
+                                          ),
                                         );
                                       } catch (err) {
                                         handleError(err);
@@ -1398,7 +1543,7 @@ export default function SrsDocumentsPage() {
                                 className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
                               >
                                 <CheckCircle2 className="w-4 h-4" />
-                                Reviewed
+                                {t("pages.SrsDocumentsPage.reviewed")}
                               </button>
                             ) : (
                               <button
@@ -1421,7 +1566,9 @@ export default function SrsDocumentsPage() {
                                         ),
                                       );
                                       showSuccessToast(
-                                        "Requirement marked reviewed.",
+                                        t(
+                                          "pages.SrsDocumentsPage.requirement_marked_reviewed",
+                                        ),
                                       );
                                     } catch (err) {
                                       handleError(err);
@@ -1429,9 +1576,19 @@ export default function SrsDocumentsPage() {
                                   };
                                   if (hasOpenCritical) {
                                     showConfirm({
-                                      title: "Unresolved clarifications",
-                                      message: `This requirement still has ${criticalCount - answeredCritical} unanswered critical clarification(s). Marking as reviewed without resolving them may lead to incomplete or inaccurate test generation.`,
-                                      confirmLabel: "Mark reviewed anyway",
+                                      title: t(
+                                        "pages.SrsDocumentsPage.unresolved_clarifications_title",
+                                      ),
+                                      message: t(
+                                        "pages.SrsDocumentsPage.unresolved_clarifications_message",
+                                        {
+                                          remaining:
+                                            criticalCount - answeredCritical,
+                                        },
+                                      ),
+                                      confirmLabel: t(
+                                        "pages.SrsDocumentsPage.mark_reviewed_anyway",
+                                      ),
                                       confirmClass:
                                         "bg-amber-500 hover:bg-amber-600 text-white",
                                       onConfirm: doMark,
@@ -1443,7 +1600,7 @@ export default function SrsDocumentsPage() {
                                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
                               >
                                 <CheckCircle2 className="w-4 h-4" />
-                                Mark reviewed
+                                {t("pages.SrsDocumentsPage.mark_reviewed")}
                               </button>
                             )}
                             <button
@@ -1452,18 +1609,20 @@ export default function SrsDocumentsPage() {
                                 e.stopPropagation();
                                 handleDeleteRequirement(req);
                               }}
-                              title="Delete requirement"
-                              className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
+                              title={t(
+                                "pages.SrsDocumentsPage.delete_requirement_button_title",
+                              )}
+                              className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 text-sm font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
-                              Delete
+                              {t("pages.SrsDocumentsPage.delete")}
                             </button>
                           </div>
 
                           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                             <div className="rounded-xl bg-surface-container-low p-3">
                               <p className="uppercase tracking-widest text-on-surface-variant">
-                                Confidence
+                                {t("pages.SrsDocumentsPage.confidence")}
                               </p>
                               <p className="mt-1 font-semibold text-on-surface">
                                 {req.refinedConfidenceScore != null ? (
@@ -1482,21 +1641,23 @@ export default function SrsDocumentsPage() {
                             </div>
                             <div className="rounded-xl bg-surface-container-low p-3">
                               <p className="uppercase tracking-widest text-on-surface-variant">
-                                Endpoint
+                                {t("pages.SrsDocumentsPage.endpoint")}
                               </p>
                               <p className="mt-1 font-semibold text-on-surface">
                                 {req.mappedEndpointPath ||
                                   req.endpointId ||
-                                  "Not mapped"}
+                                  t("pages.SrsDocumentsPage.not_mapped")}
                               </p>
                             </div>
                             <div className="rounded-xl bg-surface-container-low p-3">
                               <p className="uppercase tracking-widest text-on-surface-variant">
-                                Clarifications
+                                {t("pages.SrsDocumentsPage.clarifications")}
                               </p>
                               <p className="mt-1 font-semibold text-on-surface">
-                                {answeredCritical}/{criticalCount} critical
-                                answered
+                                {t("pages.SrsDocumentsPage.critical_answered", {
+                                  answered: answeredCritical,
+                                  total: criticalCount,
+                                })}
                               </p>
                             </div>
                             {(req.refinedConstraints ||
@@ -1505,7 +1666,9 @@ export default function SrsDocumentsPage() {
                                 <div className="flex items-center gap-2 mb-1">
                                   <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                                   <p className="uppercase tracking-widest text-indigo-600 text-[10px] font-bold">
-                                    Refined × {req.refinementRound ?? 1}
+                                    {t("pages.SrsDocumentsPage.refined_round", {
+                                      count: req.refinementRound ?? 1,
+                                    })}
                                   </p>
                                 </div>
                                 {req.refinedConstraints && (
@@ -1527,17 +1690,16 @@ export default function SrsDocumentsPage() {
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
                   <h3 className="text-lg font-bold text-on-surface">
-                    Traceability shortcut
+                    {t("pages.SrsDocumentsPage.traceability_shortcut")}
                   </h3>
                 </div>
                 <div className="rounded-2xl bg-surface-container-low p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <p className="font-semibold text-on-surface">
-                      Open matrix for this suite
+                      {t("pages.SrsDocumentsPage.open_matrix_for_this_suite")}
                     </p>
                     <p className="text-sm text-on-surface-variant">
-                      Use the dedicated traceability dashboard to inspect
-                      coverage.
+                      {t("pages.SrsDocumentsPage.use_traceability_dashboard")}
                     </p>
                   </div>
                   <button
@@ -1549,7 +1711,7 @@ export default function SrsDocumentsPage() {
                     }
                     className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-white font-semibold"
                   >
-                    Open traceability
+                    {t("pages.SrsDocumentsPage.open_traceability")}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -1563,7 +1725,7 @@ export default function SrsDocumentsPage() {
       <Modal
         isOpen={isClarifyModalOpen && !!selectedRequirement}
         onClose={() => setIsClarifyModalOpen(false)}
-        title="Clarification & Refinement"
+        title={t("pages.SrsDocumentsPage.clarification_and_refinement")}
         className="max-w-2xl"
         footer={
           selectedRequirement ? (
@@ -1577,8 +1739,10 @@ export default function SrsDocumentsPage() {
                 }
                 title={
                   !canRefineCurrentRequirement
-                    ? "Answer all critical clarifications first"
-                    : "Refine this requirement with AI"
+                    ? t("pages.SrsDocumentsPage.answer_all_critical_first")
+                    : t(
+                        "pages.SrsDocumentsPage.refine_this_requirement_with_ai",
+                      )
                 }
                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -1587,7 +1751,7 @@ export default function SrsDocumentsPage() {
                 ) : (
                   <Sparkles className="w-4 h-4" />
                 )}
-                Refine with AI
+                {t("pages.SrsDocumentsPage.refine_with_ai")}
               </button>
               <button
                 type="button"
@@ -1599,14 +1763,14 @@ export default function SrsDocumentsPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Save requirement
+                {t("pages.SrsDocumentsPage.save_requirement")}
               </button>
               <button
                 type="button"
                 onClick={() => setIsClarifyModalOpen(false)}
                 className="ml-auto rounded-xl bg-surface-container-low px-4 py-2 text-sm font-semibold"
               >
-                Close
+                {t("pages.SrsDocumentsPage.close")}
               </button>
             </div>
           ) : null
@@ -1615,7 +1779,7 @@ export default function SrsDocumentsPage() {
         {selectedRequirement && (
           <div className="space-y-5">
             {/* Requirement header */}
-            <div className="rounded-2xl bg-slate-50 p-4 flex items-start gap-3">
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-4 flex items-start gap-3">
               <MessagesSquare className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
@@ -1630,11 +1794,13 @@ export default function SrsDocumentsPage() {
             {/* Clarification questions */}
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
-                Clarification questions
+                {t("pages.SrsDocumentsPage.clarification_questions")}
               </p>
               {(clarifications[selectedRequirement.id] || []).length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-outline-variant/20 bg-surface-container-low p-4 text-sm text-on-surface-variant">
-                  No clarification questions for this requirement.
+                  {t(
+                    "pages.SrsDocumentsPage.no_clarification_questions_for_this_requ",
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1645,10 +1811,10 @@ export default function SrsDocumentsPage() {
                         className={cn(
                           "rounded-2xl border p-4 space-y-3",
                           item.isAnswered
-                            ? "border-emerald-200 bg-emerald-50/50"
+                            ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20"
                             : item.isCritical
-                              ? "border-rose-200 bg-rose-50/40"
-                              : "border-outline-variant/10 bg-surface-container-low",
+                              ? "border-rose-200 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-950/20"
+                              : "border-outline-variant/10 dark:border-slate-800 bg-surface-container-low dark:bg-slate-800/50",
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -1658,28 +1824,34 @@ export default function SrsDocumentsPage() {
                                 className={cn(
                                   "rounded-full px-2 py-1 text-[11px] font-semibold",
                                   item.isCritical
-                                    ? "bg-rose-100 text-rose-700"
-                                    : "bg-amber-100 text-amber-700",
+                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
                                 )}
                               >
-                                {item.isCritical ? "Critical" : "Optional"}
+                                {item.isCritical
+                                  ? t("pages.SrsDocumentsPage.critical")
+                                  : t("pages.SrsDocumentsPage.optional")}
                               </span>
                               <span
                                 className={cn(
                                   "rounded-full px-2 py-1 text-[11px] font-semibold",
                                   item.isAnswered
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : "bg-slate-100 text-slate-600",
+                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
                                 )}
                               >
-                                {item.isAnswered ? "Answered" : "Open"}
+                                {item.isAnswered
+                                  ? t("pages.SrsDocumentsPage.answered")
+                                  : t("pages.SrsDocumentsPage.open")}
                               </span>
                             </div>
                             <p className="mt-2 font-medium text-on-surface text-sm">
                               {item.question}
                             </p>
                             <p className="mt-1 text-xs text-on-surface-variant">
-                              Source: {item.ambiguitySource}
+                              {t("pages.SrsDocumentsPage.source_label", {
+                                source: item.ambiguitySource,
+                              })}
                             </p>
                           </div>
                           <button
@@ -1691,11 +1863,12 @@ export default function SrsDocumentsPage() {
                             className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
                           >
                             <Send className="w-3.5 h-3.5" />
-                            Answer
+                            {t("pages.SrsDocumentsPage.answer")}
                           </button>
                         </div>
-                        <div className="rounded-xl bg-white border border-outline-variant/10 px-3 py-2 text-sm text-on-surface-variant">
-                          {item.userAnswer || "No answer yet."}
+                        <div className="rounded-xl bg-white dark:bg-slate-900 border border-outline-variant/10 dark:border-slate-800 px-3 py-2 text-sm text-on-surface-variant">
+                          {item.userAnswer ||
+                            t("pages.SrsDocumentsPage.no_answer_yet")}
                         </div>
                       </div>
                     ),
@@ -1707,7 +1880,7 @@ export default function SrsDocumentsPage() {
             {/* Edit requirement form */}
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
-                Edit requirement
+                {t("pages.SrsDocumentsPage.edit_requirement")}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input
@@ -1718,7 +1891,7 @@ export default function SrsDocumentsPage() {
                       title: e.target.value,
                     }))
                   }
-                  placeholder="Title"
+                  placeholder={t("pages.SrsDocumentsPage.title")}
                   className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
                 />
                 <input
@@ -1729,7 +1902,7 @@ export default function SrsDocumentsPage() {
                       endpointId: e.target.value,
                     }))
                   }
-                  placeholder="Endpoint ID"
+                  placeholder={t("pages.SrsDocumentsPage.endpoint_id")}
                   className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
                 />
                 <textarea
@@ -1741,7 +1914,9 @@ export default function SrsDocumentsPage() {
                     }))
                   }
                   rows={3}
-                  placeholder="Testable constraints JSON"
+                  placeholder={t(
+                    "pages.SrsDocumentsPage.testable_constraints_json",
+                  )}
                   className="md:col-span-2 w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm font-mono"
                 />
                 <label className="md:col-span-2 flex items-center gap-3 rounded-2xl bg-surface-container-low px-4 py-3 text-sm cursor-pointer">
@@ -1755,7 +1930,7 @@ export default function SrsDocumentsPage() {
                       }))
                     }
                   />
-                  Mark this requirement reviewed
+                  {t("pages.SrsDocumentsPage.mark_this_requirement_reviewed")}
                 </label>
               </div>
             </div>
@@ -1766,22 +1941,26 @@ export default function SrsDocumentsPage() {
       <Modal
         isOpen={isAddReqOpen}
         onClose={() => setIsAddReqOpen(false)}
-        title="Add Requirement"
+        title={t("pages.SrsDocumentsPage.add_requirement")}
         footer={
           <>
             <button
               onClick={() => setIsAddReqOpen(false)}
               className="rounded-xl bg-surface-container-low px-4 py-2 font-semibold"
             >
-              Cancel
+              {t("pages.SrsDocumentsPage.cancel")}
             </button>
             <button
               onClick={handleAddRequirement}
               disabled={isAddingReq}
               className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white inline-flex items-center gap-2"
             >
-              {isAddingReq ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Add
+              {isAddingReq ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              {t("pages.SrsDocumentsPage.add")}
             </button>
           </>
         }
@@ -1789,38 +1968,61 @@ export default function SrsDocumentsPage() {
         <div className="space-y-3">
           <input
             value={addReqForm.title}
-            onChange={(e) => setAddReqForm((prev) => ({ ...prev, title: e.target.value }))}
-            placeholder="Title *"
+            onChange={(e) =>
+              setAddReqForm((prev) => ({ ...prev, title: e.target.value }))
+            }
+            placeholder={t("pages.SrsDocumentsPage.title_required_placeholder")}
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
           />
           <input
             value={addReqForm.description}
-            onChange={(e) => setAddReqForm((prev) => ({ ...prev, description: e.target.value }))}
-            placeholder="Description (optional)"
+            onChange={(e) =>
+              setAddReqForm((prev) => ({
+                ...prev,
+                description: e.target.value,
+              }))
+            }
+            placeholder={t("pages.SrsDocumentsPage.description_optional")}
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
           />
           <select
             value={addReqForm.requirementType}
-            onChange={(e) => setAddReqForm((prev) => ({ ...prev, requirementType: Number(e.target.value) }))}
+            onChange={(e) =>
+              setAddReqForm((prev) => ({
+                ...prev,
+                requirementType: Number(e.target.value),
+              }))
+            }
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
           >
-            <option value={0}>Functional</option>
-            <option value={1}>NonFunctional</option>
-            <option value={2}>Security</option>
-            <option value={3}>Performance</option>
-            <option value={4}>Constraint</option>
+            <option value={0}>{t("pages.SrsDocumentsPage.functional")}</option>
+            <option value={1}>
+              {t("pages.SrsDocumentsPage.nonfunctional")}
+            </option>
+            <option value={2}>{t("pages.SrsDocumentsPage.security")}</option>
+            <option value={3}>{t("pages.SrsDocumentsPage.performance")}</option>
+            <option value={4}>{t("pages.SrsDocumentsPage.constraint")}</option>
           </select>
           <textarea
             rows={3}
             value={addReqForm.testableConstraints}
-            onChange={(e) => setAddReqForm((prev) => ({ ...prev, testableConstraints: e.target.value }))}
-            placeholder="Testable constraints (optional)"
+            onChange={(e) =>
+              setAddReqForm((prev) => ({
+                ...prev,
+                testableConstraints: e.target.value,
+              }))
+            }
+            placeholder={t(
+              "pages.SrsDocumentsPage.testable_constraints_optional",
+            )}
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm font-mono"
           />
           <input
             value={addReqForm.endpointId}
-            onChange={(e) => setAddReqForm((prev) => ({ ...prev, endpointId: e.target.value }))}
-            placeholder="Endpoint ID (optional)"
+            onChange={(e) =>
+              setAddReqForm((prev) => ({ ...prev, endpointId: e.target.value }))
+            }
+            placeholder={t("pages.SrsDocumentsPage.endpoint_id_optional")}
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3 text-sm"
           />
         </div>
@@ -1829,14 +2031,14 @@ export default function SrsDocumentsPage() {
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Create SRS Document"
+        title={t("pages.SrsDocumentsPage.create_srs_document")}
         footer={
           <>
             <button
               onClick={() => setIsCreateOpen(false)}
               className="rounded-xl bg-surface-container-low px-4 py-2 font-semibold"
             >
-              Cancel
+              {t("pages.SrsDocumentsPage.cancel")}
             </button>
             <button
               onClick={createDocument}
@@ -1848,7 +2050,7 @@ export default function SrsDocumentsPage() {
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              Create
+              {t("pages.SrsDocumentsPage.create")}
             </button>
           </>
         }
@@ -1860,7 +2062,7 @@ export default function SrsDocumentsPage() {
               setCreateForm((prev) => ({ ...prev, title: e.target.value }))
             }
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3"
-            placeholder="Document title"
+            placeholder={t("pages.SrsDocumentsPage.document_title")}
           />
           <select
             value={createForm.sourceType}
@@ -1872,9 +2074,9 @@ export default function SrsDocumentsPage() {
             }
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3"
           >
-            <option value={0}>TextInput</option>
-            <option value={1}>FileUpload</option>
-            <option value={2}>Url</option>
+            <option value={0}>{t("pages.SrsDocumentsPage.textinput")}</option>
+            <option value={1}>{t("pages.SrsDocumentsPage.fileupload")}</option>
+            <option value={2}>{t("pages.SrsDocumentsPage.url")}</option>
           </select>
           {createForm.sourceType === 0 && (
             <>
@@ -1888,7 +2090,9 @@ export default function SrsDocumentsPage() {
                   }))
                 }
                 className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3"
-                placeholder="Paste SRS content"
+                placeholder={t(
+                  "pages.SrsDocumentsPage.paste_srs_content_placeholder",
+                )}
               />
               <label className="flex items-center gap-3 cursor-pointer rounded-2xl border border-dashed border-outline-variant/20 bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
                 {isFileLoading ? (
@@ -1896,7 +2100,7 @@ export default function SrsDocumentsPage() {
                 ) : (
                   <Upload className="w-4 h-4" />
                 )}
-                Or load from .txt / .md file
+                {t("pages.SrsDocumentsPage.load_from_txt_md")}
                 <input
                   type="file"
                   accept=".txt,.md,.srs"
@@ -1921,8 +2125,9 @@ export default function SrsDocumentsPage() {
               </label>
               {createForm.rawContent && (
                 <p className="text-xs text-emerald-700 font-medium">
-                  Content loaded:{" "}
-                  {createForm.rawContent.length.toLocaleString()} characters
+                  {t("pages.SrsDocumentsPage.content_loaded", {
+                    count: createForm.rawContent.length.toLocaleString(),
+                  })}
                 </p>
               )}
             </>
@@ -1934,29 +2139,33 @@ export default function SrsDocumentsPage() {
                   <>
                     <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
                     <span className="font-medium text-indigo-600">
-                      Đang tải lên…
+                      {t("pages.SrsDocumentsPage.uploading")}
                     </span>
                   </>
                 ) : createForm.storageFileId ? (
                   <>
                     <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                     <span className="font-semibold text-emerald-700">
-                      File đã tải lên thành công
+                      {t("pages.SrsDocumentsPage.file_t_i_l_n_th_nh_c_ng")}
                     </span>
                     <span className="text-xs text-on-surface-variant break-all">
                       {createForm.storageFileId}
                     </span>
                     <span className="text-xs underline text-indigo-600">
-                      Nhấn để chọn file khác
+                      {t("pages.SrsDocumentsPage.nh_n_ch_n_file_kh_c")}
                     </span>
                   </>
                 ) : (
                   <>
                     <Upload className="w-8 h-8" />
                     <span className="font-medium">
-                      Nhấn để chọn file PDF / DOCX / TXT / MD
+                      {t(
+                        "pages.SrsDocumentsPage.nh_n_ch_n_file_pdf_docx_txt_md",
+                      )}
                     </span>
-                    <span className="text-xs">Tối đa 20 MB</span>
+                    <span className="text-xs">
+                      {t("pages.SrsDocumentsPage.max_file_size")}
+                    </span>
                   </>
                 )}
                 <input
@@ -1972,7 +2181,10 @@ export default function SrsDocumentsPage() {
                       const fd = new FormData();
                       fd.append("formFile", file);
                       fd.append("name", file.name);
-                      fd.append("description", "SRS document");
+                      fd.append(
+                        "description",
+                        t("pages.SrsDocumentsPage.srs_documents"),
+                      );
                       const result = await (
                         await import("../services/apiService")
                       ).apiService.uploadFile<{ id: string }>("/files", fd);
@@ -1980,7 +2192,9 @@ export default function SrsDocumentsPage() {
                         ...prev,
                         storageFileId: result.id,
                       }));
-                      showSuccessToast("File tải lên thành công.");
+                      showSuccessToast(
+                        t("pages.SrsDocumentsPage.file_upload_success_toast"),
+                      );
                     } catch (err) {
                       handleError(err);
                     } finally {
@@ -2002,15 +2216,12 @@ export default function SrsDocumentsPage() {
                 }))
               }
               className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3"
-              placeholder="https://example.com/srs-document"
+              placeholder={t("pages.SrsDocumentsPage.url_placeholder")}
             />
           )}
           <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 mt-0.5" />
-            <div>
-              Follow the contract flow: create document, analyze asynchronously,
-              review requirements, answer critical clarifications, then refine.
-            </div>
+            <div>{t("pages.SrsDocumentsPage.contract_flow_hint")}</div>
           </div>
         </div>
       </Modal>
@@ -2018,14 +2229,14 @@ export default function SrsDocumentsPage() {
       <Modal
         isOpen={Boolean(activeClarificationRequirementId)}
         onClose={() => setActiveClarificationRequirementId(null)}
-        title="Answer Clarification"
+        title={t("pages.SrsDocumentsPage.answer_clarification")}
         footer={
           <>
             <button
               onClick={() => setActiveClarificationRequirementId(null)}
               className="rounded-xl bg-surface-container-low px-4 py-2 font-semibold"
             >
-              Cancel
+              {t("pages.SrsDocumentsPage.cancel")}
             </button>
             <button
               onClick={async () => {
@@ -2042,7 +2253,7 @@ export default function SrsDocumentsPage() {
               className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white inline-flex items-center gap-2"
             >
               <Send className="w-4 h-4" />
-              Save answer
+              {t("pages.SrsDocumentsPage.save_answer")}
             </button>
           </>
         }
@@ -2053,10 +2264,12 @@ export default function SrsDocumentsPage() {
             value={clarificationAnswer}
             onChange={(e) => setClarificationAnswer(e.target.value)}
             className="w-full rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3"
-            placeholder="Type the clarification answer"
+            placeholder={t("pages.SrsDocumentsPage.type_clarification_answer")}
           />
           <p className="text-xs text-on-surface-variant">
-            Answers are saved via PATCH to the clarification endpoint.
+            {t(
+              "pages.SrsDocumentsPage.answers_are_saved_via_patch_to_the_clari",
+            )}
           </p>
         </div>
       </Modal>
@@ -2074,7 +2287,7 @@ export default function SrsDocumentsPage() {
               onClick={closeConfirm}
               className="rounded-xl bg-surface-container-low px-4 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
             >
-              Cancel
+              {t("pages.SrsDocumentsPage.cancel")}
             </button>
             <button
               type="button"
@@ -2088,7 +2301,8 @@ export default function SrsDocumentsPage() {
                   "bg-indigo-600 hover:bg-indigo-700 text-white",
               )}
             >
-              {confirmDialog.confirmLabel || "Confirm"}
+              {confirmDialog.confirmLabel ||
+                t("pages.SrsDocumentsPage.confirm")}
             </button>
           </div>
         }

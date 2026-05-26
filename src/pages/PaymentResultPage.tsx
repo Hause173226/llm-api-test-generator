@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
 import subscriptionService, {
   PaymentIntent,
@@ -18,6 +19,7 @@ const isFinalStatus = (status: number) =>
 export default function PaymentResultPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const status = searchParams.get("status"); // "success" | "failed"
   const intentId = searchParams.get("intentId");
@@ -86,11 +88,10 @@ export default function PaymentResultPage() {
           <>
             <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mx-auto" />
             <h1 className="text-2xl font-bold text-on-surface">
-              Đang xác nhận thanh toán…
+              {t("pages.PaymentResultPage.ang_x_c_nh_n_thanh_to_n")}
             </h1>
             <p className="text-on-surface-variant text-sm">
-              Vui lòng đợi trong giây lát, chúng tôi đang kiểm tra kết quả từ
-              PayOS.
+              {t("pages.PaymentResultPage.confirming_desc")}
             </p>
           </>
         )}
@@ -99,17 +100,16 @@ export default function PaymentResultPage() {
           <>
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
             <h1 className="text-2xl font-bold text-on-surface">
-              Thanh toán thành công!
+              {t("pages.PaymentResultPage.thanh_to_n_th_nh_c_ng")}
             </h1>
             <p className="text-on-surface-variant text-sm">
-              Gói đăng ký của bạn đã được kích hoạt. Bạn có thể quay lại trang
-              billing để xem chi tiết.
+              {t("pages.PaymentResultPage.success_desc")}
             </p>
             <button
               onClick={() => navigate("/billing")}
               className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
             >
-              Xem trang Billing
+              {t("pages.PaymentResultPage.xem_trang_billing")}
             </button>
           </>
         )}
@@ -118,17 +118,16 @@ export default function PaymentResultPage() {
           <>
             <XCircle className="w-16 h-16 text-red-500 mx-auto" />
             <h1 className="text-2xl font-bold text-on-surface">
-              Thanh toán thất bại
+              {t("pages.PaymentResultPage.thanh_to_n_th_t_b_i")}
             </h1>
             <p className="text-on-surface-variant text-sm">
-              Giao dịch không thành công hoặc đã hết hạn. Vui lòng thử lại hoặc
-              chọn gói khác.
+              {t("pages.PaymentResultPage.failure_desc")}
             </p>
             <button
               onClick={() => navigate("/billing")}
               className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
             >
-              Quay lại trang Billing
+              {t("pages.PaymentResultPage.quay_l_i_trang_billing")}
             </button>
           </>
         )}
@@ -137,16 +136,17 @@ export default function PaymentResultPage() {
         {!isPending && pollingDone && !isActualSuccess && !isActualFail && (
           <>
             <Loader2 className="w-16 h-16 text-yellow-500 mx-auto" />
-            <h1 className="text-2xl font-bold text-on-surface">Đang xử lý</h1>
+            <h1 className="text-2xl font-bold text-on-surface">
+              {t("pages.PaymentResultPage.ang_x_l")}
+            </h1>
             <p className="text-on-surface-variant text-sm">
-              Thanh toán đang được xử lý. Vui lòng kiểm tra lại trang Billing
-              sau ít phút.
+              {t("pages.PaymentResultPage.processing_desc")}
             </p>
             <button
               onClick={() => navigate("/billing")}
               className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
             >
-              Xem trang Billing
+              {t("pages.PaymentResultPage.xem_trang_billing")}
             </button>
           </>
         )}
@@ -156,7 +156,7 @@ export default function PaymentResultPage() {
           className="flex items-center gap-2 text-sm text-on-surface-variant hover:text-on-surface mx-auto transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          Về trang chủ
+          {t("pages.PaymentResultPage.v_trang_ch")}
         </button>
       </div>
     </div>

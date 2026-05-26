@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
@@ -26,6 +27,7 @@ interface ApiState {
 }
 
 export default function GeneratingTestCasesPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { suiteId } = useParams<{ suiteId: string }>();
   const { selectedProject } = useProject();
@@ -105,14 +107,19 @@ export default function GeneratingTestCasesPage() {
   const POLL_INTERVAL_MS = 3000;
   const POLL_TIMEOUT_MS = 300000; // 5 minutes max
 
-  const getProgressForStatus = (jobStatus: string): { progress: number; step: string } => {
+  const getProgressForStatus = (
+    jobStatus: string,
+  ): { progress: number; step: string } => {
     switch (jobStatus) {
       case "Queued":
         return { progress: 15, step: "Job queued, waiting to start..." };
       case "Triggering":
         return { progress: 30, step: "Triggering AI generation workflow..." };
       case "WaitingForCallback":
-        return { progress: 55, step: "LLM generating test cases (this may take a few minutes)..." };
+        return {
+          progress: 55,
+          step: "LLM generating test cases (this may take a few minutes)...",
+        };
       case "Completed":
         return { progress: 100, step: "Unified generation complete!" };
       case "Failed":
@@ -122,7 +129,9 @@ export default function GeneratingTestCasesPage() {
     }
   };
 
-  const pollGenerationStatus = async (jobId: string): Promise<GenerationJobStatus> => {
+  const pollGenerationStatus = async (
+    jobId: string,
+  ): Promise<GenerationJobStatus> => {
     const startTime = Date.now();
 
     while (Date.now() - startTime < POLL_TIMEOUT_MS) {
@@ -134,7 +143,11 @@ export default function GeneratingTestCasesPage() {
       const { progress, step } = getProgressForStatus(jobStatus.status);
 
       setHappyPathState((prev) => ({ ...prev, progress, currentStep: step }));
-      setBoundaryNegativeState((prev) => ({ ...prev, progress, currentStep: step }));
+      setBoundaryNegativeState((prev) => ({
+        ...prev,
+        progress,
+        currentStep: step,
+      }));
 
       if (jobStatus.status === "Completed") {
         return jobStatus;
@@ -166,9 +179,12 @@ export default function GeneratingTestCasesPage() {
       }));
 
       // POST generate-tests returns 202 Accepted with jobId
-      const response = await apiService.post<{ jobId: string; testSuiteId: string; mode: string; message: string }>(
-        `/test-suites/${suiteId}/generate-tests`,
-      );
+      const response = await apiService.post<{
+        jobId: string;
+        testSuiteId: string;
+        mode: string;
+        message: string;
+      }>(`/test-suites/${suiteId}/generate-tests`);
 
       const jobId = response.jobId;
 
@@ -526,14 +542,16 @@ export default function GeneratingTestCasesPage() {
                       onClick={goBackInTab}
                       className="px-6 py-3 bg-surface-container-high dark:bg-slate-800 text-on-surface font-semibold rounded-xl hover:bg-surface-container-highest dark:hover:bg-slate-700 transition-all"
                     >
-                      Go Back
+                      {t("pages.GeneratingTestCasesPage.go_back")}
                     </button>
                     {showContinueButton && (
                       <button
                         onClick={handleContinue}
                         className="px-6 py-3 bg-primary dark:bg-indigo-600 text-white font-semibold rounded-xl hover:bg-primary/90 dark:hover:bg-indigo-500 transition-all"
                       >
-                        Continue to Test Cases
+                        {t(
+                          "pages.GeneratingTestCasesPage.continue_to_test_cases",
+                        )}
                       </button>
                     )}
                   </div>
@@ -543,10 +561,13 @@ export default function GeneratingTestCasesPage() {
                 {overallStatus === "generating" && (
                   <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30">
                     <p className="text-sm text-amber-800 dark:text-amber-400">
-                      💡 <span className="font-bold">Tip:</span> Unified
-                      generation is running once for all types (HappyPath,
-                      Boundary, Negative). This may take a few minutes depending
-                      on the number of endpoints.
+                      💡{" "}
+                      <span className="font-bold">
+                        {t("pages.GeneratingTestCasesPage.tip")}
+                      </span>{" "}
+                      {t(
+                        "pages.GeneratingTestCasesPage.unified_generation_tip",
+                      )}
                     </p>
                   </div>
                 )}

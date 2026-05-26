@@ -867,7 +867,9 @@ export default function TestCaseDetailPage() {
       <MainLayout title={t("testCaseStudio.title")}>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
           <AlertCircle className="w-12 h-12 text-error" />
-          <p className="text-on-surface-variant">Test case not found</p>
+          <p className="text-on-surface-variant">
+            {t("pages.TestCaseDetailPage.test_case_not_found")}
+          </p>
         </div>
       </MainLayout>
     );
@@ -885,13 +887,17 @@ export default function TestCaseDetailPage() {
           className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors "
         >
           <ArrowLeft className="w-4 h-" />
-          <span className="text-sm font-semibold">Back</span>
+          <span className="text-sm font-semibold">
+            {t("pages.TestCaseDetailPage.back")}
+          </span>
         </button>
         <header className="flex justify-between items-center">
           <div className="flex items-start gap-4 mt-10">
             <div className="">
               <h1 className="text-4xl font-bold tracking-tight text-on-surface mb-2">
-                {suggestion ? "LLM Suggestion" : t("testCaseStudio.title")}
+                {suggestion
+                  ? t("pages.TestCaseDetailPage.llm_suggestion")
+                  : t("testCaseStudio.title")}
               </h1>
               {(testCase?.name || suggestion?.suggestedName) && (
                 <p className="text-base font-semibold text-on-surface mb-1">
@@ -906,7 +912,7 @@ export default function TestCaseDetailPage() {
               {!testCase?.description && !suggestion?.suggestedDescription && (
                 <p className="text-sm text-on-surface-variant">
                   {suggestion
-                    ? "Viewing LLM suggestion details"
+                    ? t("pages.TestCaseDetailPage.viewing_llm_suggestion")
                     : t("testCaseStudio.subtitle")}
                 </p>
               )}
@@ -923,7 +929,9 @@ export default function TestCaseDetailPage() {
                   disabled={envLoading}
                   className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-on-surface border-none"
                 >
-                  <option value="">Use default</option>
+                  <option value="">
+                    {t("pages.TestCaseDetailPage.use_default")}
+                  </option>
                   {executionEnvironments?.map((env: any) => (
                     <option key={env.id} value={env.id}>
                       {env.name}
@@ -956,7 +964,7 @@ export default function TestCaseDetailPage() {
                 </button>
               </>
             ) : (
-              <div className="px-3 py-1.5 rounded-md bg-amber-100 text-amber-800 text-sm font-semibold">
+              <div className="px-3 py-1.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-sm font-semibold">
                 Viewing LLM suggestion
               </div>
             )}
@@ -980,7 +988,7 @@ export default function TestCaseDetailPage() {
                   }}
                   disabled={!canEdit}
                   type="text"
-                  placeholder="Test case name"
+                  placeholder={t("testCaseStudio.caseNamePlaceholder")}
                 />
               </div>
 
@@ -1178,7 +1186,7 @@ export default function TestCaseDetailPage() {
                     </p>
                   </>
                 ) : (
-                  <p>No details available</p>
+                  <p>{t("pages.TestCaseDetailPage.no_details_available")}</p>
                 )}
               </div>
             </div>
@@ -1257,136 +1265,137 @@ export default function TestCaseDetailPage() {
 
               return (
                 <div className="space-y-3">
-                <ExpectedAuditPanel
-                  expectedStatus={rawExp.expectedStatus}
-                  bodyContains={rawExp.bodyContains}
-                  bodyNotContains={rawExp.bodyNotContains}
-                  jsonPathChecks={rawExp.jsonPathChecks}
-                  headerChecks={rawExp.headerChecks}
-                  variables={(testCase as any)?.variables}
-                  maxResponseTime={rawExp.maxResponseTime}
-                  expectedProvenance={rawExp.expectedProvenance}
-                  expectationSource={rawExp.expectationSource}
-                  requirementCode={rawExp.requirementCode}
-                />
-                <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800">
-                  <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
-                    Legacy Expected Checks
-                  </h2>
-                  <div className="space-y-2">
-                    {expectedStatusList && expectedStatusList.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
-                          Status
-                        </span>
-                        <div className="flex flex-wrap gap-1 flex-1">
-                          {expectedStatusList.map((code, i) => (
-                            <span
-                              key={i}
-                              className={`font-mono px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                code >= 200 && code < 300
-                                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                                  : code >= 400
-                                    ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
-                                    : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                              }`}
-                            >
-                              {code}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {bodyContainsList && bodyContainsList.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
-                          Body ∋
-                        </span>
-                        <div className="flex flex-wrap gap-1 flex-1">
-                          {bodyContainsList.map((s, i) => (
-                            <span
-                              key={i}
-                              className="font-mono bg-violet-500/10 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded text-[10px] break-all"
-                            >
-                              &quot;{s}&quot;
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {bodyNotContainsList && bodyNotContainsList.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
-                          Body ∌
-                        </span>
-                        <div className="flex flex-wrap gap-1 flex-1">
-                          {bodyNotContainsList.map((s, i) => (
-                            <span
-                              key={i}
-                              className="font-mono bg-orange-500/10 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded text-[10px] break-all"
-                            >
-                              &quot;{s}&quot;
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {jsonPathMap && Object.keys(jsonPathMap).length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
-                          JSONPath
-                        </span>
-                        <div className="flex flex-col gap-0.5 flex-1">
-                          {Object.entries(jsonPathMap).map(
-                            ([path, expected]) => (
-                              <div
-                                key={path}
-                                className="flex items-center gap-1 flex-wrap"
+                  <ExpectedAuditPanel
+                    expectedStatus={rawExp.expectedStatus}
+                    bodyContains={rawExp.bodyContains}
+                    bodyNotContains={rawExp.bodyNotContains}
+                    jsonPathChecks={rawExp.jsonPathChecks}
+                    headerChecks={rawExp.headerChecks}
+                    variables={(testCase as any)?.variables}
+                    maxResponseTime={rawExp.maxResponseTime}
+                    expectedProvenance={rawExp.expectedProvenance}
+                    expectationSource={rawExp.expectationSource}
+                    requirementCode={rawExp.requirementCode}
+                  />
+                  <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800">
+                    <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
+                      Legacy Expected Checks
+                    </h2>
+                    <div className="space-y-2">
+                      {expectedStatusList && expectedStatusList.length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                            Status
+                          </span>
+                          <div className="flex flex-wrap gap-1 flex-1">
+                            {expectedStatusList.map((code, i) => (
+                              <span
+                                key={i}
+                                className={`font-mono px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  code >= 200 && code < 300
+                                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                    : code >= 400
+                                      ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                      : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                }`}
                               >
-                                <span className="font-mono bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 rounded text-[10px]">
-                                  {path}
-                                </span>
-                                <span className="text-on-surface-variant text-[10px]">
-                                  =
-                                </span>
-                                <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">
-                                  {expected || "*"}
-                                </span>
-                              </div>
-                            ),
-                          )}
+                                {code}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {headerMap && Object.keys(headerMap).length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
-                          Headers
-                        </span>
-                        <div className="flex flex-col gap-0.5 flex-1">
-                          {Object.entries(headerMap).map(([k, v]) => (
-                            <span
-                              key={k}
-                              className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]"
-                            >
-                              {k}: {v}
+                      )}
+                      {bodyContainsList && bodyContainsList.length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                            Body ∋
+                          </span>
+                          <div className="flex flex-wrap gap-1 flex-1">
+                            {bodyContainsList.map((s, i) => (
+                              <span
+                                key={i}
+                                className="font-mono bg-violet-500/10 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded text-[10px] break-all"
+                              >
+                                &quot;{s}&quot;
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {bodyNotContainsList &&
+                        bodyNotContainsList.length > 0 && (
+                          <div className="flex items-start gap-2">
+                            <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                              Body ∌
                             </span>
-                          ))}
+                            <div className="flex flex-wrap gap-1 flex-1">
+                              {bodyNotContainsList.map((s, i) => (
+                                <span
+                                  key={i}
+                                  className="font-mono bg-orange-500/10 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded text-[10px] break-all"
+                                >
+                                  &quot;{s}&quot;
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      {jsonPathMap && Object.keys(jsonPathMap).length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                            JSONPath
+                          </span>
+                          <div className="flex flex-col gap-0.5 flex-1">
+                            {Object.entries(jsonPathMap).map(
+                              ([path, expected]) => (
+                                <div
+                                  key={path}
+                                  className="flex items-center gap-1 flex-wrap"
+                                >
+                                  <span className="font-mono bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 rounded text-[10px]">
+                                    {path}
+                                  </span>
+                                  <span className="text-on-surface-variant text-[10px]">
+                                    =
+                                  </span>
+                                  <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">
+                                    {expected || "*"}
+                                  </span>
+                                </div>
+                              ),
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {maxRespTime != null && (
-                      <div className="flex items-center gap-2">
-                        <span className="w-24 shrink-0 text-[11px] text-on-surface-variant">
-                          Resp Time
-                        </span>
-                        <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">
-                          max {maxRespTime}ms
-                        </span>
-                      </div>
-                    )}
+                      )}
+                      {headerMap && Object.keys(headerMap).length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <span className="w-24 shrink-0 text-[11px] text-on-surface-variant mt-0.5">
+                            Headers
+                          </span>
+                          <div className="flex flex-col gap-0.5 flex-1">
+                            {Object.entries(headerMap).map(([k, v]) => (
+                              <span
+                                key={k}
+                                className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]"
+                              >
+                                {k}: {v}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {maxRespTime != null && (
+                        <div className="flex items-center gap-2">
+                          <span className="w-24 shrink-0 text-[11px] text-on-surface-variant">
+                            Resp Time
+                          </span>
+                          <span className="font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10px]">
+                            max {maxRespTime}ms
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
                 </div>
               );
             })()}
@@ -1605,8 +1614,9 @@ export default function TestCaseDetailPage() {
               </div>
               <div className="space-y-1">
                 {consoleOutput.length === 0 ? (
-                  <p className="text-slate-600">
-                    No execution yet. Run this test case to see request, response, and validation logs here.
+                  <p className="text-slate-600 dark:text-slate-400">
+                    No execution yet. Run this test case to see request,
+                    response, and validation logs here.
                   </p>
                 ) : (
                   consoleOutput.map((log, idx) => {
