@@ -821,6 +821,9 @@ export default function SuggestionsPage() {
                             </svg>
                             Request Input
                           </h3>
+                          <p className="mt-1 text-[11px] text-cyan-700 dark:text-cyan-300">
+                            Runtime resolved request (variables + environment auth applied), not raw n8n template.
+                          </p>
                         </div>
                         <div className="p-4 bg-white dark:bg-slate-900/50">
                           <div className="space-y-3">
@@ -1328,6 +1331,39 @@ export default function SuggestionsPage() {
                                               false
                                                 ? "✓"
                                                 : "✗"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {(testCase.validationScore != null ||
+                                        testCase.validationScoreThreshold !=
+                                          null) && (
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+                                          <div className="text-[10px] text-on-surface-variant mb-1">
+                                            Validation Scoring
+                                          </div>
+                                          <div className="flex flex-wrap gap-2">
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300">
+                                              Score:{" "}
+                                              {(
+                                                testCase.validationScore ?? 0
+                                              ).toFixed(2)}
+                                            </span>
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                              Threshold:{" "}
+                                              {(
+                                                testCase.validationScoreThreshold ??
+                                                0.8
+                                              ).toFixed(2)}
+                                            </span>
+                                            <span
+                                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${testCase.hardChecksPassed ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                            >
+                                              {testCase.hardChecksPassed
+                                                ? "✓"
+                                                : "✕"}{" "}
+                                              Hard checks
                                             </span>
                                           </div>
                                         </div>

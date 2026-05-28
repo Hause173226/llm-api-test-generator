@@ -6,8 +6,10 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronRight,
+  Eye,
   Filter,
   Loader2,
+  Pencil,
   Play,
   Plus,
   Search,
@@ -107,7 +109,15 @@ export default function GenerationRunExecutePage() {
 
   // Environment creation modal state
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
+  const [envModalMode, setEnvModalMode] = useState<"create" | "edit">(
+    "create",
+  );
+  const [editingEnvId, setEditingEnvId] = useState<string | null>(null);
+  const [editingEnvRowVersion, setEditingEnvRowVersion] = useState<
+    string | null
+  >(null);
   const [isCreatingEnv, setIsCreatingEnv] = useState(false);
+  const [showSelectedEnvDetail, setShowSelectedEnvDetail] = useState(false);
   const [envForm, setEnvForm] = useState({
     name: "",
     baseUrl: "",
@@ -142,6 +152,8 @@ export default function GenerationRunExecutePage() {
   const [filterMethod, setFilterMethod] = useState("");
   const [filterEndpoint, setFilterEndpoint] = useState("");
   const [filterTestType, setFilterTestType] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const endpointList = useMemo(() => {
     const map = new Map<string, number>();
@@ -227,6 +239,27 @@ export default function GenerationRunExecutePage() {
     endpointById,
   ]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTestCases.length / pageSize),
+  );
+
+  const pagedTestCases = useMemo(() => {
+    const safePage = Math.min(Math.max(currentPage, 1), totalPages);
+    const start = (safePage - 1) * pageSize;
+    return filteredTestCases.slice(start, start + pageSize);
+  }, [filteredTestCases, currentPage, pageSize, totalPages]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterMethod, filterEndpoint, filterTestType, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const allFilteredSelected =
     filteredTestCases.length > 0 &&
     filteredTestCases.every((item) => selectedTestCaseIds.includes(item.id));
@@ -236,6 +269,9 @@ export default function GenerationRunExecutePage() {
     const defaultEnv = items.find((env) => env.isDefault);
     return defaultEnv?.id || items[0].id;
   };
+
+  const selectedEnvironment =
+    environments.find((env) => env.id === selectedEnvironmentId) || null;
 
   // ── Environment creation helpers ──────────────────────────────────────
   const resetEnvForm = () => {
@@ -267,6 +303,51 @@ export default function GenerationRunExecutePage() {
     setShowEnvVarsSection(false);
     setShowEnvHeadersSection(false);
     setShowEnvAuthSection(false);
+  };
+
+  const openCreateEnvironmentModal = () => {
+    setEnvModalMode("create");
+    setEditingEnvId(null);
+    setEditingEnvRowVersion(null);
+    resetEnvForm();
+    setIsEnvModalOpen(true);
+  };
+
+  const openEditEnvironmentModal = () => {
+    if (!selectedEnvironment) {
+      showErrorToast("Please select an environment first.");
+      return;
+    }
+
+    setEnvModalMode("edit");
+    setEditingEnvId(selectedEnvironment.id);
+    setEditingEnvRowVersion(selectedEnvironment.rowVersion);
+    setEnvForm({
+      name: selectedEnvironment.name || "",
+      baseUrl: selectedEnvironment.baseUrl || "",
+      variables: { ...(selectedEnvironment.variables || {}) },
+      headers: { ...(selectedEnvironment.headers || {}) },
+      authConfig: {
+        authType: selectedEnvironment.authConfig?.authType || "None",
+        headerName: selectedEnvironment.authConfig?.headerName || null,
+        token: selectedEnvironment.authConfig?.token || null,
+        username: selectedEnvironment.authConfig?.username || null,
+        password: selectedEnvironment.authConfig?.password || null,
+        apiKeyName: selectedEnvironment.authConfig?.apiKeyName || null,
+        apiKeyValue: selectedEnvironment.authConfig?.apiKeyValue || null,
+        apiKeyLocation:
+          selectedEnvironment.authConfig?.apiKeyLocation || "Header",
+        tokenUrl: selectedEnvironment.authConfig?.tokenUrl || null,
+        clientId: selectedEnvironment.authConfig?.clientId || null,
+        clientSecret: selectedEnvironment.authConfig?.clientSecret || null,
+        scopes: selectedEnvironment.authConfig?.scopes || [],
+      },
+      isDefault: Boolean(selectedEnvironment.isDefault),
+    });
+    setShowEnvVarsSection(true);
+    setShowEnvHeadersSection(true);
+    setShowEnvAuthSection(true);
+    setIsEnvModalOpen(true);
   };
 
   const updateEnvAuth = (partial: Partial<ExecutionAuthConfig>) => {
@@ -359,6 +440,80 @@ export default function GenerationRunExecutePage() {
     } finally {
       setIsCreatingEnv(false);
     }
+  };
+
+  const handleSaveEnvironment = async () => {
+    if (!envForm.name.trim() || !projectId) return;
+
+    if (envModalMode === "edit") {
+      if (!editingEnvId || !editingEnvRowVersion) {
+        showErrorToast("Environment metadata is missing for update.");
+        return;
+      }
+
+      try {
+        setIsCreatingEnv(true);
+        const auth = envForm.authConfig;
+        const payload = {
+          rowVersion: editingEnvRowVersion,
+          name: envForm.name.trim(),
+          baseUrl: envForm.baseUrl.trim(),
+          variables:
+            Object.keys(envForm.variables).length > 0
+              ? envForm.variables
+              : null,
+          headers:
+            Object.keys(envForm.headers).length > 0 ? envForm.headers : null,
+          authConfig: {
+            authType: auth.authType,
+            headerName: auth.headerName || null,
+            token: auth.token || null,
+            username: auth.username || null,
+            password: auth.password || null,
+            apiKeyName: auth.apiKeyName || null,
+            apiKeyValue: auth.apiKeyValue || null,
+            apiKeyLocation: auth.apiKeyLocation || "Header",
+            tokenUrl: auth.tokenUrl || null,
+            clientId: auth.clientId || null,
+            clientSecret: auth.clientSecret || null,
+            scopes:
+              auth.scopes && auth.scopes.length > 0 ? auth.scopes : [""],
+          } as ExecutionAuthConfig,
+          isDefault: envForm.isDefault,
+        };
+
+        const updated = await environmentService.updateEnvironment(
+          projectId,
+          editingEnvId,
+          payload,
+        );
+
+        setEnvironments((prev) => {
+          let next = prev.map((env) => (env.id === updated.id ? updated : env));
+          if (updated.isDefault) {
+            next = next.map((env) =>
+              env.id === updated.id ? env : { ...env, isDefault: false },
+            );
+          }
+          return next;
+        });
+        setSelectedEnvironmentId(updated.id);
+        showSuccessToast("Environment updated successfully");
+        setIsEnvModalOpen(false);
+        setEnvModalMode("create");
+        setEditingEnvId(null);
+        setEditingEnvRowVersion(null);
+        resetEnvForm();
+      } catch (err) {
+        handleError(err);
+      } finally {
+        setIsCreatingEnv(false);
+      }
+
+      return;
+    }
+
+    await handleCreateEnvironment();
   };
 
   const buildRunsUrl = () => {
@@ -840,7 +995,7 @@ export default function GenerationRunExecutePage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => setIsEnvModalOpen(true)}
+                  onClick={openCreateEnvironmentModal}
                   className="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
@@ -863,12 +1018,58 @@ export default function GenerationRunExecutePage() {
                 </select>
                 <button
                   type="button"
-                  onClick={() => setIsEnvModalOpen(true)}
+                  onClick={() => setShowSelectedEnvDetail((prev) => !prev)}
+                  className="shrink-0 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  title="View selected environment details"
+                >
+                  <Eye className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                </button>
+                <button
+                  type="button"
+                  onClick={openEditEnvironmentModal}
+                  className="shrink-0 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  title="Edit selected environment"
+                >
+                  <Pencil className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                </button>
+                <button
+                  type="button"
+                  onClick={openCreateEnvironmentModal}
                   className="shrink-0 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   title="Create new environment"
                 >
                   <Plus className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 </button>
+              </div>
+            )}
+            {showSelectedEnvDetail && selectedEnvironment && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-700 dark:text-slate-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <p>
+                    <span className="font-semibold">Name:</span>{" "}
+                    {selectedEnvironment.name}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Base URL:</span>{" "}
+                    {selectedEnvironment.baseUrl || "N/A"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Auth:</span>{" "}
+                    {selectedEnvironment.authConfig?.authType || "None"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Default:</span>{" "}
+                    {selectedEnvironment.isDefault ? "Yes" : "No"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Variables:</span>{" "}
+                    {Object.keys(selectedEnvironment.variables || {}).length}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Headers:</span>{" "}
+                    {Object.keys(selectedEnvironment.headers || {}).length}
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -1010,7 +1211,7 @@ export default function GenerationRunExecutePage() {
                           <button
                             type="button"
                             className="underline font-semibold"
-                            onClick={() => setIsEnvModalOpen(true)}
+                            onClick={openCreateEnvironmentModal}
                           >
                             Create one
                           </button>{" "}
@@ -1057,7 +1258,7 @@ export default function GenerationRunExecutePage() {
                     No test cases match the current filters.
                   </div>
                 ) : null}
-                {filteredTestCases.map((testCase) => {
+                {pagedTestCases.map((testCase) => {
                   const checked = selectedTestCaseIds.includes(testCase.id);
                   const endpointLabel = toEndpointKey(testCase, endpointById);
 
@@ -1109,6 +1310,48 @@ export default function GenerationRunExecutePage() {
                   );
                 })}
               </div>
+
+              {filteredTestCases.length > 0 && (
+                <div className="mt-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <p className="text-xs text-on-surface-variant">
+                    Showing {(currentPage - 1) * pageSize + 1}-
+                    {Math.min(currentPage * pageSize, filteredTestCases.length)}{" "}
+                    of {filteredTestCases.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="px-2 py-1.5 rounded-md bg-surface-container-low dark:bg-slate-800 text-xs text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                    >
+                      <option value={10}>10 / page</option>
+                      <option value={20}>20 / page</option>
+                      <option value={50}>50 / page</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                      className="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-surface-container-high dark:bg-slate-700 disabled:opacity-50"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-xs text-on-surface-variant min-w-[64px] text-center">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage >= totalPages}
+                      className="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-surface-container-high dark:bg-slate-700 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -1119,7 +1362,7 @@ export default function GenerationRunExecutePage() {
                 <button
                   type="button"
                   className="underline font-semibold"
-                  onClick={() => setIsEnvModalOpen(true)}
+                  onClick={openCreateEnvironmentModal}
                 >
                   Create one
                 </button>{" "}
@@ -1165,11 +1408,16 @@ export default function GenerationRunExecutePage() {
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 pt-6 pb-2">
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                New Environment
+                {envModalMode === "edit"
+                  ? "Edit Environment"
+                  : "New Environment"}
               </h3>
               <button
                 onClick={() => {
                   setIsEnvModalOpen(false);
+                  setEnvModalMode("create");
+                  setEditingEnvId(null);
+                  setEditingEnvRowVersion(null);
                   resetEnvForm();
                 }}
                 className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
@@ -1614,6 +1862,9 @@ export default function GenerationRunExecutePage() {
                 <button
                   onClick={() => {
                     setIsEnvModalOpen(false);
+                    setEnvModalMode("create");
+                    setEditingEnvId(null);
+                    setEditingEnvRowVersion(null);
                     resetEnvForm();
                   }}
                   className="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -1621,14 +1872,14 @@ export default function GenerationRunExecutePage() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleCreateEnvironment}
+                  onClick={handleSaveEnvironment}
                   disabled={isCreatingEnv || !envForm.name.trim()}
                   className="px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-2"
                 >
                   {isCreatingEnv && (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   )}
-                  Create
+                  {envModalMode === "edit" ? "Save changes" : "Create"}
                 </button>
               </div>
             </div>

@@ -42,6 +42,7 @@ import { useProject } from "../contexts/ProjectContext";
 import testCaseService, { TestCase } from "../services/testCaseService";
 import testSuiteLlmSuggestionService, {
   GenerationJobStatus,
+  GenerationJobStatusModel,
   SuiteSuggestionModel,
   SuiteSuggestionQuery,
 } from "../services/testSuiteLlmSuggestionService";
@@ -75,6 +76,7 @@ type LocalGenerationRun = {
   generatedAt: string;
   suggestionIds?: string[];
   completedAt?: string;
+  jobId?: string;
 };
 
 type ActiveGenerationJob = {
@@ -155,6 +157,11 @@ export default function TestSuiteDetailPage() {
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [suggestionGenerationStatus, setSuggestionGenerationStatus] =
     useState<GenerationJobStatus | null>(null);
+  const [generationJobs, setGenerationJobs] = useState<
+    GenerationJobStatusModel[]
+  >([]);
+  const [isWaitingForServerCallbackData, setIsWaitingForServerCallbackData] =
+    useState(false);
   const isGeneratingSuggestionsRef = React.useRef(false);
   const isRouteActiveRef = React.useRef(true);
   const [isReviewingSuggestion, setIsReviewingSuggestion] = useState(false);
@@ -230,6 +237,7 @@ export default function TestSuiteDetailPage() {
   const hasAnyTestCases =
     Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
   const hasGeneratedSuggestions = allSuggestions.length > 0;
+  const hasServerGenerationHistory = generationJobs.length > 0;
   // Chỉ tính isStep1Completed sau khi load xong để tránh redirect nhầm
   const isStep1Completed = !isLoading && !hasChanges && hasGeneratedSuggestions;
 
@@ -710,6 +718,59 @@ export default function TestSuiteDetailPage() {
     const idx = sorted.findIndex((r) => r.id === pendingRun.id);
     setPendingGeneration({ id: pendingRun.id, label: `Generate #${idx + 1}` });
   }, [generationRuns]);
+
+  // Resume polling after page refresh/navigation:
+  // if we still have a pending local run with jobId, re-attach active job.
+  useEffect(() => {
+    if (activeGenerationJob || !generationRuns || generationRuns.length === 0) {
+      return;
+    }
+
+    const pendingWithJob = [...generationRuns]
+      .reverse()
+      .find(
+        (r) =>
+          !r.completedAt &&
+          (!r.suggestionIds || r.suggestionIds.length === 0) &&
+          !!r.jobId,
+      );
+
+    if (pendingWithJob?.jobId) {
+      setIsGeneratingSuggestions(true);
+      setActiveGenerationJob({
+        jobId: pendingWithJob.jobId,
+        runId: pendingWithJob.id,
+        generatedAt: pendingWithJob.generatedAt,
+      });
+    }
+  }, [generationRuns, activeGenerationJob]);
+
+  // Cleanup orphan pending runs (no jobId) that are too old and would otherwise
+  // leave the UI stuck in "Generating suggestions..." forever.
+  useEffect(() => {
+    if (!generationRuns || generationRuns.length === 0) return;
+    const now = Date.now();
+    const ORPHAN_PENDING_TTL_MS = 3 * 60 * 1000;
+
+    const orphanRuns = generationRuns.filter((r) => {
+      if (r.completedAt || (r.suggestionIds && r.suggestionIds.length > 0)) {
+        return false;
+      }
+      if (r.jobId) return false;
+      const startedAt = new Date(r.generatedAt).getTime();
+      return Number.isFinite(startedAt) && now - startedAt > ORPHAN_PENDING_TTL_MS;
+    });
+
+    if (orphanRuns.length > 0) {
+      orphanRuns.forEach((r) => removeGenerationRun(r.id));
+      if (!activeGenerationJob) {
+        setIsGeneratingSuggestions(false);
+      }
+      showErrorToast(
+        "Generation callback was not received. Please regenerate (n8n callback URL may be unreachable).",
+      );
+    }
+  }, [generationRuns, activeGenerationJob]);
 
   const availableSpecEndpoints = allSpecEndpoints.filter(
     (endpoint) => !endpoints.some((selected) => selected.id === endpoint.id),
@@ -1270,6 +1331,140 @@ export default function TestSuiteDetailPage() {
     endSuggestionGeneration();
   };
 
+  useEffect(() => {
+    if (!suiteId) {
+      setGenerationJobs([]);
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const controller = new AbortController();
+
+    const syncJobs = async () => {
+      try {
+        const jobs = await testSuiteLlmSuggestionService.listGenerationJobs(
+          suiteId,
+          20,
+          { signal: controller.signal },
+        );
+        if (cancelled) return;
+        const safeJobs = Array.isArray(jobs) ? jobs : [];
+        setGenerationJobs(safeJobs);
+
+        const activeFromBe = safeJobs.find((job) =>
+          ["Queued", "Triggering", "WaitingForCallback"].includes(job.status),
+        );
+
+        if (activeFromBe && !activeGenerationJob) {
+          const existingRun = generationRuns.find(
+            (run) => run.jobId === activeFromBe.jobId,
+          );
+          const runId = existingRun?.id || `be-${activeFromBe.jobId}`;
+          const generatedAt = existingRun?.generatedAt || activeFromBe.queuedAt;
+          const nextIndex = (generationRuns?.length || 0) + 1;
+
+          setPendingGeneration({
+            id: runId,
+            label: `Generate #${nextIndex}`,
+          });
+          setExpandedGenerationItemId(runId);
+          setIsGeneratingSuggestions(true);
+          setActiveGenerationJob({
+            jobId: activeFromBe.jobId,
+            runId,
+            generatedAt,
+          });
+        }
+      } catch {
+        // Keep existing UI state; next poll will retry.
+      } finally {
+        if (!cancelled) {
+          timer = setTimeout(syncJobs, 5000);
+        }
+      }
+    };
+
+    void syncJobs();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [suiteId, activeGenerationJob, generationRuns]);
+
+  useEffect(() => {
+    if (!suiteId) {
+      setIsWaitingForServerCallbackData(false);
+      return;
+    }
+
+    if (activeGenerationJob) {
+      setIsWaitingForServerCallbackData(false);
+      return;
+    }
+
+    const latestJob = generationJobs[0];
+    const noTimelineDataYet =
+      generationRuns.length === 0 &&
+      allSuggestions.length === 0 &&
+      archivedSuggestions.length === 0;
+    const shouldWait =
+      !!latestJob &&
+      noTimelineDataYet &&
+      [
+        "Queued",
+        "Triggering",
+        "WaitingForCallback",
+        // Completed can still need a short delay until suggestions are visible.
+        "Completed",
+      ].includes(String(latestJob.status));
+
+    if (!shouldWait) {
+      setIsWaitingForServerCallbackData(false);
+      return;
+    }
+
+    setIsWaitingForServerCallbackData(true);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const pump = async () => {
+      try {
+        const refreshed = await refreshSuggestions();
+        if (cancelled) return;
+
+        if (Array.isArray(refreshed) && refreshed.length > 0) {
+          setIsWaitingForServerCallbackData(false);
+          return;
+        }
+
+        await refreshArchivedSuggestions();
+      } catch {
+        // keep waiting; next cycle retries
+      } finally {
+        if (!cancelled && isRouteActiveRef.current) {
+          timer = setTimeout(pump, 4000);
+        }
+      }
+    };
+
+    void pump();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [
+    suiteId,
+    activeGenerationJob,
+    generationJobs,
+    generationRuns.length,
+    allSuggestions.length,
+    archivedSuggestions.length,
+  ]);
+
   const finalizeSuggestionGeneration = async (
     run?: LocalGenerationRun,
   ): Promise<SuiteSuggestionModel[]> => {
@@ -1314,6 +1509,7 @@ export default function TestSuiteDetailPage() {
     suiteId,
     jobId: activeGenerationJob?.jobId,
     enabled: !!activeGenerationJob,
+    timeoutMs: 180000,
   });
 
   useEffect(() => {
@@ -1412,6 +1608,8 @@ export default function TestSuiteDetailPage() {
     const nextIndex = (generationRuns?.length || 0) + 1;
     let run: LocalGenerationRun | undefined;
     let jobStarted = false;
+    const tempRunId = `pending-${Date.now()}`;
+    const tempGeneratedAt = new Date().toISOString();
 
     try {
       setForceOpenSuggestions(true);
@@ -1420,11 +1618,8 @@ export default function TestSuiteDetailPage() {
       params.set("tab", "suggestions");
       setSearchParams(params, { replace: true });
 
-      run = appendGenerationRun(new Date().toISOString());
-      const runId = run?.id ?? `pending-${Date.now()}`;
-      const generatedAt = run?.generatedAt ?? new Date().toISOString();
-      setPendingGeneration({ id: runId, label: `Generate #${nextIndex}` });
-      setExpandedGenerationItemId(runId);
+      setPendingGeneration({ id: tempRunId, label: `Generate #${nextIndex}` });
+      setExpandedGenerationItemId(tempRunId);
       setIsGeneratingSuggestions(true);
 
       if (checkGate) {
@@ -1448,12 +1643,21 @@ export default function TestSuiteDetailPage() {
         forceRefresh,
       });
 
+      run = appendGenerationRun(new Date().toISOString());
+      const runId = run?.id ?? tempRunId;
+      const generatedAt = run?.generatedAt ?? tempGeneratedAt;
+      setPendingGeneration({ id: runId, label: `Generate #${nextIndex}` });
+      setExpandedGenerationItemId(runId);
+
       setActiveGenerationJob({
         jobId: accepted.jobId,
         runId,
         generatedAt,
         successToast,
       });
+      if (runId) {
+        updateGenerationRun(runId, { jobId: accepted.jobId });
+      }
       jobStarted = true;
       return true;
     } catch (err: any) {
@@ -2879,12 +3083,38 @@ export default function TestSuiteDetailPage() {
                   </p>
                 </div>
 
-                {generationItems.length === 0 && !pendingGeneration ? (
+                {generationItems.length === 0 &&
+                !pendingGeneration &&
+                !hasServerGenerationHistory ? (
                   <div className="text-sm text-on-surface-variant">
                     No generation run detected yet.
                   </div>
                 ) : (
                   <div className="space-y-2">
+                    {generationItems.length === 0 &&
+                      !pendingGeneration &&
+                      hasServerGenerationHistory && (
+                        <div className="text-sm text-on-surface-variant">
+                          {isWaitingForServerCallbackData
+                            ? "Waiting for callback data from server..."
+                            : "Generation job history exists on server. Waiting for callback data to appear."}
+                        </div>
+                      )}
+                    {isWaitingForServerCallbackData && !pendingGeneration && (
+                      <div className="rounded-lg border-2 bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 p-4 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                              Waiting for callback data from server...
+                            </p>
+                            <p className="text-xs text-indigo-500 dark:text-indigo-400">
+                              Suggestions will appear automatically when callback finishes.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {pendingGeneration && (
                       <div
                         key={pendingGeneration.id}

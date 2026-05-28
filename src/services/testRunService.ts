@@ -73,6 +73,9 @@ export interface TestCaseRunDetail {
   bodyNotContainsPassed?: boolean;
   jsonPathChecksPassed?: boolean;
   responseTimePassed?: boolean;
+  validationScore?: number;
+  validationScoreThreshold?: number;
+  hardChecksPassed?: boolean;
   // Expectation snapshots — for FE Evidence panel
   expectedResponse?: any;
   expectedBodyContains?: string;
@@ -223,6 +226,9 @@ interface BackendTestCaseRunDetail {
   bodyNotContainsPassed?: boolean;
   jsonPathChecksPassed?: boolean;
   responseTimePassed?: boolean;
+  validationScore?: number;
+  validationScoreThreshold?: number;
+  hardChecksPassed?: boolean;
   expectationSource?: string;
   requirementCode?: string;
   primaryRequirementId?: string;
@@ -350,6 +356,13 @@ const mapBackendTestCaseRunDetail = (
     (detail as any).JsonPathChecksPassed,
   responseTimePassed:
     (detail as any).responseTimePassed ?? (detail as any).ResponseTimePassed,
+  validationScore:
+    (detail as any).validationScore ?? (detail as any).ValidationScore,
+  validationScoreThreshold:
+    (detail as any).validationScoreThreshold ??
+    (detail as any).ValidationScoreThreshold,
+  hardChecksPassed:
+    (detail as any).hardChecksPassed ?? (detail as any).HardChecksPassed,
   // Expectation snapshots (map backend names if present)
   expectedBodyContains:
     (detail as any).expectedBodyContains ?? (detail as any).ExpectedBodyContains,
@@ -435,6 +448,7 @@ export interface StartTestRunRequest {
   environmentId?: string;
   selectedTestCaseIds?: string[];
   strictValidation?: boolean;
+  validationProfile?: "Default" | "DemoAdaptive" | "SrsStrict";
   retryPolicy?: RetryPolicyRequest;
   recordRun?: boolean;
 }
@@ -470,6 +484,7 @@ const testRunService = {
         environmentId: data.environmentId,
         selectedTestCaseIds: data.selectedTestCaseIds,
         strictValidation: data.strictValidation,
+        validationProfile: data.validationProfile,
         retryPolicy: data.retryPolicy ?? null,
         recordRun: data.recordRun ?? true,
       },

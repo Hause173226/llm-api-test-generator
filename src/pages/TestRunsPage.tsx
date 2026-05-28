@@ -238,6 +238,9 @@ export default function TestRunsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [strictValidation, setStrictValidation] = useState(false);
+  const [validationProfile, setValidationProfile] = useState<
+    "Default" | "DemoAdaptive" | "SrsStrict"
+  >("Default");
   const [maxRetryAttempts, setMaxRetryAttempts] = useState<number>(0);
   const [retryFailedDependencies, setRetryFailedDependencies] = useState(false);
   const [rerunSkippedCases, setRerunSkippedCases] = useState(false);
@@ -321,6 +324,7 @@ export default function TestRunsPage() {
           ? selectedTestCaseIds
           : undefined,
         strictValidation: strictValidation,
+        validationProfile: validationProfile,
         retryPolicy: {
           maxRetryAttempts: maxRetryAttempts,
           retryFailedDependencies: retryFailedDependencies,
@@ -1076,7 +1080,7 @@ export default function TestRunsPage() {
                                                       (c) => c.value != null,
                                                     ).length > 0 && (
                                                       <div className="flex flex-wrap gap-1">
-                                                        {[
+                                                  {[
                                                           {
                                                             label:
                                                               "Status code",
@@ -1134,6 +1138,35 @@ export default function TestRunsPage() {
                                                           ))}
                                                       </div>
                                                     )}
+                                                  {(testCase.validationScore !=
+                                                    null ||
+                                                    testCase.validationScoreThreshold !=
+                                                      null) && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300">
+                                                        Score:{" "}
+                                                        {(
+                                                          testCase.validationScore ??
+                                                          0
+                                                        ).toFixed(2)}
+                                                      </span>
+                                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                        Threshold:{" "}
+                                                        {(
+                                                          testCase.validationScoreThreshold ??
+                                                          0.8
+                                                        ).toFixed(2)}
+                                                      </span>
+                                                      <span
+                                                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${testCase.hardChecksPassed ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"}`}
+                                                      >
+                                                        {testCase.hardChecksPassed
+                                                          ? "✓"
+                                                          : "✕"}{" "}
+                                                        Hard checks
+                                                      </span>
+                                                    </div>
+                                                  )}
                                                   {/* For failed cases with no HTTP (pre-request failure like UNRESOLVED_VARIABLE) */}
                                                   {statusLower === "failed" &&
                                                     testCase.httpStatusCode ==
@@ -1689,7 +1722,31 @@ export default function TestRunsPage() {
               : t("testRuns.modal.allCasesInfo")}
           </p>
 
-          {/* Strict Validation Toggle */}
+          {/* Validation Profile */}
+          <div className="space-y-1.5 py-1">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+              Validation Profile
+            </label>
+            <p className="text-xs text-on-surface-variant">
+              Strict = deterministic checks, Balanced = recommended, Loose =
+              tolerant for wording differences.
+            </p>
+            <select
+              value={validationProfile}
+              onChange={(e) =>
+                setValidationProfile(
+                  e.target.value as "Default" | "DemoAdaptive" | "SrsStrict",
+                )
+              }
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-on-surface transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/30"
+            >
+              <option value="Default">Balanced (Default)</option>
+              <option value="SrsStrict">Strict (SRS)</option>
+              <option value="DemoAdaptive">Loose (DemoAdaptive)</option>
+            </select>
+          </div>
+
+          {/* Strict Validation Toggle (legacy switch, still supported by BE) */}
           <div className="flex items-center justify-between py-2">
             <div>
               <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
