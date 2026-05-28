@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authService, LoginResponse } from "../services/authService";
-import { getUser, clearAuthToken } from "../config/api";
+import {
+  getAuthToken,
+  getRefreshToken,
+  getUser,
+  clearAuthToken,
+} from "../config/api";
 
 interface User {
   id: string;
@@ -25,7 +30,9 @@ interface AuthContextType {
   ) => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined,
+);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -34,12 +41,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const storedUser = getUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-    setIsLoading(false);
+    const bootstrapSession = async () => {
+      const storedUser = getUser();
+      const token = getAuthToken();
+      const refreshToken = getRefreshToken();
+
+      if (refreshToken) {
+        try {
+          const refreshed = await authService.refreshToken();
+          setUser(refreshed.user);
+        } catch {
+          clearAuthToken();
+          setUser(null);
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      if (storedUser && token) {
+        setUser(storedUser);
+      } else {
+        clearAuthToken();
+        setUser(null);
+      }
+
+      setIsLoading(false);
+    };
+
+    bootstrapSession();
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
@@ -75,7 +105,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     confirmPassword: string,
   ): Promise<void> => {
     try {
-      await authService.register({ fullName, email, password, confirmPassword });
+      await authService.register({
+        fullName,
+        email,
+        password,
+        confirmPassword,
+      });
     } catch (error) {
       throw error;
     }
@@ -92,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!getAuthToken(),
     isLoading,
     login,
     loginWithGoogle,

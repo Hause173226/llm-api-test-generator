@@ -420,8 +420,18 @@ export default function ProjectManagementPage() {
         </section>
       </div>
 
-      {/* Global spinner overlay khi đang tạo project */}
-      {isSubmitting && <GlobalSpinner label={t("projects.modal.creating")} />}
+      {/* Global spinner overlay khi submit */}
+      {isSubmitting && (
+        <GlobalSpinner
+          label={
+            isEditModalOpen
+              ? t("projects.modal.updating")
+              : isDeleteModalOpen
+                ? t("projects.modal.deleting")
+                : t("projects.modal.creating")
+          }
+        />
+      )}
 
       {/* Create Project Modal */}
       <Modal
@@ -505,9 +515,9 @@ export default function ProjectManagementPage() {
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
             >
               <option value="">{t("projects.modal.sourcePlaceholder")}</option>
-              <option value="openapi">OpenAPI Specification</option>
-              <option value="postman">Postman Collection</option>
-              <option value="graphql">GraphQL Schema</option>
+              <option value="openapi">{t("pages.ProjectManagementPage.openapi_specification")}</option>
+              <option value="postman">{t("pages.ProjectManagementPage.postman_collection")}</option>
+              <option value="graphql">{t("pages.ProjectManagementPage.graphql_schema")}</option>
             </select>
           </div> */}
         </div>

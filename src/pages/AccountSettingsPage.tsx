@@ -276,7 +276,9 @@ export default function AccountSettingsPage() {
                             displayName: e.target.value,
                           })
                         }
-                        placeholder="Enter your display name"
+                        placeholder={t(
+                          "settings.profile.displayNamePlaceholder",
+                        )}
                         className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low dark:bg-surface-container-high rounded-2xl border-none focus:ring-4 focus:ring-primary-fixed transition-all text-on-surface font-bold text-sm"
                       />
                     </div>
@@ -284,7 +286,7 @@ export default function AccountSettingsPage() {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">
-                      {t("settings.profile.timezone") || "Timezone"}
+                      {t("settings.profile.timezone")}
                     </label>
                     <div className="relative group">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
@@ -297,7 +299,7 @@ export default function AccountSettingsPage() {
                             timezone: e.target.value,
                           })
                         }
-                        placeholder="e.g., Asia/Ho_Chi_Minh"
+                        placeholder={t("settings.profile.timezonePlaceholder")}
                         className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low dark:bg-surface-container-high rounded-2xl border-none focus:ring-4 focus:ring-primary-fixed transition-all text-on-surface font-bold text-sm"
                       />
                     </div>

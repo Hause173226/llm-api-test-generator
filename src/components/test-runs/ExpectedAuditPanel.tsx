@@ -1,4 +1,5 @@
 import { AlertTriangle, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 
 type ExpectedSource =
@@ -168,7 +169,12 @@ const findProvenance = (
 
 const shouldPreferRuntimeEvidence = (item?: ExpectedProvenanceItem | null) => {
   const source = normalizeSource(item?.source);
-  return !item?.evidence || source === "unknown" || source === "ai_inferred" || source === "llm";
+  return (
+    !item?.evidence ||
+    source === "unknown" ||
+    source === "ai_inferred" ||
+    source === "llm"
+  );
 };
 
 const tryParseBody = (body?: string | null): unknown => {
@@ -187,7 +193,11 @@ const getJsonPathValue = (root: unknown, path: string): unknown => {
     .split(".")
     .filter(Boolean)
     .reduce<unknown>((current, segment) => {
-      if (!current || typeof current !== "object" || !(segment in (current as Record<string, unknown>))) {
+      if (
+        !current ||
+        typeof current !== "object" ||
+        !(segment in (current as Record<string, unknown>))
+      ) {
         return undefined;
       }
       return (current as Record<string, unknown>)[segment];
@@ -199,7 +209,8 @@ const normalizeExpectedValue = (value: string) => {
   if (normalized === "true") return true;
   if (normalized === "false") return false;
   if (normalized === "null") return null;
-  if (normalized && !Number.isNaN(Number(normalized))) return Number(normalized);
+  if (normalized && !Number.isNaN(Number(normalized)))
+    return Number(normalized);
   return value;
 };
 
@@ -209,7 +220,11 @@ const buildObservedProvenance = (
   responseBodyPreview?: string | null,
   responseHeaders?: Record<string, unknown> | null,
 ): ExpectedProvenanceItem | null => {
-  if (item.type === "status" && actualStatusCode != null && String(actualStatusCode) === item.expected) {
+  if (
+    item.type === "status" &&
+    actualStatusCode != null &&
+    String(actualStatusCode) === item.expected
+  ) {
     return {
       field: item.field,
       expected: item.expected,
@@ -220,7 +235,10 @@ const buildObservedProvenance = (
     };
   }
 
-  if (item.type === "bodyContains" && responseBodyPreview?.includes(item.expected)) {
+  if (
+    item.type === "bodyContains" &&
+    responseBodyPreview?.includes(item.expected)
+  ) {
     return {
       field: item.field,
       expected: item.expected,
@@ -231,7 +249,11 @@ const buildObservedProvenance = (
     };
   }
 
-  if (item.type === "bodyNotContains" && responseBodyPreview && !responseBodyPreview.includes(item.expected)) {
+  if (
+    item.type === "bodyNotContains" &&
+    responseBodyPreview &&
+    !responseBodyPreview.includes(item.expected)
+  ) {
     return {
       field: item.field,
       expected: item.expected,
@@ -243,7 +265,10 @@ const buildObservedProvenance = (
   }
 
   if (item.type === "jsonPathCheck") {
-    const actual = getJsonPathValue(tryParseBody(responseBodyPreview), item.field);
+    const actual = getJsonPathValue(
+      tryParseBody(responseBodyPreview),
+      item.field,
+    );
     const expected = normalizeExpectedValue(item.expected);
     const matches =
       item.expected === "*" ||
@@ -281,7 +306,7 @@ const buildObservedProvenance = (
 };
 
 export default function ExpectedAuditPanel({
-  title = "Expected audit",
+  title,
   expectedStatus,
   bodyContains,
   bodyNotContains,
@@ -298,37 +323,73 @@ export default function ExpectedAuditPanel({
   compact = false,
   className,
 }: ExpectedAuditPanelProps) {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t("testRuns.expectedAudit.title");
   const provenanceItems = toProvenance(expectedProvenance);
   const items: AuditItem[] = [];
 
   toStatusList(expectedStatus).forEach((status) =>
-    items.push({ group: "Status", type: "status", field: "expectedStatus", expected: status }),
+    items.push({
+      group: t("testRuns.expectedAudit.groups.status"),
+      type: "status",
+      field: "expectedStatus",
+      expected: status,
+    }),
   );
   toStringList(bodyContains).forEach((text) =>
-    items.push({ group: "Body contains", type: "bodyContains", field: "bodyContains", expected: text }),
+    items.push({
+      group: t("testRuns.expectedAudit.groups.bodyContains"),
+      type: "bodyContains",
+      field: "bodyContains",
+      expected: text,
+    }),
   );
   toStringList(bodyNotContains).forEach((text) =>
-    items.push({ group: "Body not contains", type: "bodyNotContains", field: "bodyNotContains", expected: text }),
+    items.push({
+      group: t("testRuns.expectedAudit.groups.bodyNotContains"),
+      type: "bodyNotContains",
+      field: "bodyNotContains",
+      expected: text,
+    }),
   );
   Object.entries(toMap(jsonPathChecks)).forEach(([path, expected]) =>
-    items.push({ group: "JSONPath", type: "jsonPathCheck", field: path, expected: expected || "*" }),
+    items.push({
+      group: t("testRuns.expectedAudit.groups.jsonPath"),
+      type: "jsonPathCheck",
+      field: path,
+      expected: expected || "*",
+    }),
   );
   Object.entries(toMap(headerChecks)).forEach(([header, expected]) =>
-    items.push({ group: "Headers", type: "headerCheck", field: header, expected: expected || "*" }),
+    items.push({
+      group: t("testRuns.expectedAudit.groups.headers"),
+      type: "headerCheck",
+      field: header,
+      expected: expected || "*",
+    }),
   );
   (variables ?? []).forEach((variable) =>
     items.push({
-      group: "Variables extracted",
+      group: t("testRuns.expectedAudit.groups.variables"),
       type: "variable",
-      field: variable.variableName || variable.jsonPath || variable.headerName || "variable",
-      expected: [variable.extractFrom, variable.jsonPath, variable.headerName, variable.regex]
+      field:
+        variable.variableName ||
+        variable.jsonPath ||
+        variable.headerName ||
+        "variable",
+      expected: [
+        variable.extractFrom,
+        variable.jsonPath,
+        variable.headerName,
+        variable.regex,
+      ]
         .filter(Boolean)
         .join(" | "),
     }),
   );
   if (maxResponseTime != null) {
     items.push({
-      group: "Response time",
+      group: t("testRuns.expectedAudit.groups.responseTime"),
       type: "responseTime",
       field: "maxResponseTime",
       expected: `${maxResponseTime} ms`,
@@ -362,14 +423,104 @@ export default function ExpectedAuditPanel({
 
   if (items.length === 0) {
     return (
-      <section className={cn("rounded-lg border border-outline-variant/20 p-3 text-xs", className)}>
-        <div className="font-semibold text-on-surface">{title}</div>
-        <div className="mt-2 text-on-surface-variant">No expected checks provided by backend.</div>
+      <section
+        className={cn(
+          "rounded-lg border border-outline-variant/20 p-3 text-xs",
+          className,
+        )}
+      >
+        <div className="font-semibold text-on-surface">{resolvedTitle}</div>
+        <div className="mt-2 text-on-surface-variant">
+          {t("testRuns.expectedAudit.empty")}
+        </div>
       </section>
     );
   }
 
   const groups = Array.from(new Set(enriched.map((item) => item.group)));
 
+  return (
+    <section
+      className={cn(
+        "rounded-lg border border-outline-variant/20 bg-surface-container-lowest dark:bg-slate-900 p-3",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface">
+          {resolvedTitle}
+        </h3>
+        {hasUnverified && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+            <AlertTriangle className="h-3 w-3" />
+            {t("testRuns.expectedAudit.reviewRequired")}
+          </span>
+        )}
+      </div>
 
+      {hasUnverified && (
+        <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{t("testRuns.expectedAudit.reviewWarning")}</span>
+        </div>
+      )}
+
+      <div className={cn("mt-3 space-y-3", compact && "space-y-2")}>
+        {groups.map((group) => (
+          <div key={group}>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              {group}
+            </div>
+            <div className="space-y-1.5">
+              {enriched
+                .filter((item) => item.group === group)
+                .map((item, index) => {
+                  const provenance = item.provenance;
+                  const source = provenance?.source;
+                  const evidence = provenance?.evidence;
+                  const code = provenance?.requirementCode || requirementCode;
+                  return (
+                    <details
+                      key={`${group}-${item.field}-${item.expected}-${index}`}
+                      className="rounded-md border border-outline-variant/20 dark:border-slate-800 bg-white dark:bg-slate-950/60 p-2 text-xs"
+                    >
+                      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2">
+                        <span className="font-mono text-[11px] text-on-surface break-all">
+                          {item.field}
+                        </span>
+                        <span className="text-on-surface-variant">=</span>
+                        <span className="font-mono text-[11px] text-on-surface break-all">
+                          {item.expected}
+                        </span>
+                        <span
+                          className={cn(
+                            "ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            sourceClass(source, Boolean(evidence)),
+                          )}
+                        >
+                          {sourceLabel(source)}
+                        </span>
+                      </summary>
+                      <div className="mt-2 space-y-1 border-t border-outline-variant/10 pt-2 text-[11px] text-on-surface-variant">
+                        <div>Confidence: {provenance?.confidence || "low"}</div>
+                        <div>Requirement: {code || "None provided"}</div>
+                        <div>
+                          Evidence:{" "}
+                          {evidence || "No source provided by backend"}
+                        </div>
+                        {expectationSource && (
+                          <div>
+                            Legacy expectation source: {expectationSource}
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  );
+                })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }

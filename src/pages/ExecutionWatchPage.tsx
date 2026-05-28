@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -31,6 +32,7 @@ export default function ExecutionWatchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { selectedProject } = useProject();
+  const { t } = useTranslation();
 
   const projectId = selectedProject?.id || searchParams.get("projectId") || "";
   // "start-watch" mode params
@@ -79,7 +81,6 @@ export default function ExecutionWatchPage() {
       if (dotsRef.current) clearInterval(dotsRef.current);
     };
   }, []);
-
   // Elapsed time ticker
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -112,12 +113,12 @@ export default function ExecutionWatchPage() {
           setResolvedRunId(id);
           setWatchStatus("running");
         } else {
-          showErrorToast("Failed to start test run: no run ID returned");
+          showErrorToast(t("pages.ExecutionWatchPage.error_start_no_id"));
           setWatchStatus("failed");
         }
       } catch (err: any) {
         if (!isMountedRef.current) return;
-        showErrorToast("Failed to start test run");
+        showErrorToast(t("pages.ExecutionWatchPage.error_start"));
         setWatchStatus("failed");
       }
     };
@@ -163,7 +164,7 @@ export default function ExecutionWatchPage() {
           }
         } catch (err: any) {
           if (!isMountedRef.current) return;
-          showErrorToast("Failed to fetch run status. Retrying...");
+          showErrorToast(t("pages.ExecutionWatchPage.error_fetch_retry"));
         }
 
         await new Promise<void>((res) => setTimeout(res, POLL_INTERVAL_MS));
@@ -211,7 +212,7 @@ export default function ExecutionWatchPage() {
       : 0;
 
   return (
-    <MainLayout title="Executing Test Run">
+    <MainLayout title={t("pages.ExecutionWatchPage.title")}>
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="max-w-2xl w-full mx-auto">
           <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-2xl overflow-hidden">
@@ -245,24 +246,32 @@ export default function ExecutionWatchPage() {
               </div>
 
               <h1 className="text-3xl font-bold text-white mb-2">
-                {watchStatus === "starting" && `Starting Test Run${dots}`}
-                {watchStatus === "running" && `Executing Test Run${dots}`}
-                {watchStatus === "completed" && "Run Completed!"}
-                {watchStatus === "failed" && "Run Failed"}
-                {watchStatus === "cancelled" && "Run Cancelled"}
-                {watchStatus === "timeout" && "Timed Out"}
+                {watchStatus === "starting" &&
+                  t("pages.ExecutionWatchPage.status_starting", { dots })}
+                {watchStatus === "running" &&
+                  t("pages.ExecutionWatchPage.status_running", { dots })}
+                {watchStatus === "completed" &&
+                  t("pages.ExecutionWatchPage.status_completed")}
+                {watchStatus === "failed" &&
+                  t("pages.ExecutionWatchPage.status_failed")}
+                {watchStatus === "cancelled" &&
+                  t("pages.ExecutionWatchPage.status_cancelled")}
+                {watchStatus === "timeout" &&
+                  t("pages.ExecutionWatchPage.status_timeout")}
               </h1>
               <p className="text-white/80 text-sm">
                 {watchStatus === "starting" &&
-                  "Submitting test run to the server..."}
+                  t("pages.ExecutionWatchPage.desc_starting")}
                 {watchStatus === "running" &&
-                  "Running your test cases against the environment..."}
+                  t("pages.ExecutionWatchPage.desc_running")}
                 {watchStatus === "completed" &&
-                  "All test cases have been executed."}
-                {watchStatus === "failed" && "The run encountered errors."}
-                {watchStatus === "cancelled" && "The run was cancelled."}
+                  t("pages.ExecutionWatchPage.desc_completed")}
+                {watchStatus === "failed" &&
+                  t("pages.ExecutionWatchPage.desc_failed")}
+                {watchStatus === "cancelled" &&
+                  t("pages.ExecutionWatchPage.desc_cancelled")}
                 {watchStatus === "timeout" &&
-                  "The run is taking longer than expected."}
+                  t("pages.ExecutionWatchPage.desc_timeout")}
               </p>
             </div>
 
@@ -270,7 +279,7 @@ export default function ExecutionWatchPage() {
             <div className="p-8 space-y-6">
               {/* Elapsed time */}
               <div className="flex items-center justify-between text-sm text-on-surface-variant">
-                <span>Elapsed time</span>
+                <span>{t("pages.ExecutionWatchPage.elapsed_time")}</span>
                 <span className="font-semibold text-on-surface tabular-nums">
                   {formatElapsed(elapsedMs)}
                 </span>
@@ -282,12 +291,19 @@ export default function ExecutionWatchPage() {
                   <Loader2 className="w-12 h-12 text-primary dark:text-indigo-400 animate-spin" />
                   <p className="text-sm text-on-surface-variant">
                     {watchStatus === "starting"
-                      ? "Sending request to server..."
-                      : `Polling run status every ${POLL_INTERVAL_MS / 1000}s`}
+                      ? t("pages.ExecutionWatchPage.sending_request")
+                      : t("pages.ExecutionWatchPage.polling_every", {
+                          seconds: POLL_INTERVAL_MS / 1000,
+                        })}
                     {watchStatus === "running" && run && run.totalTests > 0 && (
                       <span className="ml-2 font-semibold text-on-surface">
-                        ({run.passedTests + run.failedTests + run.skippedTests}/
-                        {run.totalTests} done)
+                        {t("pages.ExecutionWatchPage.done_count", {
+                          done:
+                            run.passedTests +
+                            run.failedTests +
+                            run.skippedTests,
+                          total: run.totalTests,
+                        })}
                       </span>
                     )}
                   </p>
@@ -301,7 +317,7 @@ export default function ExecutionWatchPage() {
                   {run.totalTests > 0 && (
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs text-on-surface-variant mb-1">
-                        <span>Pass rate</span>
+                        <span>{t("pages.ExecutionWatchPage.pass_rate")}</span>
                         <span className="font-semibold">{passedPct}%</span>
                       </div>
                       <div className="h-3 rounded-full bg-surface-container-high dark:bg-slate-700 overflow-hidden flex">
@@ -321,24 +337,24 @@ export default function ExecutionWatchPage() {
                   <div className="grid grid-cols-4 gap-3 text-center">
                     {[
                       {
-                        label: "Total",
+                        label: t("pages.ExecutionWatchPage.stat_total"),
                         value: run.totalTests,
                         color: "bg-slate-100 dark:bg-slate-800 text-on-surface",
                       },
                       {
-                        label: "Passed",
+                        label: t("pages.ExecutionWatchPage.stat_passed"),
                         value: run.passedTests,
                         color:
                           "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
                       },
                       {
-                        label: "Failed",
+                        label: t("pages.ExecutionWatchPage.stat_failed"),
                         value: run.failedTests,
                         color:
                           "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
                       },
                       {
-                        label: "Skipped",
+                        label: t("pages.ExecutionWatchPage.stat_skipped"),
                         value: run.skippedTests,
                         color:
                           "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
@@ -361,9 +377,13 @@ export default function ExecutionWatchPage() {
               {/* Run number */}
               {run?.runNumber && (
                 <p className="text-xs text-on-surface-variant text-center">
-                  Run #{run.runNumber}
+                  {t("pages.ExecutionWatchPage.run_number", {
+                    number: run.runNumber,
+                  })}
                   {run.completedAt &&
-                    ` · Completed ${new Date(run.completedAt).toLocaleString()}`}
+                    ` · ${t("pages.ExecutionWatchPage.completed_at", {
+                      date: new Date(run.completedAt).toLocaleString(),
+                    })}`}
                 </p>
               )}
 
@@ -372,8 +392,7 @@ export default function ExecutionWatchPage() {
                 <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40 px-4 py-3">
                   <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                   <p className="text-sm text-amber-800 dark:text-amber-300">
-                    The run is still in progress. You can view its status on the
-                    Execution Runs page.
+                    {t("pages.ExecutionWatchPage.timeout_hint")}
                   </p>
                 </div>
               )}
@@ -386,12 +405,12 @@ export default function ExecutionWatchPage() {
                 {watchStatus === "running" ? (
                   <>
                     <Play className="w-4 h-4" />
-                    View in Execution Runs
+                    {t("pages.ExecutionWatchPage.view_in_execution_runs")}
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    View Results
+                    {t("pages.ExecutionWatchPage.view_results")}
                   </>
                 )}
               </button>

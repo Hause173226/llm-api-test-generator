@@ -678,7 +678,7 @@ export default function SuggestionsPage() {
               <div className="flex items-center gap-2 mb-3">
                 <Filter className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
                 <span className="text-xs font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-widest">
-                  Test Case Filters
+                  {t("pages.SuggestionsPage.test_case_filters")}
                 </span>
                 {(searchQuery ||
                   filterStatus ||
@@ -694,7 +694,7 @@ export default function SuggestionsPage() {
                     }}
                     className="ml-auto text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
                   >
-                    Clear filters
+                    {t("pages.SuggestionsPage.clear_filters")}
                   </button>
                 )}
               </div>
@@ -705,7 +705,7 @@ export default function SuggestionsPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by test case name or URL..."
+                  placeholder={t("pages.SuggestionsPage.search_placeholder")}
                   className="w-full pl-9 pr-4 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all placeholder:text-on-surface-variant/60"
                 />
               </div>
@@ -716,7 +716,9 @@ export default function SuggestionsPage() {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
                 >
-                  <option value="">All statuses</option>
+                  <option value="">
+                    {t("pages.SuggestionsPage.all_statuses")}
+                  </option>
                   {uniqueStatuses.map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -729,7 +731,9 @@ export default function SuggestionsPage() {
                   onChange={(e) => setFilterTestType(e.target.value)}
                   className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
                 >
-                  <option value="">All test types</option>
+                  <option value="">
+                    {t("pages.SuggestionsPage.all_test_types")}
+                  </option>
                   {uniqueTestTypes.map((tt) => (
                     <option key={tt} value={tt}>
                       {tt}
@@ -742,7 +746,9 @@ export default function SuggestionsPage() {
                   onChange={(e) => setFilterEndpoint(e.target.value)}
                   className="px-3 py-2 rounded-lg bg-surface-container-low dark:bg-slate-800 text-sm text-on-surface border border-outline-variant/20 dark:border-slate-600"
                 >
-                  <option value="">All endpoints</option>
+                  <option value="">
+                    {t("pages.SuggestionsPage.all_endpoints")}
+                  </option>
                   {uniqueEndpoints.map((ep) => (
                     <option key={ep} value={ep}>
                       {ep}
@@ -994,17 +1000,39 @@ export default function SuggestionsPage() {
                                         title="Expected audit"
                                         compact
                                         expectedStatus={testCase.expectedStatus}
-                                        bodyContains={testCase.expectedBodyContains}
-                                        bodyNotContains={testCase.expectedBodyNotContains}
-                                        jsonPathChecks={testCase.expectedJsonPathChecks}
-                                        headerChecks={testCase.expectedHeaderChecks}
-                                        maxResponseTime={testCase.expectedMaxResponseTime}
-                                        expectedProvenance={testCase.expectedProvenance}
-                                        expectationSource={testCase.expectationSource}
-                                        requirementCode={testCase.requirementCode}
-                                        actualStatusCode={testCase.httpStatusCode}
-                                        responseBodyPreview={testCase.responseBodyPreview}
-                                        responseHeaders={testCase.responseHeaders}
+                                        bodyContains={
+                                          testCase.expectedBodyContains
+                                        }
+                                        bodyNotContains={
+                                          testCase.expectedBodyNotContains
+                                        }
+                                        jsonPathChecks={
+                                          testCase.expectedJsonPathChecks
+                                        }
+                                        headerChecks={
+                                          testCase.expectedHeaderChecks
+                                        }
+                                        maxResponseTime={
+                                          testCase.expectedMaxResponseTime
+                                        }
+                                        expectedProvenance={
+                                          testCase.expectedProvenance
+                                        }
+                                        expectationSource={
+                                          testCase.expectationSource
+                                        }
+                                        requirementCode={
+                                          testCase.requirementCode
+                                        }
+                                        actualStatusCode={
+                                          testCase.httpStatusCode
+                                        }
+                                        responseBodyPreview={
+                                          testCase.responseBodyPreview
+                                        }
+                                        responseHeaders={
+                                          testCase.responseHeaders
+                                        }
                                       />
 
                                       {testCase.schemaMatched != null && (

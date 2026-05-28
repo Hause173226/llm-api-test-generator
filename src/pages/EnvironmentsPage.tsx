@@ -629,9 +629,7 @@ export default function EnvironmentsPage() {
                 {showVariablesSection && (
                   <div className="mt-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
-                      {
-                        "You can define variables with any key and use them in URL/Header/Body via syntax {{variableName}}."
-                      }
+                      {t("environments.variables.help")}
                     </p>
                     <div className="space-y-2">
                       {Object.entries(formData.variables).map(
@@ -661,14 +659,16 @@ export default function EnvironmentsPage() {
                                   },
                                 }));
                               }}
-                              placeholder="Variable value"
+                              placeholder={t(
+                                "environments.variables.valuePlaceholder",
+                              )}
                               className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                             <button
                               onClick={() => removeVariable(key)}
                               className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
                             >
-                              Remove
+                              {t("environments.variables.remove")}
                             </button>
                           </div>
                         ),
@@ -684,25 +684,29 @@ export default function EnvironmentsPage() {
                           type="text"
                           value={variableKey}
                           onChange={(e) => setVariableKey(e.target.value)}
-                          placeholder="Key"
+                          placeholder={t(
+                            "environments.variables.keyPlaceholder",
+                          )}
                           className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
                           type="text"
                           value={variableValue}
                           onChange={(e) => setVariableValue(e.target.value)}
-                          placeholder="Variable value"
+                          placeholder={t(
+                            "environments.variables.valuePlaceholder",
+                          )}
                           className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <span className="text-sm font-medium px-2 py-1 invisible">
-                          Remove
+                          {t("environments.variables.remove")}
                         </span>
                       </div>
                       <button
                         onClick={addVariable}
                         className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer"
                       >
-                        + Add
+                        {t("environments.variables.add")}
                       </button>
                     </div>
                   </div>
@@ -731,7 +735,7 @@ export default function EnvironmentsPage() {
                 {showHeadersSection && (
                   <div className="mt-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ml-6">
-                      Custom headers sent with every request.
+                      {t("environments.variables.headersHelp")}
                     </p>
                     <div className="space-y-2">
                       {Object.entries(formData.headers).map(([key, value]) => (
@@ -760,14 +764,16 @@ export default function EnvironmentsPage() {
                                 },
                               }));
                             }}
-                            placeholder="Header value"
+                            placeholder={t(
+                              "environments.variables.headerValuePlaceholder",
+                            )}
                             className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <button
                             onClick={() => removeHeader(key)}
                             className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 cursor-pointer"
                           >
-                            Remove
+                            {t("environments.variables.remove")}
                           </button>
                         </div>
                       ))}
@@ -782,25 +788,29 @@ export default function EnvironmentsPage() {
                           type="text"
                           value={headerKey}
                           onChange={(e) => setHeaderKey(e.target.value)}
-                          placeholder="Header name"
+                          placeholder={t(
+                            "environments.variables.headerKeyPlaceholder",
+                          )}
                           className="w-36 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
                           type="text"
                           value={headerValue}
                           onChange={(e) => setHeaderValue(e.target.value)}
-                          placeholder="Header value"
+                          placeholder={t(
+                            "environments.variables.headerValuePlaceholder",
+                          )}
                           className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <span className="text-sm font-medium px-2 py-1 invisible">
-                          Remove
+                          {t("environments.variables.remove")}
                         </span>
                       </div>
                       <button
                         onClick={addHeader}
                         className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 py-1 cursor-pointer"
                       >
-                        + Add
+                        {t("environments.variables.add")}
                       </button>
                     </div>
                   </div>
@@ -821,10 +831,12 @@ export default function EnvironmentsPage() {
                   )}
                   <ShieldCheck className="w-4 h-4 text-indigo-600" />
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    Authentication
+                    {t("pages.EnvironmentsPage.authentication")}
                   </span>
                   <span className="text-xs text-slate-400">
-                    ({formData.authConfig.authType})
+                    {t("pages.EnvironmentsPage.formdata_authconfig_authtype", {
+                      formData,
+                    })}
                   </span>
                 </button>
                 {showAuthSection && (
@@ -839,12 +851,20 @@ export default function EnvironmentsPage() {
                       }
                       className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="None">None</option>
-                      <option value="BearerToken">Bearer Token</option>
-                      <option value="Basic">Basic</option>
-                      <option value="ApiKey">API Key</option>
+                      <option value="None">
+                        {t("pages.EnvironmentsPage.none")}
+                      </option>
+                      <option value="BearerToken">
+                        {t("pages.EnvironmentsPage.bearer_token")}
+                      </option>
+                      <option value="Basic">
+                        {t("pages.EnvironmentsPage.basic")}
+                      </option>
+                      <option value="ApiKey">
+                        {t("pages.EnvironmentsPage.api_key")}
+                      </option>
                       <option value="OAuth2ClientCredentials">
-                        OAuth2 Client Credentials
+                        {t("pages.EnvironmentsPage.oauth2_client_credentials")}
                       </option>
                     </select>
 
@@ -858,7 +878,9 @@ export default function EnvironmentsPage() {
                               headerName: e.target.value || null,
                             })
                           }
-                          placeholder="Header Name (default: Authorization)"
+                          placeholder={t(
+                            "environments.authPlaceholders.headerName",
+                          )}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
@@ -867,7 +889,7 @@ export default function EnvironmentsPage() {
                           onChange={(e) =>
                             updateAuthConfig({ token: e.target.value || null })
                           }
-                          placeholder="Token"
+                          placeholder={t("environments.authPlaceholders.token")}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
@@ -883,7 +905,9 @@ export default function EnvironmentsPage() {
                               username: e.target.value || null,
                             })
                           }
-                          placeholder="Username"
+                          placeholder={t(
+                            "environments.authPlaceholders.username",
+                          )}
                           className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <input
@@ -894,7 +918,9 @@ export default function EnvironmentsPage() {
                               password: e.target.value || null,
                             })
                           }
-                          placeholder="Password"
+                          placeholder={t(
+                            "environments.authPlaceholders.password",
+                          )}
                           className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
@@ -911,7 +937,9 @@ export default function EnvironmentsPage() {
                                 apiKeyName: e.target.value || null,
                               })
                             }
-                            placeholder="API Key Name (e.g. x-api-key)"
+                            placeholder={t(
+                              "environments.authPlaceholders.apiKeyName",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <input
@@ -922,7 +950,9 @@ export default function EnvironmentsPage() {
                                 apiKeyValue: e.target.value || null,
                               })
                             }
-                            placeholder="API Key Value"
+                            placeholder={t(
+                              "environments.authPlaceholders.apiKeyValue",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
@@ -936,8 +966,12 @@ export default function EnvironmentsPage() {
                           }
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
-                          <option value="Header">Header</option>
-                          <option value="Query">Query</option>
+                          <option value="Header">
+                            {t("pages.EnvironmentsPage.header")}
+                          </option>
+                          <option value="Query">
+                            {t("pages.EnvironmentsPage.query")}
+                          </option>
                         </select>
                       </div>
                     )}
@@ -953,7 +987,9 @@ export default function EnvironmentsPage() {
                               tokenUrl: e.target.value || null,
                             })
                           }
-                          placeholder="Token URL"
+                          placeholder={t(
+                            "environments.authPlaceholders.tokenUrl",
+                          )}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <div className="grid grid-cols-2 gap-3">
@@ -965,7 +1001,9 @@ export default function EnvironmentsPage() {
                                 clientId: e.target.value || null,
                               })
                             }
-                            placeholder="Client ID"
+                            placeholder={t(
+                              "environments.authPlaceholders.clientId",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <input
@@ -976,7 +1014,9 @@ export default function EnvironmentsPage() {
                                 clientSecret: e.target.value || null,
                               })
                             }
-                            placeholder="Client Secret"
+                            placeholder={t(
+                              "environments.authPlaceholders.clientSecret",
+                            )}
                             className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
@@ -988,7 +1028,9 @@ export default function EnvironmentsPage() {
                               scopes: parseScopes(e.target.value),
                             })
                           }
-                          placeholder="Scopes (comma separated)"
+                          placeholder={t(
+                            "environments.authPlaceholders.scopes",
+                          )}
                           className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>

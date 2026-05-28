@@ -637,7 +637,9 @@ export default function SpecificationPage() {
                         </td>
                         <td className="px-6 py-6 text-right space-x-3">
                           <button
-                            onClick={() => handleToggleSpecificationStatus(spec)}
+                            onClick={() =>
+                              handleToggleSpecificationStatus(spec)
+                            }
                             disabled={togglingSpecId === spec.id}
                             className={cn(
                               "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
@@ -842,9 +844,15 @@ export default function SpecificationPage() {
               }
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-900/30 focus:border-primary dark:focus:border-indigo-500 transition-all appearance-none text-on-surface"
             >
-              <option value="openapi">OpenAPI Specification</option>
-              <option value="postman">Postman Collection</option>
-              <option value="graphql">GraphQL Schema</option>
+              <option value="openapi">
+                {t("pages.SpecificationPage.openapi_specification")}
+              </option>
+              <option value="postman">
+                {t("pages.SpecificationPage.postman_collection")}
+              </option>
+              <option value="graphql">
+                {t("pages.SpecificationPage.graphql_schema")}
+              </option>
             </select>
           </div>
           <div className="space-y-2">
