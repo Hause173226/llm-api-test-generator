@@ -33,6 +33,7 @@ import { showErrorToast, showSuccessToast } from "../utils/errorHandler";
 import { useProject } from "../contexts/ProjectContext";
 import { useEnvironments } from "../hooks/useEnvironments";
 import ExpectedAuditPanel from "../components/test-runs/ExpectedAuditPanel";
+import srsService, { SrsRequirement } from "../services/srsService";
 
 interface Assertion {
   id: string;
@@ -90,6 +91,9 @@ export default function TestCaseDetailPage() {
     null,
   );
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [coveredRequirementDetails, setCoveredRequirementDetails] = useState<
+    Record<string, SrsRequirement>
+  >({});
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -501,6 +505,82 @@ export default function TestCaseDetailPage() {
       navigate("/test-suites");
     }
   }, [testSuiteId, navigate]);
+
+  useEffect(() => {
+    const loadCoveredRequirementDetails = async () => {
+      const hasSrsContext =
+        Boolean(suggestion?.hasSrsContext) ||
+        Boolean((testCase as any)?.hasSrsContext);
+      if (!hasSrsContext || !projectId || !testSuiteId) {
+        setCoveredRequirementDetails({});
+        return;
+      }
+
+      const coveredRequirementIds: string[] = (
+        suggestion?.coveredRequirementIds ||
+        (testCase as any)?.coveredRequirementIds ||
+        []
+      )
+        .map((x: any) => String(x))
+        .filter(Boolean);
+
+      const coveredRequirementRefs = (
+        suggestion?.coveredRequirements ||
+        (testCase as any)?.coveredRequirements ||
+        []
+      ) as Array<{ id?: string }>;
+
+      const reqIds = Array.from(
+        new Set([
+          ...coveredRequirementIds,
+          ...coveredRequirementRefs.map((r) => String(r?.id || "")).filter(Boolean),
+        ]),
+      );
+
+      if (reqIds.length === 0) {
+        setCoveredRequirementDetails({});
+        return;
+      }
+
+      try {
+        let srsDocumentId: string | null =
+          (suggestion as any)?.srsDocumentId ||
+          (testCase as any)?.srsDocumentId ||
+          null;
+
+        if (!srsDocumentId) {
+          const docs = await srsService.listDocuments(projectId);
+          const bySuite = docs.find((d) => d.testSuiteId === testSuiteId);
+          const byTitle = docs.find(
+            (d) =>
+              d.title &&
+              d.title ===
+                (suggestion?.srsDocumentTitle || (testCase as any)?.srsDocumentTitle),
+          );
+          srsDocumentId = bySuite?.id || byTitle?.id || null;
+        }
+
+        if (!srsDocumentId) {
+          setCoveredRequirementDetails({});
+          return;
+        }
+
+        const reqs = await srsService.listRequirements(projectId, srsDocumentId);
+        const map: Record<string, SrsRequirement> = {};
+        for (const req of reqs || []) {
+          if (req?.id && reqIds.includes(req.id)) {
+            map[req.id] = req;
+          }
+        }
+
+        setCoveredRequirementDetails(map);
+      } catch {
+        setCoveredRequirementDetails({});
+      }
+    };
+
+    void loadCoveredRequirementDetails();
+  }, [projectId, testSuiteId, suggestion, testCase]);
 
   const getLogTypeForStatus = (
     status?: string,
@@ -1476,20 +1556,72 @@ export default function TestCaseDetailPage() {
                                   <span className="shrink-0 mt-0.5 px-2 py-0.5 text-[9px] font-black font-mono rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/40">
                                     {req.code}
                                   </span>
-                                  <span className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
-                                    {req.title}
-                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                                      {req.title}
+                                    </span>
+                                    {req.id && coveredRequirementDetails[req.id] && (
+                                      <div className="mt-2 space-y-1.5">
+                                        {coveredRequirementDetails[req.id].description && (
+                                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                                            <span className="font-bold">Description:</span>{" "}
+                                            {coveredRequirementDetails[req.id].description}
+                                          </p>
+                                        )}
+                                        {coveredRequirementDetails[req.id].testableConstraints && (
+                                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap">
+                                            <span className="font-bold">Constraints:</span>{" "}
+                                            {coveredRequirementDetails[req.id].testableConstraints}
+                                          </p>
+                                        )}
+                                        {coveredRequirementDetails[req.id].assumptions && (
+                                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap">
+                                            <span className="font-bold">Assumptions:</span>{" "}
+                                            {coveredRequirementDetails[req.id].assumptions}
+                                          </p>
+                                        )}
+                                        {coveredRequirementDetails[req.id].ambiguities && (
+                                          <p className="text-[11px] text-amber-700 dark:text-amber-300 whitespace-pre-wrap">
+                                            <span className="font-bold">Ambiguities:</span>{" "}
+                                            {coveredRequirementDetails[req.id].ambiguities}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               ))
                             : coveredRequirementIds!.map((reqId: any) => (
                                 <div
                                   key={reqId}
-                                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
+                                  className="flex items-start gap-2 px-2.5 py-1.5 rounded-lg bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
                                 >
                                   <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
-                                  <span className="text-[11px] font-mono text-emerald-800 dark:text-emerald-300 truncate">
-                                    {reqId}
-                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-[11px] font-mono text-emerald-800 dark:text-emerald-300 truncate">
+                                      {reqId}
+                                    </span>
+                                    {coveredRequirementDetails[reqId] && (
+                                      <div className="mt-1.5 space-y-1.5">
+                                        <p className="text-[11px] font-semibold text-emerald-900 dark:text-emerald-200">
+                                          {(coveredRequirementDetails[reqId].requirementCode || "REQ")} -{" "}
+                                          {coveredRequirementDetails[reqId].title}
+                                        </p>
+                                        {coveredRequirementDetails[reqId].description && (
+                                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                                            <span className="font-bold">Description:</span>{" "}
+                                            {coveredRequirementDetails[reqId].description}
+                                          </p>
+                                        )}
+                                        {coveredRequirementDetails[reqId].testableConstraints && (
+                                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap">
+                                            <span className="font-bold">Constraints:</span>{" "}
+                                            {coveredRequirementDetails[reqId].testableConstraints}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                         </div>

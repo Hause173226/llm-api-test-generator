@@ -187,6 +187,17 @@ const testSuiteLlmSuggestionService = {
     );
   },
 
+  async listGenerationJobs(
+    suiteId: string,
+    limit = 20,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<GenerationJobStatusModel[]> {
+    return await apiService.get<GenerationJobStatusModel[]>(
+      `/test-suites/${suiteId}/generation-jobs`,
+      { params: { limit }, signal: options.signal },
+    );
+  },
+
   async review(
     suiteId: string,
     suggestionId: string,
