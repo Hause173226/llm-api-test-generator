@@ -636,29 +636,7 @@ export default function SpecificationPage() {
                           {getSpecificationStatusBadge(spec.isActive)}
                         </td>
                         <td className="px-6 py-6 text-right space-x-3">
-                          <button
-                            onClick={() =>
-                              handleToggleSpecificationStatus(spec)
-                            }
-                            disabled={togglingSpecId === spec.id}
-                            className={cn(
-                              "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
-                              spec.isActive === true
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-emerald-600 dark:text-emerald-400",
-                            )}
-                          >
-                            {togglingSpecId === spec.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : spec.isActive === true ? (
-                              <PowerOff className="w-3.5 h-3.5" />
-                            ) : (
-                              <Power className="w-3.5 h-3.5" />
-                            )}
-                            {spec.isActive === true
-                              ? t("specifications.recent.actions.deactivate")
-                              : t("specifications.recent.actions.activate")}
-                          </button>
+                         
                           <button
                             onClick={() => {
                               setSelectedSpec(spec);

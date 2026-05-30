@@ -10,7 +10,6 @@ export * from './srsService';
 export * from './endpointService';
 export * from './testCaseService';
 export * from './testRunService';
-export * from './llmSuggestionService';
 export * from './environmentService';
 export * from './reportService';
 // export * from './notificationService'; // REMOVED: Backend API not available
@@ -29,7 +28,6 @@ export { default as srsService } from './srsService';
 export { default as endpointService } from './endpointService';
 export { default as testCaseService } from './testCaseService';
 export { default as testRunService } from './testRunService';
-export { default as llmSuggestionService } from './llmSuggestionService';
 export { default as environmentService } from './environmentService';
 export { default as reportService } from './reportService';
 // export { default as notificationService } from './notificationService'; // REMOVED: Backend API not available

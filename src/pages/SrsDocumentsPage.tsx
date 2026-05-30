@@ -52,6 +52,17 @@ const analysisStatusTone: Record<number, string> = {
   3: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200",
 };
 
+type TestableConstraint = {
+  constraint?: string;
+  field?: string;
+  operator?: string;
+  value?: unknown;
+  expectedStatus?: unknown;
+  testType?: string;
+  priority?: string;
+  sourceText?: string;
+};
+
 export default function SrsDocumentsPage() {
   const { t } = useTranslation();
   const { selectedProject } = useProject();
@@ -89,6 +100,8 @@ export default function SrsDocumentsPage() {
   ] = useState<string | null>(null);
   const [clarificationAnswer, setClarificationAnswer] = useState("");
   const [isClarifyModalOpen, setIsClarifyModalOpen] = useState(false);
+  const [isBulkReviewing, setIsBulkReviewing] = useState(false);
+  const [reviewWarningOpen, setReviewWarningOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -230,12 +243,16 @@ export default function SrsDocumentsPage() {
 
   useEffect(() => {
     if (!analysisJobId || !selectedDocument || !projectId) return;
+    let stopped = false;
+    let consecutivePollErrors = 0;
     let pollCount = 0;
-    const MAX_POLLS = 100; // ~5 minutes at 3s interval
+    const MAX_POLLS = 2400; // ~2 hours at 3s interval; large SRS analysis can be slow in n8n.
     const timer = window.setInterval(async () => {
+      if (stopped) return;
       pollCount++;
       if (pollCount > MAX_POLLS) {
         window.clearInterval(timer);
+        stopped = true;
         setIsAnalyzing(false);
         showErrorToast(t("pages.SrsDocumentsPage.analysis_timeout"));
         return;
@@ -246,12 +263,17 @@ export default function SrsDocumentsPage() {
           selectedDocument.id,
           analysisJobId,
         );
+        consecutivePollErrors = 0;
         setAnalysisJobs((prev) => ({ ...prev, [job.id]: job }));
-        if (job.status === 3 || job.status === 4) {
+        const isTerminal =
+          job.status === 3 ||
+          job.status === 4 ||
+          (typeof job.completedAt === "string" && !!job.completedAt);
+        if (isTerminal) {
           window.clearInterval(timer);
-          if (job.status === 3) {
-            await loadDocumentDetail(selectedDocument.id);
-          }
+          stopped = true;
+          await loadDocumentDetail(selectedDocument.id);
+          await loadDocuments(true);
           setIsAnalyzing(false);
           if (job.status === 4) {
             showErrorToast(
@@ -261,8 +283,13 @@ export default function SrsDocumentsPage() {
           }
         }
       } catch {
-        window.clearInterval(timer);
-        setIsAnalyzing(false);
+        consecutivePollErrors++;
+        if (consecutivePollErrors >= 3) {
+          window.clearInterval(timer);
+          stopped = true;
+          setIsAnalyzing(false);
+          await loadDocumentDetail(selectedDocument.id);
+        }
       }
     }, 3000);
 
@@ -314,16 +341,33 @@ export default function SrsDocumentsPage() {
 
   const analyzeDocument = async () => {
     if (!selectedDocument || !projectId) return;
+    const docId = selectedDocument.id;
     try {
       setIsAnalyzing(true);
       const response = await srsService.analyzeDocument(
         projectId,
-        selectedDocument.id,
+        docId,
       );
       setAnalysisJobId(response.jobId);
+      setSelectedDocument((prev) =>
+        prev && prev.id === docId
+          ? { ...prev, analysisStatus: 1, latestJobId: response.jobId }
+          : prev,
+      );
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === docId
+            ? { ...doc, analysisStatus: 1, latestJobId: response.jobId }
+            : doc,
+        ),
+      );
       showSuccessToast(t("pages.SrsDocumentsPage.analysis_job_queued"));
     } catch (err) {
       setIsAnalyzing(false);
+      // Even when trigger call times out on FE, BE may still have created/updated the job.
+      // Refresh detail immediately so UI picks latest status/job and resumes polling.
+      await loadDocumentDetail(docId);
+      await loadDocuments(true);
       handleError(err);
     }
   };
@@ -380,6 +424,65 @@ export default function SrsDocumentsPage() {
       setClarifications((prev) => ({ ...prev, [req.id]: items }));
     } catch {
       setClarifications((prev) => ({ ...prev, [req.id]: [] }));
+    }
+  };
+
+  const jumpToRequirement = async (req: SrsRequirement) => {
+    setReviewWarningOpen(false);
+    setSearch("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setExpandedRequirementIds((prev) => ({ ...prev, [req.id]: true }));
+    await openRequirement(req);
+    window.setTimeout(() => {
+      document
+        .getElementById(`srs-req-${req.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  const markAllReviewed = async (skipWarning = false) => {
+    if (!selectedDocument || !projectId || requirements.length === 0) return;
+    if (!skipWarning && unresolvedCriticalReviewItems.length > 0) {
+      setReviewWarningOpen(true);
+      return;
+    }
+
+    try {
+      setIsBulkReviewing(true);
+      const pending = requirements.filter((req) => !req.isReviewed);
+      const updatedRequirements: SrsRequirement[] = [];
+      for (let i = 0; i < pending.length; i += 10) {
+        const batch = pending.slice(i, i + 10);
+        const updated = await Promise.all(
+          batch.map((req) =>
+            srsService.updateRequirement(projectId, selectedDocument.id, req.id, {
+              isReviewed: true,
+            }),
+          ),
+        );
+        updatedRequirements.push(...updated);
+      }
+
+      const updatedById = new Map(
+        updatedRequirements.map((item) => [item.id, item]),
+      );
+      setRequirements((prev) =>
+        prev.map((item) =>
+          updatedById.get(item.id) || { ...item, isReviewed: true },
+        ),
+      );
+      if (selectedRequirement) {
+        setSelectedRequirement((prev) =>
+          prev ? updatedById.get(prev.id) || { ...prev, isReviewed: true } : prev,
+        );
+      }
+      showSuccessToast("All requirements marked reviewed.");
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsBulkReviewing(false);
+      setReviewWarningOpen(false);
     }
   };
 
@@ -573,6 +676,86 @@ export default function SrsDocumentsPage() {
       return String(raw);
     }
   };
+
+  const parseConstraintItems = (
+    raw?: string | null,
+  ): { items: TestableConstraint[]; fallbackText: string | null } => {
+    if (!raw || !String(raw).trim()) {
+      return { items: [], fallbackText: null };
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      const source = Array.isArray(parsed) ? parsed : [parsed];
+      const items = source
+        .map((item) => {
+          if (item && typeof item === "object" && !Array.isArray(item)) {
+            return item as TestableConstraint;
+          }
+
+          return { constraint: String(item ?? "") };
+        })
+        .filter((item) =>
+          [
+            item.constraint,
+            item.field,
+            item.operator,
+            item.expectedStatus,
+            item.testType,
+            item.priority,
+            item.sourceText,
+          ].some((value) => String(value ?? "").trim()),
+        );
+
+      return { items, fallbackText: null };
+    } catch {
+      return { items: [], fallbackText: String(raw) };
+    }
+  };
+
+  const formatConstraintValue = (value: unknown) => {
+    if (value === null || value === undefined || value === "") return "-";
+    if (typeof value === "string") return value;
+    return JSON.stringify(value);
+  };
+
+  const srsAnalysisSummary = useMemo(() => {
+    const mappedRequirements = requirements.filter(
+      (req) => !!(req.mappedEndpointPath || req.endpointId),
+    ).length;
+    const globalRequirements = requirements.length - mappedRequirements;
+    const constraints = requirements.reduce((sum, req) => {
+      const parsed = parseConstraintItems(
+        req.refinedConstraints || req.testableConstraints,
+      );
+      return sum + parsed.items.length + (parsed.fallbackText ? 1 : 0);
+    }, 0);
+    const unresolvedCriticalClarifications = Object.values(clarifications)
+      .flat()
+      .filter((item) => item.isCritical && !item.isAnswered).length;
+
+    return {
+      totalRequirements: requirements.length,
+      mappedRequirements,
+      globalRequirements,
+      constraints,
+      unresolvedCriticalClarifications,
+    };
+  }, [requirements, clarifications]);
+
+  const unresolvedCriticalReviewItems = useMemo(
+    () =>
+      requirements
+        .map((req) => {
+          const unresolved = (clarifications[req.id] || []).filter(
+            (item) => item.isCritical && !item.isAnswered,
+          );
+
+          return { req, unresolved };
+        })
+        .filter((item) => item.unresolved.length > 0),
+    [requirements, clarifications],
+  );
 
   const selectedSrsContent = useMemo(() => {
     const raw =
@@ -830,10 +1013,7 @@ export default function SrsDocumentsPage() {
                 ],
                 [
                   t("pages.SrsDocumentsPage.workflow_analyze_with_llm"),
-                  Boolean(
-                    selectedDocument &&
-                    (analysisJobId || selectedDocument.analysisStatus === 2),
-                  ),
+                  selectedDocument?.analysisStatus === 2,
                 ],
                 [
                   t("pages.SrsDocumentsPage.review_requirements"),
@@ -1226,12 +1406,86 @@ export default function SrsDocumentsPage() {
                     </select>
                     <button
                       type="button"
-                      onClick={() => setIsAddReqOpen(true)}
-                      className="rounded-2xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white inline-flex items-center gap-2"
+                      onClick={() => markAllReviewed(false)}
+                      disabled={
+                        isBulkReviewing ||
+                        requirements.length === 0 ||
+                        requirements.every((req) => req.isReviewed)
+                      }
+                      className="rounded-2xl border border-emerald-300/60 bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-40 inline-flex items-center gap-2"
                     >
-                      <Plus className="w-4 h-4" />
-                      {t("pages.SrsDocumentsPage.add")}
+                      {isBulkReviewing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4" />
+                      )}
+                      Mark all reviewed
                     </button>
+                   
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+                  <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                      Requirements
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-on-surface">
+                      {srsAnalysisSummary.totalRequirements}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-cyan-200/50 bg-cyan-50/60 p-4 dark:border-cyan-800/40 dark:bg-cyan-950/20">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-700 dark:text-cyan-300">
+                      Mapped endpoint
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-cyan-900 dark:text-cyan-100">
+                      {srsAnalysisSummary.mappedRequirements}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/60 bg-slate-50/70 p-4 dark:border-slate-800/50 dark:bg-slate-950/20">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                      Global requirements
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">
+                      {srsAnalysisSummary.globalRequirements}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-indigo-200/60 bg-indigo-50/70 p-4 dark:border-indigo-800/50 dark:bg-indigo-950/20">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
+                      Test constraints
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-indigo-900 dark:text-indigo-100">
+                      {srsAnalysisSummary.constraints}
+                    </p>
+                  </div>
+                  <div
+                    className={cn(
+                      "rounded-2xl border p-4",
+                      srsAnalysisSummary.unresolvedCriticalClarifications > 0
+                        ? "border-rose-200 bg-rose-50/70 dark:border-rose-800/50 dark:bg-rose-950/20"
+                        : "border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/20",
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "text-[10px] font-bold uppercase tracking-widest",
+                        srsAnalysisSummary.unresolvedCriticalClarifications > 0
+                          ? "text-rose-700 dark:text-rose-300"
+                          : "text-emerald-700 dark:text-emerald-300",
+                      )}
+                    >
+                      Unresolved critical
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-1 text-2xl font-black",
+                        srsAnalysisSummary.unresolvedCriticalClarifications > 0
+                          ? "text-rose-900 dark:text-rose-100"
+                          : "text-emerald-900 dark:text-emerald-100",
+                      )}
+                    >
+                      {srsAnalysisSummary.unresolvedCriticalClarifications}
+                    </p>
                   </div>
                 </div>
 
@@ -1254,7 +1508,7 @@ export default function SrsDocumentsPage() {
                       const hasOpenCritical = criticalCount > answeredCritical;
                       const isSelected = selectedRequirement?.id === req.id;
                       const isExpanded = !!expandedRequirementIds[req.id];
-                      const parsedConstraints = prettyJson(
+                      const constraintView = parseConstraintItems(
                         req.refinedConstraints || req.testableConstraints,
                       );
                       const parsedAssumptions = prettyJson(req.assumptions);
@@ -1262,6 +1516,7 @@ export default function SrsDocumentsPage() {
 
                       return (
                         <article
+                          id={`srs-req-${req.id}`}
                           key={req.id}
                           className={cn(
                             "rounded-2xl border p-4 transition-all",
@@ -1379,10 +1634,79 @@ export default function SrsDocumentsPage() {
                                     "pages.SrsDocumentsPage.constraints_for_test_generation",
                                   )}
                                 </p>
-                                <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
-                                  {parsedConstraints ||
-                                    t("pages.SrsDocumentsPage.no_constraints")}
-                                </pre>
+                                {constraintView.items.length > 0 ? (
+                                  <div className="mt-2 overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container">
+                                    <div className="hidden grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-2 border-b border-outline-variant/20 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant md:grid">
+                                      <span>Rule</span>
+                                      <span>Field</span>
+                                      <span>Operator</span>
+                                      <span>Expected</span>
+                                      <span>Type</span>
+                                      <span>Priority</span>
+                                    </div>
+                                    <div className="divide-y divide-outline-variant/10">
+                                      {constraintView.items.map(
+                                        (constraint, index) => (
+                                          <div
+                                            key={`${req.id}-constraint-${index}`}
+                                            className="grid grid-cols-1 gap-2 px-3 py-3 text-xs md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr]"
+                                          >
+                                            <div>
+                                              <p className="font-semibold text-on-surface">
+                                                {constraint.constraint || "-"}
+                                              </p>
+                                              {constraint.sourceText && (
+                                                <p className="mt-1 rounded-lg bg-cyan-50 px-2 py-1 text-[11px] text-cyan-800 dark:bg-cyan-950/30 dark:text-cyan-200">
+                                                  {constraint.sourceText}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <p className="text-on-surface-variant">
+                                              <span className="md:hidden font-bold">
+                                                Field:{" "}
+                                              </span>
+                                              {constraint.field || "-"}
+                                            </p>
+                                            <p className="font-mono text-on-surface-variant">
+                                              <span className="md:hidden font-sans font-bold">
+                                                Operator:{" "}
+                                              </span>
+                                              {constraint.operator || "-"}
+                                            </p>
+                                            <p className="font-semibold text-on-surface">
+                                              <span className="md:hidden font-bold">
+                                                Expected:{" "}
+                                              </span>
+                                              {formatConstraintValue(
+                                                constraint.expectedStatus,
+                                              )}
+                                            </p>
+                                            <p className="text-on-surface-variant">
+                                              <span className="md:hidden font-bold">
+                                                Type:{" "}
+                                              </span>
+                                              {constraint.testType || "-"}
+                                            </p>
+                                            <p className="text-on-surface-variant">
+                                              <span className="md:hidden font-bold">
+                                                Priority:{" "}
+                                              </span>
+                                              {constraint.priority || "-"}
+                                            </p>
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : constraintView.fallbackText ? (
+                                  <pre className="mt-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words">
+                                    {constraintView.fallbackText}
+                                  </pre>
+                                ) : (
+                                  <div className="mt-1 rounded-lg border border-dashed border-outline-variant/20 bg-surface-container px-2 py-2 text-xs text-on-surface-variant">
+                                    {t("pages.SrsDocumentsPage.no_constraints")}
+                                  </div>
+                                )}
                               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -2275,6 +2599,75 @@ export default function SrsDocumentsPage() {
       </Modal>
 
       {/* ── Confirm Dialog ── */}
+      <Modal
+        isOpen={reviewWarningOpen}
+        onClose={() => setReviewWarningOpen(false)}
+        title="Unresolved critical clarifications"
+        className="max-w-2xl"
+        footer={
+          <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setReviewWarningOpen(false)}
+              className="rounded-xl bg-surface-container-low px-4 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
+            >
+              Review first
+            </button>
+            <button
+              type="button"
+              onClick={() => markAllReviewed(true)}
+              disabled={isBulkReviewing}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {isBulkReviewing && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Continue to mark reviewed
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-on-surface-variant">
+            Some requirements still have unresolved critical clarification
+            questions. Click an item to jump to the requirement, or continue if
+            you intentionally want to mark everything reviewed.
+          </p>
+          <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
+            {unresolvedCriticalReviewItems.map(({ req, unresolved }) => (
+              <button
+                key={req.id}
+                type="button"
+                onClick={() => jumpToRequirement(req)}
+                className="w-full rounded-2xl border border-amber-300/60 bg-amber-50/70 p-3 text-left transition-colors hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-950/20 dark:hover:bg-amber-900/30"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+                    {req.requirementCode || `REQ-${req.id.slice(0, 4)}`}
+                  </span>
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">
+                    {unresolved.length} critical unresolved
+                  </span>
+                </div>
+                <p className="mt-2 font-semibold text-on-surface">
+                  {req.title}
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-on-surface-variant">
+                  {unresolved.slice(0, 3).map((item) => (
+                    <li key={item.id} className="line-clamp-2">
+                      - {item.question}
+                    </li>
+                  ))}
+                  {unresolved.length > 3 && (
+                    <li>+ {unresolved.length - 3} more questions</li>
+                  )}
+                </ul>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={confirmDialog.open}
         onClose={closeConfirm}

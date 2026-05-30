@@ -265,6 +265,11 @@ export default function GenerationRunExecutePage() {
   const allFilteredSelected =
     filteredTestCases.length > 0 &&
     filteredTestCases.every((item) => selectedTestCaseIds.includes(item.id));
+  const selectedFilteredCount = filteredTestCases.filter((item) =>
+    selectedTestCaseIds.includes(item.id),
+  ).length;
+  const isAllSelected =
+    testCases.length > 0 && selectedTestCaseIds.length === testCases.length;
 
   const getDefaultEnvironmentId = (items: ExecutionEnvironment[]) => {
     if (items.length === 0) return "";
@@ -1246,56 +1251,16 @@ export default function GenerationRunExecutePage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex justify-between items-center gap-3 flex-wrap">
                 {allFilteredSelected ? (
-                  <div className="flex justify-between w-full">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTestCaseIds([])}
-                      className="text-xs font-semibold text-on-surface-variant hover:underline flex items-center gap-1"
-                    >
-                      <Square className="w-3.5 h-3.5" />
-                      {t("pages.GenerationRunExecutePage.clear")}
-                    </button>
-                    <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
-                      {environments.length === 0 && !isLoading && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
-                          {t(
-                            "pages.GenerationRunExecutePage.no_execution_environment_found",
-                          )}{" "}
-                          <button
-                            type="button"
-                            className="underline font-semibold"
-                            onClick={openCreateEnvironmentModal}
-                          >
-                            {t("pages.GenerationRunExecutePage.create_one")}
-                          </button>{" "}
-                          {t(
-                            "pages.GenerationRunExecutePage.to_run_tests_suffix",
-                          )}
-                        </p>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleExecute("all")}
-                        disabled={
-                          isSubmitting ||
-                          environments.length === 0 ||
-                          testCases.length === 0
-                        }
-                        className="px-5 py-2.5 rounded-lg bg-surface-container-high dark:bg-slate-700 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-50"
-                      >
-                        {isSubmitting && (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        )}
-                        <Play className="w-4 h-4" />
-                        {t(
-                          "pages.GenerationRunExecutePage.execute_all_testcases_length",
-                          { testCases },
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTestCaseIds([])}
+                    className="text-xs font-semibold text-on-surface-variant hover:underline flex items-center gap-1"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    {t("pages.GenerationRunExecutePage.clear")}
+                  </button>
                 ) : (
                   <button
                     type="button"
@@ -1307,12 +1272,63 @@ export default function GenerationRunExecutePage() {
                     className="text-xs font-semibold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
                     <CheckSquare className="w-3.5 h-3.5" />
-                    {t(
-                      "pages.GenerationRunExecutePage.select_all_filteredtestcases_length",
-                      { filteredTestCases },
-                    )}
+                    Select all ({filteredTestCases.length})
                   </button>
                 )}
+
+                <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
+                  {environments.length === 0 && !isLoading && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 w-full text-right">
+                      {t(
+                        "pages.GenerationRunExecutePage.no_execution_environment_found",
+                      )}{" "}
+                      <button
+                        type="button"
+                        className="underline font-semibold"
+                        onClick={openCreateEnvironmentModal}
+                      >
+                        {t("pages.GenerationRunExecutePage.create_one")}
+                      </button>{" "}
+                      {t(
+                        "pages.GenerationRunExecutePage.to_run_tests_suffix",
+                      )}
+                    </p>
+                  )}
+                  {!isAllSelected && (
+                    <button
+                      type="button"
+                      onClick={() => handleExecute("selected")}
+                      disabled={
+                        isSubmitting ||
+                        environments.length === 0 ||
+                        selectedFilteredCount === 0
+                      }
+                      className="px-5 py-2.5 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {isSubmitting && (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      )}
+                      <Play className="w-4 h-4" />
+                      Execute Selected ({selectedFilteredCount})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleExecute("all")}
+                    disabled={
+                      isSubmitting ||
+                      environments.length === 0 ||
+                      testCases.length === 0
+                    }
+                    className="px-5 py-2.5 rounded-lg bg-surface-container-high dark:bg-slate-700 text-on-surface font-semibold flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSubmitting && (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    )}
+                    <Play className="w-4 h-4" />
+                    Execute All ({testCases.length})
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -1437,24 +1453,26 @@ export default function GenerationRunExecutePage() {
                 {t("pages.GenerationRunExecutePage.to_run_tests_suffix")}
               </p>
             )}
-            <button
-              type="button"
-              onClick={() => handleExecute("selected")}
-              disabled={
-                isSubmitting ||
-                environments.length === 0 ||
-                selectedTestCaseIds.length === 0 ||
-                testCases.length === 0
-              }
-              className="px-5 py-2.5 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 disabled:opacity-50"
-            >
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              <Play className="w-4 h-4" />
-              Execute Selected ({selectedTestCaseIds.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExecute("all")}
+            {!isAllSelected && (
+              <button
+                type="button"
+                onClick={() => handleExecute("selected")}
+                disabled={
+                  isSubmitting ||
+                  environments.length === 0 ||
+                  selectedTestCaseIds.length === 0 ||
+                  testCases.length === 0
+                }
+                className="px-5 py-2.5 rounded-lg bg-primary dark:bg-indigo-600 text-on-primary font-semibold flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Play className="w-4 h-4" />
+                Execute Selected ({selectedTestCaseIds.length})
+              </button>
+            )}
+              <button
+                type="button"
+                onClick={() => handleExecute("all")}
               disabled={
                 isSubmitting ||
                 environments.length === 0 ||
@@ -1464,10 +1482,7 @@ export default function GenerationRunExecutePage() {
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <Play className="w-4 h-4" />
-              {t(
-                "pages.GenerationRunExecutePage.execute_all_testcases_length",
-                { testCases },
-              )}
+              Execute All ({testCases.length})
             </button>
           </div>
         </section>
