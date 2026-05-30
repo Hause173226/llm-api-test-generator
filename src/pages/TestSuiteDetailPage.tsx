@@ -248,6 +248,20 @@ export default function TestSuiteDetailPage() {
     allSuggestions.some(
       (s) => s.reviewStatus === "Pending" && !s.hasSrsContext,
     );
+  const linkedSrsDocument = linkedSrsDocId
+    ? srsDocuments.find((doc) => doc.id === linkedSrsDocId)
+    : undefined;
+  const linkedSrsRequirementCount = linkedSrsDocument?.requirements?.length ?? 0;
+  const linkedSrsIsReady =
+    !linkedSrsDocId ||
+    (linkedSrsDocument?.analysisStatus === 2 && linkedSrsRequirementCount > 0);
+  const linkedSrsReadinessMessage = !linkedSrsDocId
+    ? ""
+    : linkedSrsDocument?.analysisStatus !== 2
+      ? "Linked SRS is not analyzed yet. Run SRS analysis first so generation can use mapped requirements."
+      : linkedSrsRequirementCount === 0
+        ? "Linked SRS has no extracted requirements yet. Run or review SRS analysis before generating SRS-aligned suggestions."
+        : "SRS is ready. Generation will use backend-mapped endpoint requirements, not raw document pages.";
 
   useEffect(() => {
     let cancelled = false;
@@ -1341,6 +1355,7 @@ export default function TestSuiteDetailPage() {
     const controller = new AbortController();
 
     const syncJobs = async () => {
+      let hasActive = !!activeGenerationJob;
       try {
         const jobs = await testSuiteLlmSuggestionService.listGenerationJobs(
           suiteId,
@@ -1350,6 +1365,13 @@ export default function TestSuiteDetailPage() {
         if (cancelled) return;
         const safeJobs = Array.isArray(jobs) ? jobs : [];
         setGenerationJobs(safeJobs);
+        hasActive =
+          hasActive ||
+          safeJobs.some((job) =>
+            ["Queued", "Triggering", "WaitingForCallback"].includes(
+              String(job.status),
+            ),
+          );
 
         const activeFromBe = safeJobs.find((job) =>
           ["Queued", "Triggering", "WaitingForCallback"].includes(job.status),
@@ -1379,7 +1401,7 @@ export default function TestSuiteDetailPage() {
         // Keep existing UI state; next poll will retry.
       } finally {
         if (!cancelled) {
-          timer = setTimeout(syncJobs, 5000);
+          timer = setTimeout(syncJobs, hasActive ? 1500 : 5000);
         }
       }
     };
@@ -1428,9 +1450,19 @@ export default function TestSuiteDetailPage() {
     setIsWaitingForServerCallbackData(true);
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    const startedAt = Date.now();
+    const MAX_WAIT_MS = 120000;
 
     const pump = async () => {
       try {
+        if (Date.now() - startedAt > MAX_WAIT_MS) {
+          setIsWaitingForServerCallbackData(false);
+          showErrorToast(
+            "Callback data did not arrive in time. Please refresh or regenerate.",
+          );
+          return;
+        }
+
         const refreshed = await refreshSuggestions();
         if (cancelled) return;
 
@@ -1510,7 +1542,7 @@ export default function TestSuiteDetailPage() {
     suiteId,
     jobId: activeGenerationJob?.jobId,
     enabled: !!activeGenerationJob,
-    timeoutMs: 180000,
+    timeoutMs: 600000,
   });
 
   useEffect(() => {
@@ -1578,8 +1610,80 @@ export default function TestSuiteDetailPage() {
   }, [activeGenerationJob, generationPolling.terminalStatus]);
 
   useEffect(() => {
+    if (!activeGenerationJob) return;
+    if (finalizedGenerationJobIdsRef.current.has(activeGenerationJob.jobId)) {
+      return;
+    }
+
+    const matchedJob = generationJobs.find(
+      (job) => job.jobId === activeGenerationJob.jobId,
+    );
+    const serverStatus = matchedJob?.status;
+    if (!serverStatus) return;
+    if (!["Completed", "Failed", "Cancelled"].includes(serverStatus)) return;
+
+    finalizedGenerationJobIdsRef.current.add(activeGenerationJob.jobId);
+    let isCurrent = true;
+
+    const finalizeFromServer = async () => {
+      try {
+        if (serverStatus === "Completed") {
+          const finalized = await finalizeSuggestionGeneration({
+            id: activeGenerationJob.runId,
+            generatedAt: activeGenerationJob.generatedAt,
+          });
+          updateGenerationRun(activeGenerationJob.runId, {
+            completedAt: new Date().toISOString(),
+          });
+          if (finalized.length === 0) {
+            showInfoToast(
+              t("testSuites.detailToast.generationCompletedNoValidSuggestions"),
+            );
+          } else {
+            showSuccessToast(
+              activeGenerationJob.successToast ||
+                t("testSuites.detailToast.suggestionsReady"),
+            );
+          }
+        } else if (serverStatus === "Cancelled") {
+          removeGenerationRun(activeGenerationJob.runId);
+          showInfoToast(t("testSuites.detailToast.generationCancelled"));
+        } else {
+          removeGenerationRun(activeGenerationJob.runId);
+          showErrorToast(
+            matchedJob?.errorMessage ||
+              t("testSuites.detailToast.generationFailed"),
+          );
+        }
+      } catch (err) {
+        handleError(err);
+      } finally {
+        if (isCurrent) {
+          clearSuggestionGenerationState();
+        }
+      }
+    };
+
+    void finalizeFromServer();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeGenerationJob, generationJobs, t]);
+
+  useEffect(() => {
     if (!activeGenerationJob || !generationPolling.error) return;
     if (finalizedGenerationJobIdsRef.current.has(activeGenerationJob.jobId)) {
+      return;
+    }
+
+    const errorMessage = String(generationPolling.error?.message || "").toLowerCase();
+    const isPollingTimeout = errorMessage.includes("timed out");
+    if (isPollingTimeout) {
+      // n8n can still be running and callback may arrive after local polling timeout.
+      // Keep the job active and let server-side job sync/fallback finalize it.
+      setSuggestionGenerationStatus("WaitingForCallback");
+      setIsGeneratingSuggestions(true);
       return;
     }
 
@@ -1603,6 +1707,10 @@ export default function TestSuiteDetailPage() {
     if (!suite || !suiteId || !suite.apiSpecId) {
       showErrorToast(t("testSuites.detailToast.noApiSpec"));
       return false;
+    }
+
+    if (source === "manual" && linkedSrsDocId && !linkedSrsIsReady) {
+      showInfoToast(linkedSrsReadinessMessage);
     }
 
     if (!beginSuggestionGeneration(source)) return false;
@@ -2913,9 +3021,15 @@ export default function TestSuiteDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {steps.map((step, index) => {
                 const isActive = step.id === activeTab;
+                const canReopenSuggestionsWhileLoading =
+                  pendingGeneration ||
+                  isGeneratingSuggestions ||
+                  !!activeGenerationJob ||
+                  isWaitingForServerCallbackData;
                 const isAccessible =
                   step.id === "details" ||
-                  (step.id === "suggestions" && isStep1Completed) ||
+                  (step.id === "suggestions" &&
+                    (isStep1Completed || canReopenSuggestionsWhileLoading)) ||
                   (step.id === "testcases" && hasAnyTestCases);
 
                 return (
@@ -3098,6 +3212,7 @@ export default function TestSuiteDetailPage() {
                   </button>
                 </div>
               )}
+           
 
               <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm">
                 <div className="flex items-center justify-between gap-3 mb-3">
@@ -3308,10 +3423,34 @@ export default function TestSuiteDetailPage() {
                   </p>
                   <p className="text-sm text-on-surface">
                     {linkedSrsDocId
-                      ? (srsDocuments.find((d) => d.id === linkedSrsDocId)
-                          ?.title ?? linkedSrsDocId)
-                      : "Chưa liên kết"}
+                      ? (linkedSrsDocument?.title ?? linkedSrsDocId)
+                      : "Chua lien ket"}
                   </p>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    Generation uses analyzed requirements mapped per endpoint.
+                    Raw SRS pages are not sent to the LLM.
+                  </p>
+                  {linkedSrsDocId && (
+                    <div
+                      className={cn(
+                        "mt-2 inline-flex items-start gap-2 rounded-lg px-3 py-2 text-xs border",
+                        linkedSrsIsReady
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800"
+                          : "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800",
+                      )}
+                    >
+                      {linkedSrsIsReady ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      )}
+                      <span>
+                        {linkedSrsReadinessMessage}
+                        {linkedSrsRequirementCount > 0 &&
+                          ` (${linkedSrsRequirementCount} requirements)`}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {!linkedSrsDocId && (

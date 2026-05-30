@@ -75,7 +75,6 @@ class ApiService {
   ): boolean {
     return (
       !hasRetriedAfterRefresh &&
-      !!token &&
       !endpoint.includes("/auth/login") &&
       !endpoint.includes("/auth/refresh-token")
     );

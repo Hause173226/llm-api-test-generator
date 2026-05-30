@@ -46,7 +46,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const token = getAuthToken();
       const refreshToken = getRefreshToken();
 
-      if (refreshToken) {
+      // BE stores refresh token in HttpOnly cookie (ca_refresh_token).
+      // On reload, localStorage may not have refreshToken but cookie is still valid.
+      // Always attempt refresh when we have any prior auth footprint.
+      if (refreshToken || token || storedUser) {
         try {
           const refreshed = await authService.refreshToken();
           setUser(refreshed.user);
