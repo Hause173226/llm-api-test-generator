@@ -9,6 +9,14 @@ import environmentService, {
 import { handleError } from "../utils/errorHandler";
 
 const MASKED = "******";
+const ENV_CHANGED_EVENT = "execution-environments:changed";
+
+const notifyEnvironmentChanged = (projectId: string) => {
+  if (typeof window === "undefined" || !projectId) return;
+  window.dispatchEvent(
+    new CustomEvent(ENV_CHANGED_EVENT, { detail: { projectId } }),
+  );
+};
 
 /**
  * Strip masked sentinel values from authConfig before passing to the service.
@@ -60,6 +68,21 @@ export const useEnvironments = (projectId: string) => {
     fetchEnvironments();
   }, [projectId]);
 
+  useEffect(() => {
+    if (!projectId || typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ projectId?: string }>;
+      const changedProjectId = custom?.detail?.projectId;
+      if (!changedProjectId || changedProjectId === projectId) {
+        fetchEnvironments();
+      }
+    };
+
+    window.addEventListener(ENV_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(ENV_CHANGED_EVENT, handler);
+  }, [projectId]);
+
   const createEnvironment = async (
     data: CreateEnvironmentRequest,
   ): Promise<boolean> => {
@@ -74,6 +97,7 @@ export const useEnvironments = (projectId: string) => {
           : prev;
         return [...updated, newEnv];
       });
+      notifyEnvironmentChanged(projectId);
       return true;
     } catch (err) {
       handleError(err);
@@ -108,6 +132,7 @@ export const useEnvironments = (projectId: string) => {
       setEnvironments((prev) =>
         prev.map((env) => (env.id === environmentId ? updated : env)),
       );
+      notifyEnvironmentChanged(projectId);
       return true;
     } catch (err) {
       const reasonCode = getConflictReasonCode(err);
@@ -139,6 +164,7 @@ export const useEnvironments = (projectId: string) => {
           setEnvironments((prev) =>
             prev.map((env) => (env.id === environmentId ? retried : env)),
           );
+          notifyEnvironmentChanged(projectId);
           return true;
         } catch (retryErr) {
           // If retry also fails, surface a clear message
@@ -176,6 +202,7 @@ export const useEnvironments = (projectId: string) => {
         current?.rowVersion ?? null,
       );
       setEnvironments((prev) => prev.filter((env) => env.id !== environmentId));
+      notifyEnvironmentChanged(projectId);
       return true;
     } catch (err) {
       const reasonCode = getConflictReasonCode(err);
@@ -219,6 +246,7 @@ export const useEnvironments = (projectId: string) => {
           env.id === environmentId ? updated : { ...env, isDefault: false },
         ),
       );
+      notifyEnvironmentChanged(projectId);
       return true;
     } catch (err) {
       const reasonCode = getConflictReasonCode(err);

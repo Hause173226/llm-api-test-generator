@@ -36,6 +36,14 @@ import {
   showSuccessToast,
 } from "../utils/errorHandler";
 
+const ENV_CHANGED_EVENT = "execution-environments:changed";
+const notifyEnvironmentChanged = (projectId: string) => {
+  if (typeof window === "undefined" || !projectId) return;
+  window.dispatchEvent(
+    new CustomEvent(ENV_CHANGED_EVENT, { detail: { projectId } }),
+  );
+};
+
 const toEndpointKey = (
   testCase: TestCase,
   endpointById: Record<string, Endpoint>,
@@ -439,6 +447,7 @@ export default function GenerationRunExecutePage() {
         return [...updated, created];
       });
       setSelectedEnvironmentId(created.id);
+      notifyEnvironmentChanged(projectId);
       showSuccessToast("Environment created successfully");
       setIsEnvModalOpen(false);
       resetEnvForm();
@@ -505,6 +514,7 @@ export default function GenerationRunExecutePage() {
           return next;
         });
         setSelectedEnvironmentId(updated.id);
+        notifyEnvironmentChanged(projectId);
         showSuccessToast("Environment updated successfully");
         setIsEnvModalOpen(false);
         setEnvModalMode("create");
@@ -942,23 +952,7 @@ export default function GenerationRunExecutePage() {
         }
       />
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <button
-            type="button"
-            onClick={() => navigate(buildSuiteDetailUrl())}
-            className="px-4 py-2 rounded-lg bg-surface-container-high dark:bg-slate-800 text-on-surface text-sm font-semibold flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t("pages.GenerationRunExecutePage.back_to_suite")}
-          </button>
-          <div className="text-sm text-on-surface-variant">
-            {t("pages.GenerationRunExecutePage.suite")}{" "}
-            <span className="font-semibold text-on-surface">
-              {suiteName || "N/A"}
-            </span>
-          </div>
-        </div>
-
+      
         <section className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-sm p-5 space-y-5">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-widest font-bold text-on-surface-variant">

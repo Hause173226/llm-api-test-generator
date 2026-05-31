@@ -73,6 +73,8 @@ export default function SuggestionsPage() {
   const [isLoadingRuns, setIsLoadingRuns] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const fetchRunsRequestIdRef = useRef(0);
+  const fetchRunDetailRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -102,6 +104,8 @@ export default function SuggestionsPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterTestType, setFilterTestType] = useState("");
   const [filterEndpoint, setFilterEndpoint] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { testSuites, isLoading: isLoadingSuites } =
     useTestSuites(selectedProjectId);
@@ -133,13 +137,16 @@ export default function SuggestionsPage() {
     [selectedSuiteId, testSuites],
   );
 
-  const syncQuery = (projectId: string, suiteId: string) => {
+  const syncQuery = (projectId: string, suiteId: string, runId?: string) => {
     const next = new URLSearchParams();
     if (projectId) {
       next.set("projectId", projectId);
     }
     if (suiteId) {
       next.set("suiteId", suiteId);
+    }
+    if (runId) {
+      next.set("runId", runId);
     }
     setSearchParams(next, { replace: true });
   };
@@ -152,12 +159,16 @@ export default function SuggestionsPage() {
     }
 
     try {
+      const requestId = ++fetchRunsRequestIdRef.current;
       setIsLoadingRuns(true);
       const response = await testRunService.getTestRunsByTestSuite(
         suiteId,
         1,
         50,
       );
+      if (requestId !== fetchRunsRequestIdRef.current) {
+        return;
+      }
       const items = response.items || [];
       setRuns(items);
 
@@ -165,14 +176,16 @@ export default function SuggestionsPage() {
         // Ưu tiên: 1) preferRunId (từ URL), 2) state hiện tại, 3) localStorage, 4) run mới nhất
         const storedRunId =
           localStorage.getItem(`suggestions_runId:${suiteId}`) || "";
-        const currentRunId = preferRunId || storedRunId;
+        const currentRunId = preferRunId || selectedRunId || storedRunId;
         const preferredRun = items.some((run) => run.id === currentRunId)
           ? currentRunId
           : items[0].id;
         setSelectedRunId(preferredRun);
         localStorage.setItem(`suggestions_runId:${suiteId}`, preferredRun);
+        syncQuery(selectedProjectId, suiteId, preferredRun);
       } else {
         setSelectedRunId("");
+        syncQuery(selectedProjectId, suiteId);
       }
     } catch (err) {
       setRuns([]);
@@ -191,6 +204,7 @@ export default function SuggestionsPage() {
     }
 
     try {
+      const requestId = ++fetchRunDetailRequestIdRef.current;
       setIsLoadingDetail(true);
       let detail: TestRunDetailResponse | null = null;
       // Backend can return resultsSource=unavailable briefly before cache is populated.
@@ -206,6 +220,10 @@ export default function SuggestionsPage() {
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      if (requestId !== fetchRunDetailRequestIdRef.current) {
+        return;
       }
 
       setRunDetail(detail);
@@ -228,15 +246,23 @@ export default function SuggestionsPage() {
       return;
     }
 
-    syncQuery(selectedProjectId, selectedSuiteId);
-    fetchRuns(selectedSuiteId, runIdFromQuery || undefined);
-  }, [selectedProjectId, selectedSuiteId]);
+    const preferredRunId = runIdFromQuery || selectedRunId || undefined;
+    syncQuery(selectedProjectId, selectedSuiteId, preferredRunId);
+    fetchRuns(selectedSuiteId, preferredRunId);
+  }, [selectedProjectId, selectedSuiteId, runIdFromQuery]);
 
   useEffect(() => {
     if (!selectedSuiteId || !selectedRunId) {
+      setRunDetail(null);
+      setRunDetailsUnavailable(false);
+      setExplanationsByCaseId({});
       return;
     }
 
+    // Prevent stale run content flash while new run detail is loading.
+    setRunDetail(null);
+    setRunDetailsUnavailable(false);
+    setExplanationsByCaseId({});
     fetchRunDetail(selectedSuiteId, selectedRunId);
   }, [selectedSuiteId, selectedRunId]);
 
@@ -396,6 +422,21 @@ export default function SuggestionsPage() {
     return result;
   }, [runDetail, searchQuery, filterStatus, filterTestType, filterEndpoint]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedRunId, searchQuery, filterStatus, filterTestType, filterEndpoint]);
+
+  const totalFilteredCases = filteredCases.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredCases / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const pagedCases = filteredCases.slice(
+    pageStartIndex,
+    pageStartIndex + pageSize,
+  );
+  const pageStartDisplay = totalFilteredCases === 0 ? 0 : pageStartIndex + 1;
+  const pageEndDisplay = Math.min(pageStartIndex + pageSize, totalFilteredCases);
+
   const getCheckStateClass = (value?: boolean) => {
     if (value === true) {
       return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
@@ -525,13 +566,12 @@ export default function SuggestionsPage() {
             <select
               value={selectedRunId}
               onChange={(e) => {
-                setSelectedRunId(e.target.value);
-                if (selectedSuiteId && e.target.value) {
-                  localStorage.setItem(
-                    `suggestions_runId:${selectedSuiteId}`,
-                    e.target.value,
-                  );
+                const nextRunId = e.target.value;
+                setSelectedRunId(nextRunId);
+                if (selectedSuiteId && nextRunId) {
+                  localStorage.setItem(`suggestions_runId:${selectedSuiteId}`, nextRunId);
                 }
+                syncQuery(selectedProjectId, selectedSuiteId, nextRunId || undefined);
               }}
               disabled={!selectedSuiteId || isLoadingRuns}
               className="w-full px-4 py-3 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-outline-variant/10 dark:border-slate-700 text-on-surface disabled:opacity-60"
@@ -766,9 +806,54 @@ export default function SuggestionsPage() {
                   {runDetail?.cases?.length || 0} test cases
                 </p>
               )}
+
+              <div className="mt-3 flex flex-col gap-3 rounded-lg border border-outline-variant/20 dark:border-slate-700 bg-surface-container-low dark:bg-slate-800/50 px-3 py-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-xs text-on-surface-variant">
+                  Showing {pageStartDisplay}-{pageEndDisplay} of{" "}
+                  {totalFilteredCases}
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-on-surface-variant">Rows:</label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-2 py-1 rounded-lg bg-surface-container-high dark:bg-slate-700 text-xs text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={safeCurrentPage <= 1}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 dark:border-slate-600 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Prev
+                  </button>
+                  <span className="min-w-[60px] text-center text-xs font-semibold text-on-surface">
+                    {safeCurrentPage}/{totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={safeCurrentPage >= totalPages}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 dark:border-slate-600 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {filteredCases.map((testCase) => {
+            {pagedCases.map((testCase) => {
               const explanation = explanationsByCaseId[testCase.testCaseId];
               const loadingExplanation =
                 !!loadingExplanationByCaseId[testCase.testCaseId];
@@ -1731,9 +1816,64 @@ export default function SuggestionsPage() {
                 </div>
               );
             })}
+
+            {totalFilteredCases > 0 && (
+              <div className="bg-surface-container-lowest dark:bg-slate-900/90 p-4 rounded-2xl border border-outline-variant/10 dark:border-slate-700 shadow-sm">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="text-xs text-on-surface-variant">
+                    Showing {pageStartDisplay}-{pageEndDisplay} of{" "}
+                    {totalFilteredCases}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-on-surface-variant">
+                      Rows:
+                    </label>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-2 py-1 rounded-lg bg-surface-container-high dark:bg-slate-700 text-xs text-on-surface border border-outline-variant/20 dark:border-slate-600"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={safeCurrentPage <= 1}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 dark:border-slate-600 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Prev
+                    </button>
+                    <span className="min-w-[60px] text-center text-xs font-semibold text-on-surface">
+                      {safeCurrentPage}/{totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      disabled={safeCurrentPage >= totalPages}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 dark:border-slate-600 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
     </MainLayout>
   );
 }
+
+
+
+

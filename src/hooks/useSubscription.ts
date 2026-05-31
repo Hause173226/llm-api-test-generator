@@ -36,27 +36,19 @@ export const useSubscription = () => {
         });
       setCurrentSubscription(subscriptionData);
 
-      // If user has subscription, fetch usage and payments
-      if (subscriptionData) {
-        const [usageData, paymentsData] = await Promise.all([
-          subscriptionService.getMyUsage().catch((err) => {
-            console.log("No usage data:", err);
-            return [];
-          }),
-          subscriptionService
-            .getPaymentTransactions(subscriptionData.id)
-            .catch((err) => {
-              console.log("No payment history:", err);
-              return [];
-            }),
-        ]);
-        setUsage(usageData);
-        setPayments(paymentsData);
-      } else {
-        // No subscription, set empty arrays
-        setUsage([]);
-        setPayments([]);
-      }
+      // Fetch usage and payment history independent from active subscription
+      const [usageData, paymentsData] = await Promise.all([
+        subscriptionService.getMyUsage().catch((err) => {
+          console.log("No usage data:", err);
+          return [];
+        }),
+        subscriptionService.getMyPaymentTransactions().catch((err) => {
+          console.log("No payment history:", err);
+          return [];
+        }),
+      ]);
+      setUsage(usageData);
+      setPayments(paymentsData);
     } catch (err) {
       console.error("Error fetching subscription data:", err);
       const errorMessage = handleError(err);

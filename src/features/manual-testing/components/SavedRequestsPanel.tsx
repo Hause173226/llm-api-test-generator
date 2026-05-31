@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { useRequestConfig } from "../contexts/ManualTestingContext";
 import { useEnvironment } from "../contexts/EnvironmentContext";
 import KeyValueEditor from "./KeyValueEditor";
@@ -178,14 +179,26 @@ const mapBEEnvToContext = (
   apiEnv: ExecutionEnvironment,
   projId: string,
 ): Environment => {
-  const variables: EnvironmentVariable[] = Object.entries(
-    apiEnv.variables || {},
-  ).map(([key, value], i) => ({
+  const baseVars = apiEnv.variables || {};
+  const envNameKey = String(apiEnv.name || "").trim();
+  const canUseEnvNameKey = /^[a-zA-Z0-9_.-]+$/.test(envNameKey);
+  const autoKey = canUseEnvNameKey ? envNameKey : "baseUrl";
+  const withBaseUrl =
+    apiEnv.baseUrl && !Object.prototype.hasOwnProperty.call(baseVars, "baseUrl")
+      ? {
+          ...baseVars,
+          [Object.keys(baseVars).length === 0 ? autoKey : "baseUrl"]:
+            apiEnv.baseUrl,
+        }
+      : baseVars;
+  const variables: EnvironmentVariable[] = Object.entries(withBaseUrl).map(
+    ([key, value], i) => ({
     id: `${apiEnv.id}-var-${i}`,
     key,
     value: value ?? "",
     enabled: true,
-  }));
+  }),
+  );
   return {
     id: apiEnv.id,
     projectId: projId,
@@ -211,6 +224,8 @@ const mapBEEnvToContext = (
 
 const SavedRequestsPanel: React.FC = () => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectIdFromQuery = searchParams.get("projectId") || "";
   const { requestConfig, setRequestConfig, setExecutionTarget, resetRequest } =
     useRequestConfig();
   const {
@@ -286,6 +301,9 @@ const SavedRequestsPanel: React.FC = () => {
       preferredProjectId &&
       items.some((project) => project.id === preferredProjectId)
         ? preferredProjectId
+        : projectIdFromQuery &&
+            items.some((project) => project.id === projectIdFromQuery)
+          ? projectIdFromQuery
         : selectedProjectId &&
             items.some((project) => project.id === selectedProjectId)
           ? selectedProjectId
@@ -293,6 +311,15 @@ const SavedRequestsPanel: React.FC = () => {
 
     setSelectedProjectId(targetProjectId);
   };
+
+  useEffect(() => {
+    const current = searchParams.get("projectId") || "";
+    if (selectedProjectId && current !== selectedProjectId) {
+      const next = new URLSearchParams(searchParams);
+      next.set("projectId", selectedProjectId);
+      setSearchParams(next, { replace: true });
+    }
+  }, [selectedProjectId, searchParams, setSearchParams]);
 
   const loadProjectContext = async (projectId: string) => {
     const suiteItems = await testSuiteService.getTestSuites(projectId);
@@ -928,14 +955,19 @@ const SavedRequestsPanel: React.FC = () => {
             isDefault: payload.isDefault,
           },
         );
-        const mapped = mapBEEnvToContext(newEnv, selectedProjectId);
-        setEnvironments([
-          ...(newEnv.isDefault
-            ? environments.map((e) => ({ ...e, isDefault: false }))
-            : environments),
-          mapped,
-        ]);
-        setActiveEnvironment(mapped);
+        // Re-fetch from backend to avoid stale local list and ensure
+        // the newly created environment appears immediately in all selectors.
+        const refreshed = await environmentService.getEnvironments(
+          selectedProjectId,
+        );
+        const mappedList = refreshed.map((item) =>
+          mapBEEnvToContext(item, selectedProjectId),
+        );
+        setEnvironments(mappedList);
+        const createdMapped =
+          mappedList.find((item) => item.id === newEnv.id) ||
+          mapBEEnvToContext(newEnv, selectedProjectId);
+        setActiveEnvironment(createdMapped);
       } else {
         // No project selected – local only (no API)
         const now = new Date();

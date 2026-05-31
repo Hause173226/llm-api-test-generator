@@ -353,6 +353,8 @@ export default function TraceabilityPage() {
   const [loading, setLoading] = useState(false);
   const [testRunDetail, setTestRunDetail] = useState<any>(null);
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (!projectId) {
@@ -545,6 +547,28 @@ export default function TraceabilityPage() {
     if (coverageFilter === "uncovered") return !r.isCovered;
     return true;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [coverageFilter, suiteId]);
+
+  const totalFilteredRequirements = filteredRequirements.length;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalFilteredRequirements / pageSize),
+  );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const pagedRequirements = filteredRequirements.slice(
+    pageStartIndex,
+    pageStartIndex + pageSize,
+  );
+  const pageStartDisplay =
+    totalFilteredRequirements === 0 ? 0 : pageStartIndex + 1;
+  const pageEndDisplay = Math.min(
+    pageStartIndex + pageSize,
+    totalFilteredRequirements,
+  );
 
   return (
     <MainLayout
@@ -823,6 +847,56 @@ export default function TraceabilityPage() {
 
             {/* Requirement rows */}
             <div className="space-y-3">
+              {filteredRequirements.length > 0 && (
+                <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="text-xs text-on-surface-variant">
+                    Showing {pageStartDisplay}-{pageEndDisplay} of{" "}
+                    {totalFilteredRequirements}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-on-surface-variant">
+                      Rows:
+                    </label>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-2 py-1 rounded-lg border border-outline-variant/20 bg-surface-container-low text-xs text-on-surface"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={safeCurrentPage <= 1}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Prev
+                    </button>
+                    <span className="min-w-[60px] text-center text-xs font-semibold text-on-surface">
+                      {safeCurrentPage}/{totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(totalPages, prev + 1),
+                        )
+                      }
+                      disabled={safeCurrentPage >= totalPages}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
               {filteredRequirements.length === 0 ? (
                 <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-8 text-center text-sm text-on-surface-variant">
                   {t(
@@ -830,7 +904,7 @@ export default function TraceabilityPage() {
                   )}
                 </div>
               ) : (
-                filteredRequirements.map((row: any) => (
+                pagedRequirements.map((row: any) => (
                   <RequirementCard
                     key={row.requirementId}
                     row={row}
@@ -843,6 +917,56 @@ export default function TraceabilityPage() {
                     t={t}
                   />
                 ))
+              )}
+              {filteredRequirements.length > 0 && (
+                <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="text-xs text-on-surface-variant">
+                    Showing {pageStartDisplay}-{pageEndDisplay} of{" "}
+                    {totalFilteredRequirements}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-on-surface-variant">
+                      Rows:
+                    </label>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-2 py-1 rounded-lg border border-outline-variant/20 bg-surface-container-low text-xs text-on-surface"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={safeCurrentPage <= 1}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Prev
+                    </button>
+                    <span className="min-w-[60px] text-center text-xs font-semibold text-on-surface">
+                      {safeCurrentPage}/{totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(totalPages, prev + 1),
+                        )
+                      }
+                      disabled={safeCurrentPage >= totalPages}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -901,4 +1025,3 @@ export default function TraceabilityPage() {
     </MainLayout>
   );
 }
-

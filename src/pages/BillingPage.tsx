@@ -49,6 +49,31 @@ export default function BillingPage() {
   const [selectedBillingCycle, setSelectedBillingCycle] =
     React.useState<number>(0);
 
+  const formatCurrency = React.useCallback((value?: number | null) => {
+    const amount = Number(value ?? 0);
+    if (!Number.isFinite(amount)) return "$0";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }, []);
+
+  const getLimitValueFromCurrentPlan = React.useCallback(
+    (limitType: string, fallback: number) => {
+      const currentPlan = plans.find((p) => p.id === currentSubscription?.planId);
+      const matched = currentPlan?.limits?.find(
+        (l) => String(l.limitType) === limitType,
+      );
+      if (!matched) return fallback;
+      if ((matched as any).isUnlimited) return fallback;
+      const value = Number(matched.limitValue);
+      return Number.isFinite(value) && value > 0 ? value : fallback;
+    },
+    [plans, currentSubscription?.planId],
+  );
+
   const handleSubscribe = async (planId: string) => {
     try {
       // Step 1: Create subscription purchase intent
@@ -125,26 +150,40 @@ export default function BillingPage() {
     );
   }
 
-  // Map usage data by limit type
-  const usageMap = usage.reduce(
-    (acc, u) => {
-      acc[u.limitType] = u;
-      return acc;
-    },
-    {} as Record<string, (typeof usage)[0]>,
-  );
+  // Pick the most recently updated usage record.
+  // Do not rely on periodEnd ordering because some BE rows may contain abnormal future dates.
+  const toEpoch = (value?: string | null) => {
+    if (!value) return 0;
+    const time = new Date(value).getTime();
+    return Number.isFinite(time) ? time : 0;
+  };
 
-  const testRunsUsage = usageMap["TestRuns"] || {
-    currentUsage: 0,
-    limitValue: 1000,
+  const latestUsage =
+    usage.length > 0
+      ? [...usage].sort((a, b) => {
+          const bTs =
+            toEpoch(b.updatedDateTime) ||
+            toEpoch(b.createdDateTime) ||
+            toEpoch(b.periodEnd);
+          const aTs =
+            toEpoch(a.updatedDateTime) ||
+            toEpoch(a.createdDateTime) ||
+            toEpoch(a.periodEnd);
+          return bTs - aTs;
+        })[0]
+      : null;
+
+  const testRunsUsage = {
+    currentUsage: Number(latestUsage?.testRunCount ?? 0),
+    limitValue: getLimitValueFromCurrentPlan("MaxTestRunsPerMonth", 1000),
   };
-  const projectsUsage = usageMap["Projects"] || {
-    currentUsage: 0,
-    limitValue: 3,
+  const projectsUsage = {
+    currentUsage: Number(latestUsage?.projectCount ?? 0),
+    limitValue: getLimitValueFromCurrentPlan("MaxProjects", 3),
   };
-  const aiTokensUsage = usageMap["AITokens"] || {
-    currentUsage: 0,
-    limitValue: 25000,
+  const aiTokensUsage = {
+    currentUsage: Number(latestUsage?.llmCallCount ?? 0),
+    limitValue: getLimitValueFromCurrentPlan("MaxLlmCallsPerMonth", 25000),
   };
 
   const getPaymentDateText = (payment: (typeof payments)[number]) => {
@@ -365,21 +404,26 @@ export default function BillingPage() {
                     <div className="mb-8">
                       <h3 className="text-xl font-bold text-on-surface mb-2">
                         {t(`billing.plans.names.${plan.name?.toLowerCase()}`, {
-                          defaultValue: plan.name,
+                          defaultValue: plan.displayName || plan.name,
                         })}
                       </h3>
                       <div className="flex items-baseline gap-1 mb-4">
                         <span className="text-4xl font-bold text-on-surface">
-                          ${plan.price || 0}
+                          {formatCurrency(
+                            (selectedBillingCycle === 1
+                              ? plan.priceYearly
+                              : plan.priceMonthly) ??
+                              plan.price ??
+                              0,
+                          )}
                         </span>
 
                         <span className="text-on-surface-variant font-medium">
                           /
                           {t(
-                            `billing.plans.billingCycle.${plan.billingCycle === 1 ? "yearly" : "monthly"}`,
+                            `billing.plans.billingCycle.${selectedBillingCycle === 1 ? "yearly" : "monthly"}`,
                             {
-                              defaultValue:
-                                plan.billingCycle === 1 ? "year" : "month",
+                              defaultValue: selectedBillingCycle === 1 ? "year" : "month",
                             },
                           )}
                         </span>
@@ -409,7 +453,10 @@ export default function BillingPage() {
                             {t(`billing.plans.limitTypes.${limit.limitType}`, {
                               defaultValue: limit.limitType,
                             })}
-                            : {limit.limitValue?.toLocaleString() || 0}
+                            :{" "}
+                            {(limit as any).isUnlimited
+                              ? t("common.unlimited", { defaultValue: "Unlimited" })
+                              : (limit.limitValue?.toLocaleString() ?? 0)}
                           </li>
                         ))
                       ) : (
