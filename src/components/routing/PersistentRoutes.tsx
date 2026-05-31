@@ -53,7 +53,7 @@ const CACHE_RULES: CacheRule[] = [
     params: ["projectId"],
   },
   { pattern: /^\/studio$/, params: ["projectId"] },
-  { pattern: /^\/suggestions$/, params: ["projectId", "suiteId"] },
+  { pattern: /^\/suggestions$/, params: ["projectId", "suiteId", "runId"] },
   { pattern: /^\/environments$/, params: ["projectId"] },
   { pattern: /^\/runs$/, params: ["projectId", "suiteId"] },
   { pattern: /^\/reports$/, params: ["projectId"] },
@@ -192,14 +192,33 @@ export default function PersistentRoutes({
 
   return (
     <>
-      {renderEntries.map((entry) => (
-        <div
-          key={entry.key}
-          style={{ display: entry.key === activeKey ? "block" : "none" }}
-        >
-          <Routes location={entry.location}>{children}</Routes>
+      {renderEntries.length > 0 && (
+        <div className="relative min-h-full">
+          {renderEntries.map((entry) => {
+            const isActive = entry.key === activeKey;
+            return (
+              <div
+                key={entry.key}
+                aria-hidden={!isActive}
+                style={{
+                  position: isActive ? "relative" : "absolute",
+                  inset: isActive ? undefined : 0,
+                  width: "100%",
+                  opacity: isActive ? 1 : 0,
+                  visibility: isActive ? "visible" : "hidden",
+                  pointerEvents: isActive ? "auto" : "none",
+                  transform: isActive ? "translateY(0px)" : "translateY(6px)",
+                  transition:
+                    "opacity 180ms ease, transform 220ms ease, visibility 180ms ease",
+                  willChange: "opacity, transform",
+                }}
+              >
+                <Routes location={entry.location}>{children}</Routes>
+              </div>
+            );
+          })}
         </div>
-      ))}
+      )}
 
       {!isCacheable && <Routes location={location}>{children}</Routes>}
     </>

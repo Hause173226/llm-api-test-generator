@@ -2,10 +2,11 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { authService, LoginResponse } from "../services/authService";
 import {
   getAuthToken,
-  getRefreshToken,
   getUser,
   clearAuthToken,
 } from "../config/api";
+import apiService from "../services/apiService";
+import userService from "../services/userService";
 
 interface User {
   id: string;
@@ -44,31 +45,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const bootstrapSession = async () => {
       const storedUser = getUser();
       const token = getAuthToken();
-      const refreshToken = getRefreshToken();
 
-      // BE stores refresh token in HttpOnly cookie (ca_refresh_token).
-      // On reload, localStorage may not have refreshToken but cookie is still valid.
-      // Always attempt refresh when we have any prior auth footprint.
-      if (refreshToken || token || storedUser) {
+      if (token || storedUser) {
         try {
-          const refreshed = await authService.refreshToken();
-          setUser(refreshed.user);
+          // Prefer using current access token first.
+          // Only refresh when the token is actually invalid/expired.
+          const profile = await userService.getCurrentUser();
+          setUser({
+            id: profile.userId,
+            email: profile.email,
+            fullName: profile.displayName || profile.userName || profile.email,
+            roles: profile.roles || [],
+            avatarUrl: profile.avatarUrl,
+          });
         } catch {
-          clearAuthToken();
-          setUser(null);
+          try {
+            // Token likely expired; refresh via cookie with apiService lock.
+            await apiService.refreshSession();
+            const profile = await userService.getCurrentUser();
+            setUser({
+              id: profile.userId,
+              email: profile.email,
+              fullName:
+                profile.displayName || profile.userName || profile.email,
+              roles: profile.roles || [],
+              avatarUrl: profile.avatarUrl,
+            });
+          } catch {
+            clearAuthToken();
+            setUser(null);
+          }
         } finally {
           setIsLoading(false);
         }
         return;
       }
-
-      if (storedUser && token) {
-        setUser(storedUser);
-      } else {
-        clearAuthToken();
-        setUser(null);
-      }
-
+      clearAuthToken();
+      setUser(null);
       setIsLoading(false);
     };
 

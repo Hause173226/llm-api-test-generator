@@ -286,8 +286,8 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 text-center space-y-12 bg-slate-50 dark:bg-slate-900">
-        <h2 className="text-5xl md:text-7xl font-black tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-[0.9]">
+      <section className="py-32 text-center space-y-18 bg-slate-50 dark:bg-slate-900 ">
+        <h2 className="text-5xl md:text-7xl font-black tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-[0.9] ">
           {t("landing.cta.title")}
         </h2>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">

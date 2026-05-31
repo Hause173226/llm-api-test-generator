@@ -962,15 +962,7 @@ export default function TestCaseDetailPage() {
       }
     >
       <div className="flex flex-col  pb-12">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors "
-        >
-          <ArrowLeft className="w-4 h-" />
-          <span className="text-sm font-semibold">
-            {t("pages.TestCaseDetailPage.back")}
-          </span>
-        </button>
+    
         <header className="flex justify-between items-center">
           <div className="flex items-start gap-4 mt-10">
             <div className="">
@@ -1345,18 +1337,7 @@ export default function TestCaseDetailPage() {
 
               return (
                 <div className="space-y-3">
-                  <ExpectedAuditPanel
-                    expectedStatus={rawExp.expectedStatus}
-                    bodyContains={rawExp.bodyContains}
-                    bodyNotContains={rawExp.bodyNotContains}
-                    jsonPathChecks={rawExp.jsonPathChecks}
-                    headerChecks={rawExp.headerChecks}
-                    variables={(testCase as any)?.variables}
-                    maxResponseTime={rawExp.maxResponseTime}
-                    expectedProvenance={rawExp.expectedProvenance}
-                    expectationSource={rawExp.expectationSource}
-                    requirementCode={rawExp.requirementCode}
-                  />
+              
                   <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800">
                     <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
                       Legacy Expected Checks

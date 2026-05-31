@@ -45,6 +45,24 @@ import {
 import { cn } from "../lib/utils";
 import { useTestSuites } from "../hooks/useTestSuites";
 
+const SRS_LINK_SYNC_EVENT = "srs:link-sync-updated";
+
+const dispatchSrsLinkSyncEvent = (
+  projectId: string,
+  payload?: { suiteId?: string | null; documentId?: string | null; reason?: string },
+) => {
+  if (!projectId) return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent(SRS_LINK_SYNC_EVENT, {
+        detail: { projectId, ...payload },
+      }),
+    );
+  } catch {
+    window.dispatchEvent(new Event(SRS_LINK_SYNC_EVENT));
+  }
+};
+
 const analysisStatusTone: Record<number, string> = {
   0: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
   1: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200",
@@ -91,6 +109,8 @@ export default function SrsDocumentsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [selectedRequirement, setSelectedRequirement] =
     useState<SrsRequirement | null>(null);
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
@@ -154,7 +174,7 @@ export default function SrsDocumentsPage() {
   });
   const [isAddingReq, setIsAddingReq] = useState(false);
 
-  const { testSuites } = useTestSuites(projectId);
+  const { testSuites, refetch: refetchTestSuites } = useTestSuites(projectId);
   const [linkSuiteId, setLinkSuiteId] = useState<string>("");
   const [isLinkingSuite, setIsLinkingSuite] = useState(false);
 
@@ -242,6 +262,22 @@ export default function SrsDocumentsPage() {
   }, [selectedDocument?.id]);
 
   useEffect(() => {
+    if (!projectId) return;
+    const onSrsLinkSync = (event: Event) => {
+      const custom = event as CustomEvent<{ projectId?: string }>;
+      const changedProjectId = custom?.detail?.projectId;
+      if (!changedProjectId || changedProjectId === projectId) {
+        loadDocuments(true);
+        refetchTestSuites();
+      }
+    };
+
+    window.addEventListener(SRS_LINK_SYNC_EVENT, onSrsLinkSync);
+    return () => window.removeEventListener(SRS_LINK_SYNC_EVENT, onSrsLinkSync);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, refetchTestSuites]);
+
+  useEffect(() => {
     if (!analysisJobId || !selectedDocument || !projectId) return;
     let stopped = false;
     let consecutivePollErrors = 0;
@@ -274,6 +310,11 @@ export default function SrsDocumentsPage() {
           stopped = true;
           await loadDocumentDetail(selectedDocument.id);
           await loadDocuments(true);
+          dispatchSrsLinkSyncEvent(projectId, {
+            suiteId: selectedDocument.testSuiteId ?? null,
+            documentId: selectedDocument.id,
+            reason: "analysis-terminal",
+          });
           setIsAnalyzing(false);
           if (job.status === 4) {
             showErrorToast(
@@ -556,6 +597,11 @@ export default function SrsDocumentsPage() {
       setDocuments((prev) =>
         prev.map((d) => (d.id === updated.id ? updated : d)),
       );
+      dispatchSrsLinkSyncEvent(projectId, {
+        suiteId: linkSuiteId || null,
+        documentId: selectedDocument.id,
+        reason: linkSuiteId ? "linked" : "unlinked",
+      });
       showSuccessToast(
         linkSuiteId
           ? t("pages.SrsDocumentsPage.suite_linked")
@@ -650,6 +696,28 @@ export default function SrsDocumentsPage() {
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [requirements, search, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, typeFilter, selectedDocument?.id]);
+
+  const totalFilteredRequirements = filteredRequirements.length;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalFilteredRequirements / pageSize),
+  );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const pagedRequirements = filteredRequirements.slice(
+    pageStartIndex,
+    pageStartIndex + pageSize,
+  );
+  const pageStartDisplay =
+    totalFilteredRequirements === 0 ? 0 : pageStartIndex + 1;
+  const pageEndDisplay = Math.min(
+    pageStartIndex + pageSize,
+    totalFilteredRequirements,
+  );
 
   const selectedJob = analysisJobId ? analysisJobs[analysisJobId] : null;
 
@@ -1497,7 +1565,7 @@ export default function SrsDocumentsPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {filteredRequirements.map((req) => {
+                    {pagedRequirements.map((req) => {
                       const reqClars = clarifications[req.id] || [];
                       const criticalCount = reqClars.filter(
                         (item) => item.isCritical,
@@ -2006,6 +2074,54 @@ export default function SrsDocumentsPage() {
                         </article>
                       );
                     })}
+                    <div className="mt-4 flex flex-col gap-3 rounded-xl border border-outline-variant/20 bg-surface-container px-3 py-3 md:flex-row md:items-center md:justify-between">
+                      <div className="text-sm text-on-surface-variant">
+                        Showing {pageStartDisplay}-{pageEndDisplay} of{" "}
+                        {totalFilteredRequirements}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-on-surface-variant">
+                          Rows:
+                        </label>
+                        <select
+                          value={pageSize}
+                          onChange={(e) => {
+                            setPageSize(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                          className="rounded-lg border border-outline-variant/30 bg-surface-container-high px-2 py-1 text-sm text-on-surface"
+                        >
+                          <option value={10}>10</option>
+                          <option value={20}>20</option>
+                          <option value={50}>50</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(1, prev - 1))
+                          }
+                          disabled={safeCurrentPage <= 1}
+                          className="rounded-lg border border-outline-variant/30 px-3 py-1.5 text-sm font-semibold text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Prev
+                        </button>
+                        <span className="min-w-[78px] text-center text-sm font-semibold text-on-surface">
+                          {safeCurrentPage}/{totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCurrentPage((prev) =>
+                              Math.min(totalPages, prev + 1),
+                            )
+                          }
+                          disabled={safeCurrentPage >= totalPages}
+                          className="rounded-lg border border-outline-variant/30 px-3 py-1.5 text-sm font-semibold text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </section>

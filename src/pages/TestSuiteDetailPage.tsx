@@ -99,6 +99,24 @@ type GenerationItem = {
   suggestionIds: string[];
 };
 
+const SRS_LINK_SYNC_EVENT = "srs:link-sync-updated";
+
+const dispatchSrsLinkSyncEvent = (
+  projectId: string,
+  payload?: { suiteId?: string | null; documentId?: string | null; reason?: string },
+) => {
+  if (!projectId) return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent(SRS_LINK_SYNC_EVENT, {
+        detail: { projectId, ...payload },
+      }),
+    );
+  } catch {
+    window.dispatchEvent(new Event(SRS_LINK_SYNC_EVENT));
+  }
+};
+
 export default function TestSuiteDetailPage() {
   const { suiteId } = useParams<{ suiteId: string }>();
   const navigate = useNavigate();
@@ -630,6 +648,8 @@ export default function TestSuiteDetailPage() {
     if (activeTab !== "suggestions") return;
     if (isLoading || isLoadingSuggestions) return;
     if (overlayState.isVisible) return; // already transitioning
+    // Respect explicit user tab choice: if user pinned Suggestions, do not auto-jump.
+    if (isTabPinned) return;
 
     const hasPending = allSuggestions.some(
       (s) => String(s.reviewStatus || "").toLowerCase() === "pending",
@@ -668,6 +688,7 @@ export default function TestSuiteDetailPage() {
     allSuggestions,
     testCases,
     suite,
+    isTabPinned,
   ]);
 
   const changeTab = (tab: SuiteTab) => {
@@ -700,6 +721,25 @@ export default function TestSuiteDetailPage() {
   useEffect(() => {
     fetchData();
   }, [suiteId, projectId]);
+
+  useEffect(() => {
+    if (!projectId || !suiteId) return;
+    const onSrsLinkSync = async (event: Event) => {
+      const custom = event as CustomEvent<{
+        projectId?: string;
+        suiteId?: string | null;
+      }>;
+      const changedProjectId = custom?.detail?.projectId;
+      const changedSuiteId = custom?.detail?.suiteId;
+      if (changedProjectId && changedProjectId !== projectId) return;
+      if (changedSuiteId && changedSuiteId !== suiteId) return;
+      await loadSrsDocuments();
+    };
+
+    window.addEventListener(SRS_LINK_SYNC_EVENT, onSrsLinkSync);
+    return () => window.removeEventListener(SRS_LINK_SYNC_EVENT, onSrsLinkSync);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, suiteId]);
 
   // Keep pending generation visible based on persisted generation runs.
   // This ensures the "Generating…" card remains visible across tab changes
@@ -1221,6 +1261,11 @@ export default function TestSuiteDetailPage() {
         await srsService.linkTestSuite(projectId, newDocId, suiteId!);
       }
       setLinkedSrsDocId(newDocId);
+      dispatchSrsLinkSyncEvent(projectId, {
+        suiteId: suiteId ?? null,
+        documentId: newDocId || null,
+        reason: newDocId ? "linked" : "unlinked",
+      });
       showSuccessToast(
         newDocId ? "Đã liên kết tài liệu SRS." : "Đã hủy liên kết.",
       );
@@ -2674,6 +2719,13 @@ export default function TestSuiteDetailPage() {
     params.set("testCaseIds", item.testCaseIds.join(","));
 
     setTimeout(() => {
+      // Prevent stale overlay state when user navigates back to this cached page.
+      setOverlayState({
+        isVisible: false,
+        title: "",
+        message: "",
+        stepLabel: "",
+      });
       navigate(`/test-suites/${suiteId}/generation-run?${params.toString()}`);
     }, 800);
   };

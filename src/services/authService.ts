@@ -2,9 +2,9 @@ import { apiService } from './apiService';
 import {
   setAuthToken,
   setRefreshToken,
+  clearRefreshToken,
   setUser,
   clearAuthToken,
-  getRefreshToken,
 } from '../config/api';
 
 // Types
@@ -49,6 +49,10 @@ class AuthService {
     setAuthToken(response.accessToken);
     if (response.refreshToken) {
       setRefreshToken(response.refreshToken);
+    } else {
+      // Backend usually stores refresh token in HttpOnly cookie.
+      // Remove any stale local token to avoid sending invalid token later.
+      clearRefreshToken();
     }
     setUser(response.user);
 
@@ -84,15 +88,17 @@ class AuthService {
   }
 
   async refreshToken(): Promise<LoginResponse> {
-    const refreshToken = getRefreshToken();
+    // Use cookie-based refresh only.
+    // Sending stale local refresh token in request body may override a valid cookie token on BE.
     const response = await apiService.post<LoginResponse>(
       '/auth/refresh-token',
-      refreshToken ? { refreshToken } : undefined,
     );
 
     setAuthToken(response.accessToken);
     if (response.refreshToken) {
       setRefreshToken(response.refreshToken);
+    } else {
+      clearRefreshToken();
     }
     setUser(response.user);
 
@@ -107,6 +113,7 @@ class AuthService {
     const response = await apiService.post<LoginResponse>('/auth/login/google', { idToken });
     setAuthToken(response.accessToken);
     if (response.refreshToken) setRefreshToken(response.refreshToken);
+    else clearRefreshToken();
     setUser(response.user);
     return response;
   }

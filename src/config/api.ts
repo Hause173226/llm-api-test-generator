@@ -31,6 +31,10 @@ export const setRefreshToken = (token: string): void => {
   localStorage.setItem('refreshToken', token);
 };
 
+export const clearRefreshToken = (): void => {
+  localStorage.removeItem('refreshToken');
+};
+
 export const getUser = (): any | null => {
   const user = localStorage.getItem('user');
   return user ? JSON.parse(user) : null;

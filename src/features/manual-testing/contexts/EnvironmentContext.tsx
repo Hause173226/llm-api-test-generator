@@ -54,7 +54,20 @@ const mapApiEnvironmentToContext = (
   projectId: string,
   apiEnvironment: any,
 ): Environment => {
-  const variableEntries = Object.entries(apiEnvironment?.variables || {});
+  const baseVars = apiEnvironment?.variables || {};
+  const envNameKey = String(apiEnvironment?.name || "").trim();
+  const canUseEnvNameKey = /^[a-zA-Z0-9_.-]+$/.test(envNameKey);
+  const autoKey = canUseEnvNameKey ? envNameKey : "baseUrl";
+  const withBaseUrl =
+    apiEnvironment?.baseUrl &&
+    !Object.prototype.hasOwnProperty.call(baseVars, "baseUrl")
+      ? {
+          ...baseVars,
+          [Object.keys(baseVars).length === 0 ? autoKey : "baseUrl"]:
+            apiEnvironment.baseUrl,
+        }
+      : baseVars;
+  const variableEntries = Object.entries(withBaseUrl);
 
   return {
     id: apiEnvironment.id,

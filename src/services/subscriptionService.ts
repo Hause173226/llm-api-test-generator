@@ -1,4 +1,6 @@
 import apiService from "./apiService";
+import userService from "./userService";
+import { API_CONFIG } from "../config/api";
 
 // Types based on Backend models
 export interface PlanLimit {
@@ -9,11 +11,16 @@ export interface PlanLimit {
 export interface Plan {
   id: string;
   name: string;
+  displayName?: string;
   description: string;
-  price: number;
-  // FE-14 contract: 0 = Monthly, 1 = Yearly (numeric enum)
-  billingCycle: number;
+  price?: number;
+  priceMonthly?: number | null;
+  priceYearly?: number | null;
+  // Legacy field kept for backward compatibility
+  billingCycle?: number;
+  currency?: string;
   isActive: boolean;
+  sortOrder?: number;
   limits: PlanLimit[];
   createdDateTime: string;
   updatedDateTime?: string;
@@ -36,12 +43,23 @@ export interface Subscription {
 export interface UsageTracking {
   id: string;
   userId: string;
-  limitType: string;
-  currentUsage: number;
-  limitValue: number;
+  // New BE aggregate usage model
+  projectCount?: number;
+  endpointCount?: number;
+  testSuiteCount?: number;
+  testCaseCount?: number;
+  testRunCount?: number;
+  llmCallCount?: number;
+  storageUsedMB?: number;
+  // Legacy fields kept for backward compatibility
+  limitType?: string;
+  currentUsage?: number;
+  limitValue?: number;
   periodStart: string;
   periodEnd: string;
-  lastUpdated: string;
+  lastUpdated?: string;
+  createdDateTime?: string;
+  updatedDateTime?: string;
 }
 
 export interface PaymentTransaction {
@@ -99,6 +117,23 @@ const subscriptionService = {
     return await apiService.get<Plan[]>("/payments/plans");
   },
 
+  // Public-safe plans fetch for marketing pages.
+  // Avoids apiService auth redirect logic when visitor is not logged in.
+  getPlansPublic: async (): Promise<Plan[]> => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/payments/plans`, {
+        method: "GET",
+        credentials: "include",
+        headers: API_CONFIG.HEADERS,
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  },
+
   // Get current user's subscription
   getCurrentSubscription: async (): Promise<Subscription> => {
     return await apiService.get<Subscription>("/subscriptions/me/current");
@@ -106,13 +141,11 @@ const subscriptionService = {
 
   // Get current user's usage tracking
   getMyUsage: async (): Promise<UsageTracking[]> => {
-    // Try to get current subscription first to get userId
+    // Use current user profile to fetch usage even when user has no active subscription
     try {
-      const subscription = await apiService.get<Subscription>(
-        "/subscriptions/me/current",
-      );
+      const me = await userService.getCurrentUser();
       return await apiService.get<UsageTracking[]>(
-        `/subscriptions/users/${subscription.userId}/usage`,
+        `/subscriptions/users/${me.userId}/usage`,
       );
     } catch (error) {
       console.log("Could not fetch usage data:", error);
@@ -127,6 +160,19 @@ const subscriptionService = {
     return await apiService.get<PaymentTransaction[]>(
       `/subscriptions/${subscriptionId}/payments`,
     );
+  },
+
+  // Get all current user's payment transactions (not only current subscription)
+  getMyPaymentTransactions: async (): Promise<PaymentTransaction[]> => {
+    try {
+      const me = await userService.getCurrentUser();
+      return await apiService.get<PaymentTransaction[]>(
+        `/payments/transactions?userId=${encodeURIComponent(me.userId)}`,
+      );
+    } catch (error) {
+      console.log("Could not fetch my payment transactions:", error);
+      return [];
+    }
   },
 
   // Subscribe to a plan
