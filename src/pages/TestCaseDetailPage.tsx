@@ -105,6 +105,7 @@ export default function TestCaseDetailPage() {
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editorHeight, setEditorHeight] = useState(220);
+  const [isSrsEvidenceOpen, setIsSrsEvidenceOpen] = useState(true);
   const canEdit = Boolean(testCase);
 
   useEffect(() => {
@@ -926,6 +927,107 @@ export default function TestCaseDetailPage() {
     }
   };
 
+  const toTextArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.map((item) => String(item ?? "").trim()).filter(Boolean)
+      : [];
+
+  const parseMaybeJsonValue = (value: unknown): any => {
+    if (!value || typeof value !== "string") return value;
+    const trimmed = value.trim();
+    if (!trimmed) return value;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return value;
+    }
+  };
+
+  const getFlowDetails = () => {
+    const source = (testCase || suggestion || {}) as any;
+    const hints = source.executionHints || {};
+    const rawVariables =
+      source.variables ||
+      source.suggestedVariables ||
+      source.variableExtractors ||
+      [];
+    const variables = Array.isArray(rawVariables)
+      ? rawVariables.filter(Boolean)
+      : [];
+    const variableNames = variables
+      .map((item: any) => item?.variableName || item?.name)
+      .map((item) => String(item ?? "").trim())
+      .filter(Boolean);
+    const explicitProduces = toTextArray(source.produces).length
+      ? toTextArray(source.produces)
+      : toTextArray(hints.produces);
+    const produces = explicitProduces.length
+      ? explicitProduces
+      : Array.from(new Set(variableNames));
+    const consumes = toTextArray(source.consumes).length
+      ? toTextArray(source.consumes)
+      : toTextArray(hints.consumes);
+    const dependsOn = toTextArray(source.dependsOn).length
+      ? toTextArray(source.dependsOn)
+      : toTextArray(hints.dependsOn);
+    const flowRequired =
+      source.flowRequired === true ||
+      hints.flowRequired === true ||
+      consumes.length > 0 ||
+      dependsOn.length > 0;
+    const abortIfDependencyFailed =
+      source.abortIfDependencyFailed === true ||
+      hints.abortIfDependencyFailed === true;
+
+    return {
+      produces,
+      consumes,
+      dependsOn,
+      variables,
+      flowRequired,
+      abortIfDependencyFailed,
+    };
+  };
+
+  const getExpectationSourceDetails = () => {
+    const source = (testCase || suggestion || {}) as any;
+    const expectation = source.expectation || {};
+    const provenance = parseMaybeJsonValue(
+      expectation.expectedProvenance || source.expectedProvenance,
+    );
+    const expectationSource =
+      expectation.expectationSource ||
+      source.expectationSource ||
+      (suggestion?.hasSrsContext || (testCase as any)?.hasSrsContext
+        ? "SRS context"
+        : "Generated");
+
+    let hardEvidence = 0;
+    let softEvidence = 0;
+
+    if (provenance && typeof provenance === "object") {
+      const entries = Array.isArray(provenance)
+        ? provenance
+        : Object.values(provenance);
+      for (const item of entries) {
+        const evidenceSource = String(
+          (item as any)?.source || (item as any)?.Source || "",
+        ).toLowerCase();
+        if (
+          evidenceSource.includes("observed") ||
+          evidenceSource.includes("swagger") ||
+          evidenceSource.includes("srs")
+        ) {
+          hardEvidence += 1;
+        } else {
+          softEvidence += 1;
+        }
+      }
+    }
+
+    return { expectationSource, provenance, hardEvidence, softEvidence };
+  };
+
   if (loading || loadingSuggestion) {
     return (
       <MainLayout
@@ -1493,43 +1595,61 @@ export default function TestCaseDetailPage() {
                 return (
                   <div className="shrink-0 rounded-2xl border border-emerald-300/50 dark:border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/30 overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-emerald-200/60 dark:border-emerald-700/30">
-                      <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsSrsEvidenceOpen((prev) => !prev)}
+                      className="w-full flex items-center justify-between px-5 py-3 border-b border-emerald-200/60 dark:border-emerald-700/30 text-left hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30 transition-colors"
+                      aria-expanded={isSrsEvidenceOpen}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <ChevronRight
+                          className={cn(
+                            "w-4 h-4 text-emerald-600 dark:text-emerald-400 transition-transform",
+                            isSrsEvidenceOpen && "rotate-90",
+                          )}
+                        />
                         <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-widest">
                           SRS Evidence
                         </span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600/40">
-                        {isSuggestion ? "Generated from SRS" : "SRS-linked"}
-                      </span>
-                    </div>
-
-                    {/* Source document */}
-                    <div className="px-5 pt-3 pb-2 flex items-start gap-3">
-                      <FileText className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-0.5">
-                          Source document
-                        </p>
-                        <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200 font-mono truncate">
-                          {srsTitle || "SRS Document"}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <span className="hidden sm:inline text-[10px] font-bold text-emerald-700/80 dark:text-emerald-300/80">
+                          {isSrsEvidenceOpen ? "Collapse" : "Expand"}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600/40">
+                          {isSuggestion ? "Generated from SRS" : "SRS-linked"}
+                        </span>
                       </div>
-                    </div>
+                    </button>
 
-                    {/* Covered requirements */}
-                    {hasReqs && (
-                      <div className="px-5 pb-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Link2 className="w-3.5 h-3.5 text-emerald-500" />
-                          <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
-                            Requirements this test case covers
-                          </p>
+                    {isSrsEvidenceOpen && (
+                      <>
+                        {/* Source document */}
+                        <div className="px-5 pt-3 pb-2 flex items-start gap-3">
+                          <FileText className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-0.5">
+                              Source document
+                            </p>
+                            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200 font-mono truncate">
+                              {srsTitle || "SRS Document"}
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          {coveredRequirements && coveredRequirements.length > 0
-                            ? coveredRequirements.map((req: any) => (
+
+                        {/* Covered requirements */}
+                        {hasReqs && (
+                          <div className="px-5 pb-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Link2 className="w-3.5 h-3.5 text-emerald-500" />
+                              <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
+                                Requirements this test case covers
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              {coveredRequirements && coveredRequirements.length > 0
+                                ? coveredRequirements.map((req: any) => (
                                 <div
                                   key={req.id}
                                   className="flex items-start gap-3 p-2.5 rounded-xl bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
@@ -1571,8 +1691,8 @@ export default function TestCaseDetailPage() {
                                     )}
                                   </div>
                                 </div>
-                              ))
-                            : coveredRequirementIds!.map((reqId: any) => (
+                                  ))
+                                : coveredRequirementIds!.map((reqId: any) => (
                                 <div
                                   key={reqId}
                                   className="flex items-start gap-2 px-2.5 py-1.5 rounded-lg bg-white/60 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-700/30"
@@ -1604,24 +1724,28 @@ export default function TestCaseDetailPage() {
                                     )}
                                   </div>
                                 </div>
-                              ))}
-                        </div>
-                      </div>
-                    )}
+                                  ))}
+                            </div>
+                          </div>
+                        )}
 
-                    {/* No requirement data but has SRS context */}
-                    {!hasReqs && (
-                      <div className="px-5 pb-4">
-                        <p className="text-xs text-emerald-700 dark:text-emerald-400 italic">
-                          This scenario was generated with full SRS context.
-                          Specific requirement mapping not available.
-                        </p>
-                      </div>
+                        {/* No requirement data but has SRS context */}
+                        {!hasReqs && (
+                          <div className="px-5 pb-4">
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400 italic">
+                              This scenario was generated with full SRS context.
+                              Specific requirement mapping not available.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );
               })()}
 
+            {/* ── Flow & Evidence card ───────────────────────────────────── */}
+           
             {/* Monaco Editor */}
             <div className="shrink-0 bg-slate-900 rounded-2xl overflow-hidden flex flex-col shadow-2xl ring-1 ring-slate-700/50">
               {/* Title bar */}

@@ -177,6 +177,18 @@ const shouldPreferRuntimeEvidence = (item?: ExpectedProvenanceItem | null) => {
   );
 };
 
+const isHardEvidenceSource = (source?: string | null) => {
+  const normalized = normalizeSource(source);
+  return [
+    "srs",
+    "openapi",
+    "swagger",
+    "business_rule",
+    "businessrule",
+    "observed_response",
+  ].includes(normalized);
+};
+
 const tryParseBody = (body?: string | null): unknown => {
   if (!body?.trim()) return null;
   try {
@@ -420,6 +432,10 @@ export default function ExpectedAuditPanel({
       normalizeSource(item.provenance.source) === "ai_inferred" ||
       normalizeSource(item.provenance.source) === "llm",
   );
+  const hardEvidenceCount = enriched.filter((item) =>
+    isHardEvidenceSource(item.provenance?.source),
+  ).length;
+  const softEvidenceCount = enriched.length - hardEvidenceCount;
 
   if (items.length === 0) {
     return (
@@ -464,6 +480,21 @@ export default function ExpectedAuditPanel({
           <span>{t("testRuns.expectedAudit.reviewWarning")}</span>
         </div>
       )}
+
+      <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
+          <div className="font-bold uppercase tracking-wide">Hard evidence</div>
+          <div>{hardEvidenceCount} checks backed by SRS/OpenAPI/business rule/observed response</div>
+        </div>
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+          <div className="font-bold uppercase tracking-wide">Soft warnings</div>
+          <div>{softEvidenceCount} AI-inferred or unverified checks should not be treated as API failure</div>
+        </div>
+        <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sky-900 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100">
+          <div className="font-bold uppercase tracking-wide">Decision rule</div>
+          <div>Only hard evidence should decide pass/fail; soft checks explain risk.</div>
+        </div>
+      </div>
 
       <div className={cn("mt-3 space-y-3", compact && "space-y-2")}>
         {groups.map((group) => (

@@ -65,10 +65,191 @@ const toEndpointKey = (
 ) => {
   const endpoint = endpointById[testCase.endpointId];
   const method = String(
-    testCase.method || endpoint?.method || "GET",
+    endpoint?.method ||
+      endpoint?.httpMethod ||
+      testCase.method ||
+      testCase.request?.httpMethod ||
+      "GET",
   ).toUpperCase();
-  const path = testCase.path || endpoint?.path || "(unknown path)";
+  const endpointCandidates = Object.values(endpointById);
+  const path =
+    endpoint?.path ||
+    resolveEndpointTemplatePath(testCase, method, endpointCandidates) ||
+    "(unknown path)";
   return `${method} ${path}`.trim();
+};
+
+const getRawTestCasePath = (testCase: TestCase) =>
+  String(
+    testCase.path ||
+      testCase.request?.url ||
+      (testCase.raw as any)?.endpointPath ||
+      (testCase.raw as any)?.EndpointPath ||
+      (testCase.raw as any)?.path ||
+      (testCase.raw as any)?.Path ||
+      "",
+  ).trim();
+
+const normalizePathForEndpointMatch = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  let path = raw;
+  try {
+    path = new URL(raw).pathname;
+  } catch {
+    path = raw.split("?")[0].split("#")[0];
+  }
+
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // Keep the original path when the URL contains malformed escape sequences.
+  }
+
+  return path.startsWith("/") ? path : `/${path}`;
+};
+
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const endpointTemplateToRegex = (template: string) => {
+  const normalizedTemplate = normalizePathForEndpointMatch(template);
+  const pattern = normalizedTemplate
+    .split("/")
+    .map((segment) => {
+      if (!segment) return "";
+      if (/^\{[^}]+\}$/.test(segment) || /^:[A-Za-z0-9_]+$/.test(segment)) {
+        return "[^/]+";
+      }
+      return escapeRegex(segment);
+    })
+    .join("/");
+
+  return new RegExp(`^${pattern}$`, "i");
+};
+
+const resolveEndpointTemplatePath = (
+  testCase: TestCase,
+  method: string,
+  endpoints: Endpoint[],
+) => {
+  const rawPath = normalizePathForEndpointMatch(getRawTestCasePath(testCase));
+  if (!rawPath) return "";
+
+  const methodEndpoints = endpoints.filter(
+    (endpoint) =>
+      String(endpoint.method || endpoint.httpMethod || "GET").toUpperCase() ===
+      method,
+  );
+
+  const exact = methodEndpoints.find(
+    (endpoint) => normalizePathForEndpointMatch(endpoint.path) === rawPath,
+  );
+  if (exact?.path) return exact.path;
+
+  const templated = methodEndpoints.find((endpoint) =>
+    endpointTemplateToRegex(endpoint.path).test(rawPath),
+  );
+  if (templated?.path) return templated.path;
+
+  return rawPath;
+};
+
+const inferTemplateFromPaths = (paths: string[]) => {
+  const normalizedPaths = Array.from(
+    new Set(paths.map(normalizePathForEndpointMatch).filter(Boolean)),
+  );
+  if (normalizedPaths.length === 0) return "";
+
+  const explicitTemplate = normalizedPaths.find((path) => /\{[^}]+\}/.test(path));
+  if (explicitTemplate) return explicitTemplate;
+
+  if (normalizedPaths.length === 1) return normalizedPaths[0];
+
+  const splitPaths = normalizedPaths.map((path) => path.split("/"));
+  const firstLength = splitPaths[0]?.length || 0;
+  if (splitPaths.some((parts) => parts.length !== firstLength)) {
+    return normalizedPaths.sort((a, b) => a.length - b.length)[0];
+  }
+
+  const segments = splitPaths[0].map((segment, index) => {
+    const values = splitPaths.map((parts) => parts[index]);
+    return values.every((value) => value === segment) ? segment : "{param}";
+  });
+
+  return segments.join("/") || "/";
+};
+
+const toTextArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.map((item) => String(item ?? "").trim()).filter(Boolean)
+    : [];
+
+const getTagValues = (tags: unknown, prefix: string): string[] =>
+  toTextArray(tags)
+    .filter((tag) => tag.toLowerCase().startsWith(prefix.toLowerCase()))
+    .map((tag) => tag.slice(prefix.length).trim())
+    .filter(Boolean);
+
+const getFlowRequiredFromTags = (tags: unknown): boolean =>
+  getTagValues(tags, "flow-required:").some(
+    (value) => value.toLowerCase() === "true",
+  );
+
+const toScenarioKey = (value: unknown): string =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const getFlowInfo = (testCase: TestCase) => {
+  const hints = testCase.executionHints || {};
+  const variables = Array.isArray(testCase.variables)
+    ? testCase.variables.filter(Boolean)
+    : [];
+  const variableNames = variables
+    .map((item: any) => item?.variableName || item?.name)
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean);
+  const explicitProduces = toTextArray(testCase.produces).length
+    ? toTextArray(testCase.produces)
+    : toTextArray(hints.produces).length
+      ? toTextArray(hints.produces)
+      : getTagValues(testCase.tags, "flow-produces:");
+  const produces = explicitProduces.length
+    ? explicitProduces
+    : Array.from(new Set(variableNames));
+  const consumes = toTextArray(testCase.consumes).length
+    ? toTextArray(testCase.consumes)
+    : toTextArray(hints.consumes).length
+      ? toTextArray(hints.consumes)
+      : getTagValues(testCase.tags, "flow-consumes:");
+  const dependencyRefs = [
+    ...toTextArray(testCase.dependsOn),
+    ...toTextArray(hints.dependsOn),
+    ...getTagValues(testCase.tags, "flow-depends-on:"),
+    ...toTextArray(testCase.dependsOnIds),
+    ...toTextArray(testCase.dependencies?.map((dep) => dep.name || dep.dependsOnTestCaseId)),
+  ];
+  const dependsOn = Array.from(new Set(dependencyRefs.filter(Boolean)));
+
+  return {
+    produces,
+    consumes,
+    dependsOn,
+    variables,
+    flowRequired:
+      testCase.flowRequired === true ||
+      hints.flowRequired === true ||
+      getFlowRequiredFromTags(testCase.tags) ||
+      consumes.length > 0 ||
+      dependsOn.length > 0,
+    abortIfDependencyFailed:
+      testCase.abortIfDependencyFailed === true ||
+      hints.abortIfDependencyFailed === true,
+  };
 };
 
 export default function GenerationRunExecutePage() {
@@ -167,10 +348,75 @@ export default function GenerationRunExecutePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const endpointKeyByTestCaseId = useMemo(() => {
+    const direct = new Map<string, string>();
+    const fallbackGroups = new Map<
+      string,
+      { method: string; testCaseIds: string[]; paths: string[] }
+    >();
+
+    for (const testCase of testCases) {
+      const method = String(
+        endpointById[testCase.endpointId]?.method ||
+          endpointById[testCase.endpointId]?.httpMethod ||
+          testCase.method ||
+          testCase.request?.httpMethod ||
+          "GET",
+      ).toUpperCase();
+      const endpoint = endpointById[testCase.endpointId];
+
+      if (endpoint?.path) {
+        direct.set(testCase.id, `${method} ${endpoint.path}`.trim());
+        continue;
+      }
+
+      const rawPath = getRawTestCasePath(testCase);
+      const matchedPath = resolveEndpointTemplatePath(
+        testCase,
+        method,
+        Object.values(endpointById),
+      );
+      const endpointId = String(testCase.endpointId || "").trim();
+
+      if (endpointId) {
+        const groupKey = `${method}:${endpointId}`;
+        const current =
+          fallbackGroups.get(groupKey) ||
+          ({ method, testCaseIds: [], paths: [] } as {
+            method: string;
+            testCaseIds: string[];
+            paths: string[];
+          });
+        current.testCaseIds.push(testCase.id);
+        current.paths.push(matchedPath || rawPath);
+        fallbackGroups.set(groupKey, current);
+      } else {
+        direct.set(
+          testCase.id,
+          `${method} ${matchedPath || normalizePathForEndpointMatch(rawPath) || "(unknown path)"}`.trim(),
+        );
+      }
+    }
+
+    for (const group of fallbackGroups.values()) {
+      const inferredPath = inferTemplateFromPaths(group.paths);
+      const key = `${group.method} ${inferredPath || "(unknown path)"}`.trim();
+      for (const testCaseId of group.testCaseIds) {
+        direct.set(testCaseId, key);
+      }
+    }
+
+    return direct;
+  }, [testCases, endpointById]);
+
+  const getCanonicalEndpointKey = (testCase: TestCase) =>
+    endpointKeyByTestCaseId.get(testCase.id) ||
+    toEndpointKey(testCase, endpointById);
+
   const endpointList = useMemo(() => {
     const map = new Map<string, number>();
     for (const testCase of testCases) {
-      const key = toEndpointKey(testCase, endpointById);
+      const key = getCanonicalEndpointKey(testCase);
       map.set(key, (map.get(key) || 0) + 1);
     }
 
@@ -178,7 +424,63 @@ export default function GenerationRunExecutePage() {
       endpoint,
       total,
     }));
-  }, [testCases, endpointById]);
+  }, [testCases, endpointKeyByTestCaseId, endpointById]);
+
+  const dependencyLabelByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of testCases) {
+      const label = item.name || getCanonicalEndpointKey(item);
+      const keys = [
+        item.id,
+        item.name,
+        toScenarioKey(item.name),
+        (item.raw as any)?.scenarioKey,
+        (item.raw as any)?.ScenarioKey,
+      ];
+
+      for (const key of keys) {
+        const normalized = String(key || "").trim();
+        if (normalized) map.set(normalized.toLowerCase(), label);
+      }
+    }
+    return map;
+  }, [testCases, getCanonicalEndpointKey]);
+
+  const getDependencyLabels = (dependsOn: string[]) => {
+    const labels = dependsOn.map((ref) => {
+      const key = String(ref || "").trim();
+      if (!key) return "";
+
+      const direct = dependencyLabelByKey.get(key.toLowerCase());
+      if (direct) return direct;
+
+      const scenarioKey = dependencyLabelByKey.get(toScenarioKey(key));
+      if (scenarioKey) return scenarioKey;
+
+      return key.includes("-") && key.length >= 24
+        ? t("pages.GenerationRunExecutePage.flow_dependency_case")
+        : key;
+    });
+
+    return Array.from(new Set(labels.filter(Boolean)));
+  };
+
+  const flowSummary = useMemo(() => {
+    let flowRequired = 0;
+    let producers = 0;
+    let consumers = 0;
+    let extractors = 0;
+
+    for (const item of testCases) {
+      const flow = getFlowInfo(item);
+      if (flow.flowRequired) flowRequired += 1;
+      if (flow.produces.length > 0) producers += 1;
+      if (flow.consumes.length > 0) consumers += 1;
+      if (flow.variables.length > 0) extractors += 1;
+    }
+
+    return { flowRequired, producers, consumers, extractors };
+  }, [testCases]);
 
   // Unique filter options derived from test cases
   const uniqueMethods = useMemo(() => {
@@ -195,11 +497,11 @@ export default function GenerationRunExecutePage() {
   const uniqueEndpoints = useMemo(() => {
     const map = new Map<string, string>();
     for (const tc of testCases) {
-      const key = toEndpointKey(tc, endpointById);
+      const key = getCanonicalEndpointKey(tc);
       if (!map.has(key)) map.set(key, key);
     }
     return Array.from(map.keys()).sort();
-  }, [testCases, endpointById]);
+  }, [testCases, endpointKeyByTestCaseId, endpointById]);
 
   const uniqueTestTypes = useMemo(() => {
     const types = new Set<string>();
@@ -233,7 +535,7 @@ export default function GenerationRunExecutePage() {
 
     if (filterEndpoint) {
       result = result.filter(
-        (tc) => toEndpointKey(tc, endpointById) === filterEndpoint,
+        (tc) => getCanonicalEndpointKey(tc) === filterEndpoint,
       );
     }
 
@@ -249,6 +551,7 @@ export default function GenerationRunExecutePage() {
     filterEndpoint,
     filterTestType,
     endpointById,
+    endpointKeyByTestCaseId,
   ]);
 
   const totalPages = Math.max(
@@ -1030,6 +1333,40 @@ export default function GenerationRunExecutePage() {
             </div>
           </div>
 
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 dark:bg-cyan-950/20 p-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+              <div>
+                <p className="text-xs uppercase tracking-widest font-black text-cyan-700 dark:text-cyan-300">
+                  {t("pages.GenerationRunExecutePage.flow_readiness")}
+                </p>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  {t("pages.GenerationRunExecutePage.flow_readiness_help")}
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200">
+                {flowSummary.flowRequired}/{testCases.length} flow cases
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                [t("pages.GenerationRunExecutePage.flow_producer_cases"), flowSummary.producers],
+                [t("pages.GenerationRunExecutePage.flow_consumer_cases"), flowSummary.consumers],
+                [t("pages.GenerationRunExecutePage.flow_extractor_rules"), flowSummary.extractors],
+                [t("pages.GenerationRunExecutePage.flow_required_cases"), flowSummary.flowRequired],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-cyan-500/15 bg-white/50 dark:bg-slate-900/50 px-3 py-2"
+                >
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">
+                    {label}
+                  </p>
+                  <p className="text-xl font-black text-on-surface">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
               {t("pages.GenerationRunExecutePage.select_environment")}
@@ -1354,7 +1691,15 @@ export default function GenerationRunExecutePage() {
                 ) : null}
                 {pagedTestCases.map((testCase) => {
                   const checked = selectedTestCaseIds.includes(testCase.id);
-                  const endpointLabel = toEndpointKey(testCase, endpointById);
+                  const endpointLabel = getCanonicalEndpointKey(testCase);
+                  const flow = getFlowInfo(testCase);
+                  const dependencyLabels = getDependencyLabels(flow.dependsOn);
+                  const hasFlowMetadata =
+                    flow.produces.length > 0 ||
+                    flow.consumes.length > 0 ||
+                    flow.dependsOn.length > 0 ||
+                    flow.variables.length > 0 ||
+                    flow.flowRequired;
 
                   return (
                     <div
@@ -1383,6 +1728,81 @@ export default function GenerationRunExecutePage() {
                               <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">
                                 {testCase.description}
                               </p>
+                            )}
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  flow.flowRequired
+                                    ? "bg-amber-100 text-amber-800 dark:bg-amber-900/35 dark:text-amber-200"
+                                    : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/35 dark:text-emerald-200"
+                                }`}
+                              >
+                                {flow.flowRequired
+                                  ? t("pages.GenerationRunExecutePage.flow_required")
+                                  : t("pages.GenerationRunExecutePage.flow_standalone")}
+                              </span>
+                              {flow.produces.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/35 dark:text-emerald-200">
+{t("pages.GenerationRunExecutePage.flow_produces_count", { count: flow.produces.length })}
+                                </span>
+                              )}
+                              {flow.consumes.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-900/35 dark:text-sky-200">
+{t("pages.GenerationRunExecutePage.flow_consumes_count", { count: flow.consumes.length })}
+                                </span>
+                              )}
+                              {flow.dependsOn.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-800 dark:bg-violet-900/35 dark:text-violet-200">
+{t("pages.GenerationRunExecutePage.flow_depends_count", { count: flow.dependsOn.length })}
+                                </span>
+                              )}
+                              {flow.variables.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/35 dark:text-teal-200">
+{t("pages.GenerationRunExecutePage.flow_extractors_count", { count: flow.variables.length })}
+                                </span>
+                              )}
+                              {!hasFlowMetadata && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  {t("pages.GenerationRunExecutePage.flow_no_hints")}
+                                </span>
+                              )}
+                            </div>
+                            {hasFlowMetadata && (
+                              <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+                                {flow.produces.length > 0 && (
+                                  <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 px-2 py-1.5">
+                                    <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                                      {t("pages.GenerationRunExecutePage.flow_produces_label")}:
+                                    </span>{" "}
+                                    <span className="text-on-surface-variant">
+                                      {flow.produces.join(", ")}
+                                    </span>
+                                  </div>
+                                )}
+                                {flow.consumes.length > 0 && (
+                                  <div className="rounded-lg bg-sky-500/5 border border-sky-500/15 px-2 py-1.5">
+                                    <span className="font-bold text-sky-700 dark:text-sky-300">
+                                      {t("pages.GenerationRunExecutePage.flow_consumes_label")}:
+                                    </span>{" "}
+                                    <span className="text-on-surface-variant">
+                                      {flow.consumes.join(", ")}
+                                    </span>
+                                  </div>
+                                )}
+                                {flow.dependsOn.length > 0 && (
+                                  <div className="rounded-lg bg-violet-500/5 border border-violet-500/15 px-2 py-1.5">
+                                    <span className="font-bold text-violet-700 dark:text-violet-300">
+                                      {t("pages.GenerationRunExecutePage.flow_depends_label")}:
+                                    </span>{" "}
+                                    <span className="text-on-surface-variant">
+                                      {dependencyLabels.slice(0, 3).join(", ")}
+                                      {dependencyLabels.length > 3
+                                        ? ` +${dependencyLabels.length - 3}`
+                                        : ""}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         </label>

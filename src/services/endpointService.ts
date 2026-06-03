@@ -13,6 +13,9 @@ export interface Endpoint {
   parameters?: any[];
   requestBody?: any;
   responses?: any;
+  security?: any;
+  securityRequirements?: any[];
+  raw?: any;
   tags?: string[];
   isDeprecated?: boolean;
   isActive: boolean;
@@ -157,12 +160,23 @@ const endpointService = {
         ? rawItems.map((item: any) => ({
             id: item.id,
             projectId: projectId,
+            apiSpecId: specId,
             path: item.path || "",
             method: item.httpMethod || "GET",
+            httpMethod: item.httpMethod || "GET",
+            operationId: item.operationId || item.OperationId,
+            summary: item.summary || item.Summary,
             description: item.description || item.summary || "",
-            parameters: item.parameters || [],
-            requestBody: item.requestBody,
-            responses: item.responses,
+            parameters: item.parameters || item.Parameters || [],
+            requestBody: item.requestBody || item.RequestBody,
+            responses: item.responses || item.Responses,
+            security:
+              item.security ||
+              item.securityRequirements ||
+              item.Security ||
+              item.SecurityRequirements,
+            securityRequirements:
+              item.securityRequirements || item.SecurityRequirements || [],
             tags: item.tags
               ? typeof item.tags === "string"
                 ? JSON.parse(item.tags)
@@ -171,6 +185,7 @@ const endpointService = {
             isActive: !item.isDeprecated,
             createdAt: item.createdDateTime || new Date().toISOString(),
             updatedAt: item.updatedDateTime || new Date().toISOString(),
+            raw: item,
           }))
         : [];
 
