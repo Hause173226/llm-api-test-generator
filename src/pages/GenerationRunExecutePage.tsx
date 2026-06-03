@@ -44,6 +44,21 @@ const notifyEnvironmentChanged = (projectId: string) => {
   );
 };
 
+const createDefaultEnvAuthConfig = (): ExecutionAuthConfig => ({
+  authType: "None",
+  headerName: null,
+  token: null,
+  username: null,
+  password: null,
+  apiKeyName: null,
+  apiKeyValue: null,
+  apiKeyLocation: "Header",
+  tokenUrl: null,
+  clientId: null,
+  clientSecret: null,
+  scopes: [],
+});
+
 const toEndpointKey = (
   testCase: TestCase,
   endpointById: Record<string, Endpoint>,
@@ -133,20 +148,7 @@ export default function GenerationRunExecutePage() {
     baseUrl: "",
     variables: {} as Record<string, string>,
     headers: {} as Record<string, string>,
-    authConfig: {
-      authType: "None",
-      headerName: null,
-      token: null,
-      username: null,
-      password: null,
-      apiKeyName: null,
-      apiKeyValue: null,
-      apiKeyLocation: "Header",
-      tokenUrl: null,
-      clientId: null,
-      clientSecret: null,
-      scopes: [],
-    } as ExecutionAuthConfig,
+    authConfig: createDefaultEnvAuthConfig(),
     isDefault: false,
   });
   const [envVarKey, setEnvVarKey] = useState("");
@@ -295,20 +297,7 @@ export default function GenerationRunExecutePage() {
       baseUrl: "",
       variables: {},
       headers: {},
-      authConfig: {
-        authType: "None",
-        headerName: null,
-        token: null,
-        username: null,
-        password: null,
-        apiKeyName: null,
-        apiKeyValue: null,
-        apiKeyLocation: "Header",
-        tokenUrl: null,
-        clientId: null,
-        clientSecret: null,
-        scopes: [],
-      },
+      authConfig: createDefaultEnvAuthConfig(),
       isDefault: false,
     });
     setEnvVarKey("");
@@ -328,40 +317,57 @@ export default function GenerationRunExecutePage() {
     setIsEnvModalOpen(true);
   };
 
-  const openEditEnvironmentModal = () => {
-    if (!selectedEnvironment) {
+  const applyEnvironmentToForm = (environment: ExecutionEnvironment) => {
+    setEditingEnvId(environment.id);
+    setEditingEnvRowVersion(environment.rowVersion ?? null);
+    setEnvForm({
+      name: environment.name || "",
+      baseUrl: environment.baseUrl || "",
+      variables: { ...(environment.variables || {}) },
+      headers: { ...(environment.headers || {}) },
+      authConfig: {
+        ...createDefaultEnvAuthConfig(),
+        ...(environment.authConfig || {}),
+      },
+      isDefault: Boolean(environment.isDefault),
+    });
+    setShowEnvVarsSection(Object.keys(environment.variables || {}).length > 0);
+    setShowEnvHeadersSection(Object.keys(environment.headers || {}).length > 0);
+    setShowEnvAuthSection(
+      Boolean(
+        environment.authConfig?.authType &&
+          environment.authConfig.authType !== "None",
+      ),
+    );
+  };
+
+  const openEditEnvironmentModal = async () => {
+    if (!selectedEnvironment || !projectId) {
       showErrorToast("Please select an environment first.");
       return;
     }
 
     setEnvModalMode("edit");
-    setEditingEnvId(selectedEnvironment.id);
-    setEditingEnvRowVersion(selectedEnvironment.rowVersion);
-    setEnvForm({
-      name: selectedEnvironment.name || "",
-      baseUrl: selectedEnvironment.baseUrl || "",
-      variables: { ...(selectedEnvironment.variables || {}) },
-      headers: { ...(selectedEnvironment.headers || {}) },
-      authConfig: {
-        authType: selectedEnvironment.authConfig?.authType || "None",
-        headerName: selectedEnvironment.authConfig?.headerName || null,
-        token: selectedEnvironment.authConfig?.token || null,
-        username: selectedEnvironment.authConfig?.username || null,
-        password: selectedEnvironment.authConfig?.password || null,
-        apiKeyName: selectedEnvironment.authConfig?.apiKeyName || null,
-        apiKeyValue: selectedEnvironment.authConfig?.apiKeyValue || null,
-        apiKeyLocation:
-          selectedEnvironment.authConfig?.apiKeyLocation || "Header",
-        tokenUrl: selectedEnvironment.authConfig?.tokenUrl || null,
-        clientId: selectedEnvironment.authConfig?.clientId || null,
-        clientSecret: selectedEnvironment.authConfig?.clientSecret || null,
-        scopes: selectedEnvironment.authConfig?.scopes || [],
-      },
-      isDefault: Boolean(selectedEnvironment.isDefault),
-    });
-    setShowEnvVarsSection(true);
-    setShowEnvHeadersSection(true);
-    setShowEnvAuthSection(true);
+
+    let environmentToEdit = selectedEnvironment;
+    if (!selectedEnvironment.rowVersion) {
+      try {
+        environmentToEdit = await environmentService.getEnvironmentById(
+          projectId,
+          selectedEnvironment.id,
+        );
+        setEnvironments((prev) =>
+          prev.map((env) =>
+            env.id === environmentToEdit.id ? environmentToEdit : env,
+          ),
+        );
+      } catch (err) {
+        handleError(err);
+        return;
+      }
+    }
+
+    applyEnvironmentToForm(environmentToEdit);
     setIsEnvModalOpen(true);
   };
 
@@ -462,16 +468,29 @@ export default function GenerationRunExecutePage() {
     if (!envForm.name.trim() || !projectId) return;
 
     if (envModalMode === "edit") {
-      if (!editingEnvId || !editingEnvRowVersion) {
-        showErrorToast("Environment metadata is missing for update.");
+      if (!editingEnvId) {
+        showErrorToast("Please select an environment first.");
         return;
       }
 
       try {
         setIsCreatingEnv(true);
+        let resolvedRowVersion = editingEnvRowVersion;
+        if (!resolvedRowVersion) {
+          const latest = await environmentService.getEnvironmentById(
+            projectId,
+            editingEnvId,
+          );
+          resolvedRowVersion = latest.rowVersion ?? null;
+          setEditingEnvRowVersion(resolvedRowVersion);
+          setEnvironments((prev) =>
+            prev.map((env) => (env.id === latest.id ? latest : env)),
+          );
+        }
+
         const auth = envForm.authConfig;
         const payload = {
-          rowVersion: editingEnvRowVersion,
+          rowVersion: resolvedRowVersion,
           name: envForm.name.trim(),
           baseUrl: envForm.baseUrl.trim(),
           variables:

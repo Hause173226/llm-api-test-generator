@@ -253,6 +253,15 @@ export default function TestSuiteDetailPage() {
   >(null);
   const hasAnyTestCases =
     Number(suite?.testCaseCount ?? 0) > 0 || testCases.length > 0;
+  const hasPendingSuggestions = allSuggestions.some(
+    (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
+  );
+  const hasApprovedSuggestions = allSuggestions.some((item) => {
+    const status = String(item.reviewStatus || "").toLowerCase();
+    return status === "approved" || status === "modifiedandapproved";
+  });
+  const canAccessStep3 =
+    hasAnyTestCases || (!hasPendingSuggestions && hasApprovedSuggestions);
   const hasGeneratedSuggestions = allSuggestions.length > 0;
   const hasServerGenerationHistory = generationJobs.length > 0;
   // Chỉ tính isStep1Completed sau khi load xong để tránh redirect nhầm
@@ -622,7 +631,7 @@ export default function TestSuiteDetailPage() {
         return;
       }
 
-      if (tabFromQuery === "testcases" && !hasAnyTestCases) {
+      if (tabFromQuery === "testcases" && !canAccessStep3) {
         setActiveTab("details");
         const params = new URLSearchParams(searchParams);
         params.set("tab", "details");
@@ -633,7 +642,7 @@ export default function TestSuiteDetailPage() {
     }
   }, [
     tabFromQuery,
-    hasAnyTestCases,
+    canAccessStep3,
     isStep1Completed,
     isLoading,
     forceOpenSuggestions,
@@ -651,13 +660,7 @@ export default function TestSuiteDetailPage() {
     // Respect explicit user tab choice: if user pinned Suggestions, do not auto-jump.
     if (isTabPinned) return;
 
-    const hasPending = allSuggestions.some(
-      (s) => String(s.reviewStatus || "").toLowerCase() === "pending",
-    );
-    const hasCases =
-      testCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
-
-    if (!hasPending && hasCases && allSuggestions.length > 0) {
+    if (canAccessStep3 && allSuggestions.length > 0) {
       // All suggestions are reviewed — release the pin so navigation proceeds,
       // even if the user had previously pinned this tab manually.
       setIsTabPinned(false);
@@ -683,6 +686,7 @@ export default function TestSuiteDetailPage() {
     }
   }, [
     activeTab,
+    canAccessStep3,
     isLoading,
     isLoadingSuggestions,
     allSuggestions,
@@ -692,9 +696,9 @@ export default function TestSuiteDetailPage() {
   ]);
 
   const changeTab = (tab: SuiteTab) => {
-    const nextTab = tab === "testcases" && !hasAnyTestCases ? "details" : tab;
+    const nextTab = tab === "testcases" && !canAccessStep3 ? "details" : tab;
 
-    if (tab === "testcases" && !hasAnyTestCases) {
+    if (tab === "testcases" && !canAccessStep3) {
       showInfoToast(
         "Chua co test case. Vui long tao test case trong tab Details.",
       );
@@ -1884,18 +1888,26 @@ export default function TestSuiteDetailPage() {
   const maybeAutoNavigateToTestCases = (
     nextSuggestions: SuiteSuggestionModel[],
     nextTestCases: TestCase[],
+    options?: { force?: boolean },
   ) => {
     if (activeTab !== "suggestions") return;
     // If the user pinned a tab, do not auto-navigate away from it.
-    if (isTabPinned) return;
+    if (isTabPinned && !options?.force) return;
 
     const hasPending = nextSuggestions.some(
       (item) => String(item.reviewStatus || "").toLowerCase() === "pending",
     );
+    const hasApproved = nextSuggestions.some((item) => {
+      const status = String(item.reviewStatus || "").toLowerCase();
+      return status === "approved" || status === "modifiedandapproved";
+    });
     const hasCases =
       nextTestCases.length > 0 || Number(suite?.testCaseCount ?? 0) > 0;
 
-    if (!hasPending && hasCases) {
+    if (!hasPending && (hasCases || hasApproved)) {
+      if (options?.force) {
+        setIsTabPinned(false);
+      }
       setOverlayState({
         isVisible: true,
         title: t("testSuites.detailToast.moveToStep3Title"),
@@ -2206,7 +2218,9 @@ export default function TestSuiteDetailPage() {
             refreshTestCases(),
           ]);
 
-          maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+          maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases, {
+            force: true,
+          });
           return;
         } catch (err) {
           // If bulk-review fails for any reason, fall back to per-item approves below
@@ -2262,7 +2276,9 @@ export default function TestSuiteDetailPage() {
         showErrorToast(t("testSuites.detailToast.noSuggestionsApproved"));
       }
 
-      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases);
+      maybeAutoNavigateToTestCases(nextSuggestions, nextTestCases, {
+        force: true,
+      });
     } catch (err) {
       handleError(err);
     } finally {
@@ -2346,8 +2362,10 @@ export default function TestSuiteDetailPage() {
         ? t("testSuites.detailToast.step3HelperReady", {
             count: testCases.length || suite?.testCaseCount || 0,
           })
-        : t("testSuites.detailToast.step3HelperEmpty"),
-      isDone: hasAnyTestCases,
+        : canAccessStep3
+          ? t("testSuites.detailToast.step3HelperApprovedReady")
+          : t("testSuites.detailToast.step3HelperEmpty"),
+      isDone: canAccessStep3,
     },
   ];
 
@@ -3082,7 +3100,7 @@ export default function TestSuiteDetailPage() {
                   step.id === "details" ||
                   (step.id === "suggestions" &&
                     (isStep1Completed || canReopenSuggestionsWhileLoading)) ||
-                  (step.id === "testcases" && hasAnyTestCases);
+                  (step.id === "testcases" && canAccessStep3);
 
                 return (
                   <button

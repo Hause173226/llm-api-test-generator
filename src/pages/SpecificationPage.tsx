@@ -636,7 +636,6 @@ export default function SpecificationPage() {
                           {getSpecificationStatusBadge(spec.isActive)}
                         </td>
                         <td className="px-6 py-6 text-right space-x-3">
-                         
                           <button
                             onClick={() => {
                               setSelectedSpec(spec);
@@ -658,13 +657,11 @@ export default function SpecificationPage() {
 
         {/* Asymmetric Grid for Upload and Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-20">
-          {/* Upload Zone */}
-          <div className="lg:col-span-8 group">
+          <div className="lg:col-span-12 group">
             <div
               onClick={() => setIsUploadModalOpen(true)}
               className="relative overflow-hidden bg-surface-container-low dark:bg-slate-900 rounded-xl p-12 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-surface-container-high dark:hover:bg-slate-800 min-h-[400px] border-2 border-dashed border-outline-variant/20 dark:border-slate-800 cursor-pointer"
             >
-              {/* Recommended badge */}
               <span className="absolute top-4 right-4 inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
                 ✦ Recommended
               </span>
@@ -699,36 +696,6 @@ export default function SpecificationPage() {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Side Action / Manual Entry */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-surface-container-lowest dark:bg-slate-900 p-8 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-col h-full justify-between shadow-sm">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <Edit3 className="w-5 h-5 text-secondary dark:text-amber-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                    {t("specifications.manual.label")}
-                  </span>
-                </div>
-                <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-5">
-                  {t("specifications.manual.moreControl")}
-                </p>
-                <h3 className="text-xl font-semibold mb-4 leading-snug text-on-surface">
-                  {t("specifications.manual.title")}
-                </h3>
-                <p className="text-on-surface-variant text-sm mb-8">
-                  {t("specifications.manual.description")}
-                </p>
-              </div>
-              <button
-                className="w-full py-4 px-6 bg-surface-container-highest dark:bg-slate-800 text-on-secondary-container dark:text-slate-200 font-bold rounded-xl hover:bg-surface-container-high dark:hover:bg-slate-700 transition-colors text-center flex items-center justify-center gap-2 cursor-pointer"
-                onClick={() => setIsManualModalOpen(true)}
-              >
-                <Keyboard className="w-5 h-5" />
-                {t("specifications.manual.button")}
-              </button>
             </div>
           </div>
         </div>

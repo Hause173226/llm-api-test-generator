@@ -7,7 +7,8 @@ import {
   Save,
   AlertCircle,
   Camera,
-  Trash2,
+  BadgeCheck,
+  Shield,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useTranslation } from "react-i18next";
@@ -19,6 +20,11 @@ export default function AccountSettingsPage() {
   const { t } = useTranslation();
   const { profile, loading, updateProfile, changePassword, uploadAvatar } =
     useUserProfile();
+  const primaryRole = profile?.roles?.[0] || null;
+  const secondaryIdentity =
+    profile?.userName && profile.userName !== profile.email
+      ? `@${profile.userName}`
+      : null;
 
   const [activeTab, setActiveTab] = useState("profile");
   const [isSaving, setIsSaving] = useState(false);
@@ -112,13 +118,6 @@ export default function AccountSettingsPage() {
     if (success) {
       showSuccessToast(t("settings.profile.avatarUploaded"));
     }
-  };
-
-  const handleDeleteAvatar = async () => {
-    // NOTE: Backend API not available yet (DELETE /users/me/avatar)
-    showErrorToast(
-      "Delete avatar feature is not available yet. Backend API not implemented.",
-    );
   };
 
   if (loading) {
@@ -242,20 +241,44 @@ export default function AccountSettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <p className="text-sm font-bold text-on-surface">
-                      {profile?.displayName || profile?.userName}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-on-surface">
+                        {profile?.displayName || profile?.userName}
+                      </p>
+                      {primaryRole && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+                          <Shield className="h-3 w-3" />
+                          {primaryRole}
+                        </span>
+                      )}
+                    </div>
+                    {secondaryIdentity && (
+                      <p className="text-xs text-on-surface-variant">
+                        {secondaryIdentity}
+                      </p>
+                    )}
                     <p className="text-xs text-on-surface-variant">
                       {profile?.email}
                     </p>
-                    {profile?.avatarUrl && (
-                      <button
-                        onClick={handleDeleteAvatar}
-                        className="flex items-center gap-2 text-xs text-error hover:underline cursor-pointer"
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-1",
+                          profile?.emailConfirmed
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+                        )}
                       >
-                        <Trash2 className="w-3 h-3" />
-                        {t("settings.profile.deleteAvatar")}
-                      </button>
+                        <BadgeCheck className="h-3 w-3" />
+                        {profile?.emailConfirmed
+                          ? t("settings.profile.emailVerified")
+                          : t("settings.profile.emailNotVerified")}
+                      </span>
+                    </div>
+                    {profile?.avatarUrl && (
+                      <p className="text-xs text-on-surface-variant">
+                        {t("settings.profile.avatarUploaded")}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -323,9 +346,14 @@ export default function AccountSettingsPage() {
 
                 <div className="flex items-start gap-4 p-4 bg-surface-container-low dark:bg-surface-container-high rounded-2xl border border-outline-variant/10">
                   <AlertCircle className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" />
-                  <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-                    {t("settings.profile.emailWarning")}
-                  </p>
+                  <div className="space-y-1 text-xs text-on-surface-variant font-medium leading-relaxed">
+                    <p>{t("settings.profile.emailWarning")}</p>
+                    {profile?.timezone && (
+                      <p>
+                        {t("settings.profile.timezone")}: {profile.timezone}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

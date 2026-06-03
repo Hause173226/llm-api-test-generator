@@ -51,7 +51,7 @@ export interface CreateEnvironmentRequest {
 }
 
 export interface UpdateEnvironmentRequest {
-  rowVersion: string;
+  rowVersion?: string | null;
   name: string;
   baseUrl: string;
   variables?: Record<string, string> | null;
@@ -162,7 +162,7 @@ const environmentService = {
     data: UpdateEnvironmentRequest,
   ): Promise<ExecutionEnvironment> => {
     const payload: UpdateEnvironmentRequest = {
-      rowVersion: data.rowVersion,
+      rowVersion: data.rowVersion ?? null,
       name: data.name,
       baseUrl: data.baseUrl,
       variables: data.variables !== undefined ? data.variables : null,

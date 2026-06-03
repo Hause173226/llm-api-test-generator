@@ -10,6 +10,16 @@ import {
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import PublicMarketingLayout from "../components/layout/PublicMarketingLayout";
+import {
+  Eyebrow,
+  MarketingCard,
+  MetricChip,
+  Reveal,
+  Section,
+  SectionHeading,
+  Stagger,
+  StaggerItem,
+} from "../components/marketing/MarketingPrimitives";
 
 export default function IntelligencePage() {
   const { t } = useTranslation();
@@ -25,143 +35,242 @@ export default function IntelligencePage() {
   const architecture = [
     {
       icon: Database,
-      title: "Context Layer",
-      desc: "Collect endpoint metadata, ordering, and business constraints before prompting.",
+      title: t("marketing.intelligence.page.architecture.context.title"),
+      desc: t("marketing.intelligence.page.architecture.context.desc"),
     },
     {
       icon: Workflow,
-      title: "Prompt Orchestration",
-      desc: "Compose governed prompts from backend rules, task instructions, and format contracts.",
+      title: t("marketing.intelligence.page.architecture.orchestration.title"),
+      desc: t("marketing.intelligence.page.architecture.orchestration.desc"),
     },
     {
       icon: BrainCircuit,
-      title: "Reasoning Layer",
-      desc: "Generate scenarios and explanations tuned for boundary, negative, and failure analysis.",
+      title: t("marketing.intelligence.page.architecture.reasoning.title"),
+      desc: t("marketing.intelligence.page.architecture.reasoning.desc"),
+    },
+  ];
+
+  const features = [
+    {
+      icon: BrainCircuit,
+      title: t("marketing.intelligence.features.suggestions.title"),
+      desc: t("marketing.intelligence.features.suggestions.desc"),
+    },
+    {
+      icon: Workflow,
+      title: t("marketing.intelligence.features.governance.title"),
+      desc: t("marketing.intelligence.features.governance.desc"),
+    },
+    {
+      icon: RefreshCw,
+      title: t("marketing.intelligence.features.feedback.title"),
+      desc: t("marketing.intelligence.features.feedback.desc"),
     },
   ];
 
   return (
     <PublicMarketingLayout
+      variant="editorial"
       title={t("marketing.intelligence.title")}
       subtitle={t("marketing.intelligence.subtitle")}
+      eyebrow={t("marketing.intelligence.page.eyebrow")}
+      heroMetrics={[
+        { label: t("marketing.intelligence.page.metrics.signalLoops"), value: t("marketing.intelligence.page.metrics.realtime") },
+        { label: t("marketing.intelligence.page.metrics.promptGovernance"), value: t("marketing.intelligence.page.metrics.centralized") },
+        { label: t("marketing.intelligence.page.metrics.failureLearning"), value: t("marketing.intelligence.page.metrics.continuous") },
+      ]}
+      heroSlot={
+        <div className="flex h-full flex-col">
+          <div className="rounded-[24px] border border-slate-900/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(30,41,59,0.95),rgba(15,23,42,0.98))] p-5 text-white shadow-[0_24px_56px_-34px_rgba(8,47,73,0.48)]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              {t("marketing.intelligence.page.hero.label")}
+            </div>
+            <div className="mt-3 text-xl font-semibold tracking-[-0.04em] text-white">
+              {t("marketing.intelligence.page.hero.title")}
+            </div>
+            <div className="mt-4 h-px bg-gradient-to-r from-cyan-400/80 via-indigo-400/50 to-transparent" />
+          </div>
+          <div className="mt-4 space-y-3">
+            {architecture.map((item, index) => (
+              <div
+                key={item.title}
+                className="rounded-[24px] border border-slate-200/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,248,250,0.9))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:border-slate-800 dark:bg-slate-900/84"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white dark:bg-white dark:text-slate-950">
+                      <item.icon className="h-[18px] w-[18px]" />
+                    </div>
+                    <span className="font-semibold text-slate-950 dark:text-white">
+                      {item.title}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    0{index + 1}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      }
     >
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          <div className="lg:col-span-7">
-            <p className="text-sm uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold mb-3">
-              Intelligence Architecture
-            </p>
-            <p className="text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-              Build governed prompt pipelines and convert runtime failures into
-              actionable generation insights.
-            </p>
-          </div>
-          <div className="lg:col-span-5 grid grid-cols-3 gap-3">
-            {[Database, Workflow, BrainCircuit].map((Icon, index) => (
-              <div
-                key={index}
-                className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900 p-4"
-              >
-                <Icon className="w-5 h-5 text-indigo-500" />
+      <Section>
+        <div className="grid gap-5 lg:grid-cols-[1.04fr_0.96fr]">
+          <Reveal>
+            <div className="relative overflow-hidden rounded-[36px] border border-slate-900/85 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(30,41,59,0.95),rgba(15,23,42,0.98))] p-6 text-white shadow-[0_34px_90px_-54px_rgba(8,47,73,0.48)] sm:p-8">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.18),transparent_30%)]" />
+              <div className="relative">
+                <Eyebrow className="border-white/15 bg-white/5 text-slate-300">
+                  {t("marketing.intelligence.page.overview.eyebrow")}
+                </Eyebrow>
+                <h2 className="mt-6 text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">
+                  {t("marketing.intelligence.page.overview.title")}
+                </h2>
+                <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
+                  {t("marketing.intelligence.page.overview.desc")}
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          </Reveal>
 
-        <section className="py-1">
-          <p className="text-sm uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold mb-4">
-            Intelligence Architecture
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Reveal delay={0.08}>
+            <div className="grid gap-4">
+              {notes.map((item) => (
+                <MarketingCard key={item} tone="editorial" className="p-5">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="mt-0.5 h-5 w-5 text-cyan-500" />
+                    <p className="text-sm leading-7 text-slate-700 dark:text-slate-200">
+                      {item}
+                    </p>
+                  </div>
+                </MarketingCard>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </Section>
+
+      <Section className="pt-24">
+        <Reveal>
+          <SectionHeading
+            eyebrow={<Eyebrow>{t("marketing.intelligence.pipeline.label")}</Eyebrow>}
+            title={t("marketing.intelligence.page.pipelineTitle")}
+            description={t("marketing.intelligence.page.pipelineDesc")}
+          />
+        </Reveal>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-[0.96fr_1.04fr]">
+          <Reveal>
+            <MarketingCard className="h-full border-slate-900/85 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(30,41,59,0.95),rgba(15,23,42,0.98))] text-white">
+              <div className="space-y-4">
+                {pipelineSteps.map((step, index) => (
+                  <div
+                    key={step}
+                    className="rounded-[24px] border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                      {t("marketing.intelligence.page.stepLabel", { index: `0${index + 1}` })}
+                    </div>
+                    <p className="mt-3 text-base leading-8 text-slate-200">
+                      {step}
+                    </p>
+                    <div className="mt-4 h-1.5 rounded-full bg-white/10">
+                      <div
+                        className="h-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-cyan-500 to-indigo-500"
+                        style={{ width: `${(index + 1) * 28}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </MarketingCard>
+          </Reveal>
+
+          <Stagger className="grid gap-4 md:grid-cols-3">
             {architecture.map((block) => (
-              <div
-                key={block.title}
-                className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900"
-              >
-                <block.icon className="w-5 h-5 text-indigo-500 mb-3" />
-                <p className="font-bold text-slate-900 dark:text-white mb-1">{block.title}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{block.desc}</p>
-              </div>
+              <StaggerItem key={block.title}>
+                <MarketingCard tone="editorial" className="h-full">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white dark:bg-white dark:text-slate-950">
+                    <block.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-8 text-xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">
+                    {block.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                    {block.desc}
+                  </p>
+                </MarketingCard>
+              </StaggerItem>
             ))}
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            {
-              icon: BrainCircuit,
-              title: t("marketing.intelligence.features.suggestions.title"),
-              desc: t("marketing.intelligence.features.suggestions.desc"),
-            },
-            {
-              icon: Workflow,
-              title: t("marketing.intelligence.features.governance.title"),
-              desc: t("marketing.intelligence.features.governance.desc"),
-            },
-            {
-              icon: RefreshCw,
-              title: t("marketing.intelligence.features.feedback.title"),
-              desc: t("marketing.intelligence.features.feedback.desc"),
-            },
-          ].map((feature) => (
-            <div
-              key={feature.title}
-              className="rounded-2xl p-5 border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800"
-            >
-              <feature.icon className="w-5 h-5 text-indigo-500 mb-3" />
-              <p className="font-bold text-slate-900 dark:text-white mb-1">{feature.title}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{feature.desc}</p>
-            </div>
-          ))}
+          </Stagger>
         </div>
+      </Section>
 
-        <section className="py-1">
-          <p className="text-sm uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold mb-4">
-            {t("marketing.intelligence.pipeline.label")}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            {pipelineSteps.map((step, index) => (
-              <div
-                key={step}
-                className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4"
-              >
-                <p className="text-xs font-black text-indigo-500 mb-2">0{index + 1}</p>
-                <p className="font-semibold text-slate-900 dark:text-white">{step}</p>
-              </div>
+      <Section className="pt-24">
+        <div className="grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
+          <Stagger className="grid gap-4 md:grid-cols-3">
+            {features.map((feature, index) => (
+              <StaggerItem key={feature.title}>
+                <MarketingCard
+                  tone={index === 1 ? "default" : "editorial"}
+                  className={
+                    index === 1
+                      ? "border-slate-900/85 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(30,41,59,0.95),rgba(15,23,42,0.98))] text-white"
+                      : ""
+                  }
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${index === 1 ? "bg-white text-slate-950" : "bg-slate-950 text-white dark:bg-white dark:text-slate-950"}`}>
+                      <feature.icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      {t("marketing.intelligence.page.signalLabel")}
+                    </span>
+                  </div>
+                  <h3 className={`mt-8 text-xl font-semibold tracking-[-0.04em] ${index === 1 ? "text-white" : "text-slate-950 dark:text-white"}`}>
+                    {feature.title}
+                  </h3>
+                  <p className={`mt-3 text-sm leading-7 ${index === 1 ? "text-slate-300" : "text-slate-600 dark:text-slate-300"}`}>
+                    {feature.desc}
+                  </p>
+                </MarketingCard>
+              </StaggerItem>
             ))}
-          </div>
-        </section>
+          </Stagger>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {notes.map((item) => (
-            <div
-              key={item}
-              className="rounded-2xl p-5 border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900 flex items-start gap-3"
-            >
-              <Sparkles className="w-5 h-5 text-indigo-500 mt-0.5" />
-              <p className="font-medium text-slate-700 dark:text-slate-200">{item}</p>
+          <Reveal delay={0.08}>
+            <div className="grid gap-4">
+              <MetricChip tone="editorial" label={t("marketing.intelligence.page.metrics.promptAssembly")} value="< 2 sec" />
+              <MetricChip tone="editorial" label={t("marketing.intelligence.page.metrics.contextRetention")} value={t("marketing.intelligence.page.metrics.structured")} />
+              <MetricChip tone="editorial" label={t("marketing.intelligence.page.metrics.feedbackQuality")} value={t("marketing.intelligence.page.metrics.traceable")} />
             </div>
-          ))}
+          </Reveal>
         </div>
+      </Section>
 
-        <div className="rounded-3xl border border-indigo-200/70 dark:border-indigo-700/40 bg-indigo-500/5 dark:bg-indigo-500/10 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-          <div>
-            <p className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-2">
-              Turn failures into learning loops
-            </p>
-            <p className="text-slate-600 dark:text-slate-300 font-medium">
-              Route execution insights directly into smarter suggestions for the next run.
-            </p>
+      <Section className="pt-24">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-[38px] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,247,242,0.94),rgba(232,241,247,0.88))] p-6 shadow-[0_30px_100px_-60px_rgba(15,23,42,0.24)] sm:flex sm:items-end sm:justify-between sm:gap-6 sm:p-8 dark:border-slate-800 dark:bg-[linear-gradient(135deg,rgba(2,6,23,0.94),rgba(15,23,42,0.92),rgba(30,41,59,0.88))]">
+            <div>
+              <Eyebrow>{t("marketing.intelligence.page.cta.eyebrow")}</Eyebrow>
+              <h2 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">
+                {t("marketing.intelligence.page.cta.title")}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+                {t("marketing.intelligence.page.cta.desc")}
+              </p>
+            </div>
+            <Link
+              to="/runs"
+              className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 sm:mt-0"
+            >
+              {t("marketing.intelligence.page.cta.button")}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <Link
-            to="/runs"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:opacity-90 transition-opacity"
-          >
-            Open Runs
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </div>
+        </Reveal>
+      </Section>
     </PublicMarketingLayout>
   );
 }

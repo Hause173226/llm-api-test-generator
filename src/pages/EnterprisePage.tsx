@@ -10,6 +10,16 @@ import {
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import PublicMarketingLayout from "../components/layout/PublicMarketingLayout";
+import {
+  Eyebrow,
+  MarketingCard,
+  MetricChip,
+  Reveal,
+  Section,
+  SectionHeading,
+  Stagger,
+  StaggerItem,
+} from "../components/marketing/MarketingPrimitives";
 
 export default function EnterprisePage() {
   const { t } = useTranslation();
@@ -18,161 +28,207 @@ export default function EnterprisePage() {
     returnObjects: true,
   }) as string[];
 
-  const trustMetrics = [
-    { label: "SLA", value: "99.95%" },
-    { label: "Audit Retention", value: "365 days" },
-    { label: "Enterprise Accounts", value: "90+" },
-  ];
-
   const deploymentModes = [
     {
       icon: Building2,
-      title: "Managed Cloud",
-      desc: "Fast onboarding with centralized updates and built-in resilience.",
+      title: t("marketing.enterprise.page.deployment.managed.title"),
+      desc: t("marketing.enterprise.page.deployment.managed.desc"),
     },
     {
       icon: Server,
-      title: "Hybrid",
-      desc: "Keep sensitive workloads in your network while using cloud control plane.",
+      title: t("marketing.enterprise.page.deployment.hybrid.title"),
+      desc: t("marketing.enterprise.page.deployment.hybrid.desc"),
     },
     {
       icon: LockKeyhole,
-      title: "On-prem",
-      desc: "Deploy fully inside your infrastructure with strict compliance boundaries.",
+      title: t("marketing.enterprise.page.deployment.onPrem.title"),
+      desc: t("marketing.enterprise.page.deployment.onPrem.desc"),
+    },
+  ];
+
+  const enterpriseFeatures = [
+    {
+      icon: LockKeyhole,
+      title: t("marketing.enterprise.features.identity.title"),
+      desc: t("marketing.enterprise.features.identity.desc"),
+    },
+    {
+      icon: ShieldCheck,
+      title: t("marketing.enterprise.features.compliance.title"),
+      desc: t("marketing.enterprise.features.compliance.desc"),
+    },
+    {
+      icon: Building2,
+      title: t("marketing.enterprise.features.deployment.title"),
+      desc: t("marketing.enterprise.features.deployment.desc"),
     },
   ];
 
   return (
     <PublicMarketingLayout
+      variant="control"
       title={t("marketing.enterprise.title")}
       subtitle={t("marketing.enterprise.subtitle")}
-    >
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          <div className="lg:col-span-7 flex flex-col justify-center">
-            <p className="text-sm uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold mb-3">
-              Enterprise Layout
-            </p>
-            <p className="text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-              Security-first architecture for enterprise teams with governance,
-              compliance, and deployment flexibility.
-            </p>
-          </div>
-          <div className="lg:col-span-5 grid grid-cols-3 gap-3">
-            {[LockKeyhole, ShieldCheck, Building2].map((Icon, index) => (
-              <div
-                key={index}
-                className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900 p-4 min-h-[72px] flex items-center justify-center"
-              >
-                <Icon className="w-5 h-5 text-indigo-500" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-          {trustMetrics.map((metric) => (
-            <div
-              key={metric.label}
-              className="rounded-2xl border border-slate-200 dark:border-slate-700 p-5 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 h-full"
-            >
-              <p className="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold mb-2">
-                {metric.label}
-              </p>
-              <p className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                {metric.value}
-              </p>
+      eyebrow={t("marketing.enterprise.page.eyebrow")}
+      heroMetrics={[
+        { label: t("marketing.enterprise.page.metrics.sla"), value: "99.95%" },
+        { label: t("marketing.enterprise.page.metrics.auditRetention"), value: "365 days" },
+        { label: t("marketing.enterprise.page.metrics.enterpriseAccounts"), value: "90+" },
+      ]}
+      heroSlot={
+        <div className="flex h-full flex-col justify-between">
+          <div className="rounded-[24px] border border-slate-900/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(30,41,59,0.96),rgba(15,23,42,0.98))] p-5 text-white shadow-[0_24px_56px_-34px_rgba(49,46,129,0.45)] dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              {t("marketing.enterprise.page.hero.label")}
             </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-          {[
-            {
-              icon: LockKeyhole,
-              title: t("marketing.enterprise.features.identity.title"),
-              desc: t("marketing.enterprise.features.identity.desc"),
-            },
-            {
-              icon: ShieldCheck,
-              title: t("marketing.enterprise.features.compliance.title"),
-              desc: t("marketing.enterprise.features.compliance.desc"),
-            },
-            {
-              icon: Building2,
-              title: t("marketing.enterprise.features.deployment.title"),
-              desc: t("marketing.enterprise.features.deployment.desc"),
-            },
-          ].map((item) => (
-            <div
-              key={item.title}
-              className="rounded-2xl border border-slate-200 dark:border-slate-700 p-5 bg-white/80 dark:bg-slate-900 h-full"
-            >
-              <item.icon className="w-5 h-5 text-indigo-500 mb-3" />
-              <p className="font-bold text-slate-900 dark:text-white mb-1">{item.title}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{item.desc}</p>
+            <div className="mt-3 text-xl font-semibold tracking-[-0.04em]">
+              {t("marketing.enterprise.page.hero.title")}
             </div>
-          ))}
-        </div>
-
-        <section className="py-1">
-          <div className="flex items-center gap-3 mb-4">
-            <UserCog className="w-5 h-5 text-indigo-500" />
-            <p className="text-sm uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold">
-              {t("marketing.enterprise.governance.label")}
-            </p>
+            <div className="mt-4 h-px bg-gradient-to-r from-indigo-400/80 via-cyan-400/50 to-transparent" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
-            {governanceItems.map((item) => (
+          <div className="mt-4 grid gap-3">
+            {(
+              t("marketing.enterprise.page.hero.items", {
+                returnObjects: true,
+              }) as string[]
+            ).map((item, index) => (
               <div
                 key={item}
-                className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 h-full"
+                className="rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.88))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(30,41,59,0.88),rgba(15,23,42,0.94))]"
               >
-                <p className="font-semibold text-slate-900 dark:text-white">{item}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-slate-950 dark:text-white">
+                    {item}
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    0{index + 1}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="py-1">
-          <div className="flex items-center gap-3 mb-4">
-            <Server className="w-5 h-5 text-indigo-500" />
-            <p className="text-sm uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold">
-              Deployment Options
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-            {deploymentModes.map((mode) => (
-              <div
-                key={mode.title}
-                className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 bg-white/80 dark:bg-slate-900 h-full"
-              >
-                <mode.icon className="w-5 h-5 text-indigo-500 mb-3" />
-                <p className="font-bold text-slate-900 dark:text-white mb-1">{mode.title}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{mode.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="rounded-3xl border border-indigo-200/70 dark:border-indigo-700/40 bg-indigo-500/5 dark:bg-indigo-500/10 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-          <div>
-            <p className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-2">
-              Need enterprise onboarding support?
-            </p>
-            <p className="text-slate-600 dark:text-slate-300 font-medium">
-              We can help map security controls, rollout strategy, and migration plan.
-            </p>
-          </div>
-          <Link
-            to="/register"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:opacity-90 transition-opacity"
-          >
-            Talk to Sales
-            <ArrowRight className="w-4 h-4" />
-          </Link>
         </div>
-      </div>
+      }
+    >
+      <Section>
+        <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+          <Reveal>
+            <div className="rounded-[36px] border border-slate-900/85 bg-[linear-gradient(180deg,rgba(15,23,42,0.99),rgba(30,41,59,0.96),rgba(15,23,42,0.99))] p-6 text-white shadow-[0_34px_96px_-56px_rgba(49,46,129,0.42)] dark:border-slate-800 sm:p-8">
+              <Eyebrow className="border-white/15 bg-white/5 text-slate-300">
+                {t("marketing.enterprise.page.overview.eyebrow")}
+              </Eyebrow>
+              <h2 className="mt-6 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+                {t("marketing.enterprise.page.overview.title")}
+              </h2>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
+                {t("marketing.enterprise.page.overview.desc")}
+              </p>
+            </div>
+          </Reveal>
+
+          <Stagger className="grid gap-4 md:grid-cols-3">
+            {enterpriseFeatures.map((item) => (
+              <StaggerItem key={item.title}>
+                <MarketingCard tone="control" className="h-full">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white dark:bg-white dark:text-slate-950">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-8 text-xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                    {item.desc}
+                  </p>
+                </MarketingCard>
+              </StaggerItem>
+            ))}
+          </Stagger>
+        </div>
+      </Section>
+
+      <Section className="pt-24">
+        <Reveal>
+          <SectionHeading
+            eyebrow={<Eyebrow>{t("marketing.enterprise.governance.label")}</Eyebrow>}
+            title={t("marketing.enterprise.page.governanceTitle")}
+            description={t("marketing.enterprise.page.governanceDesc")}
+          />
+        </Reveal>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-[1.06fr_0.94fr]">
+          <Stagger className="grid gap-4 sm:grid-cols-2">
+            {governanceItems.map((item) => (
+              <StaggerItem key={item}>
+                <MarketingCard tone="control" className="h-full">
+                  <UserCog className="h-5 w-5 text-indigo-500" />
+                  <p className="mt-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
+                    {item}
+                  </p>
+                </MarketingCard>
+              </StaggerItem>
+            ))}
+          </Stagger>
+
+          <Reveal delay={0.08}>
+            <div className="grid gap-4">
+              <MetricChip tone="control" label={t("marketing.enterprise.page.metrics.identityControls")} value="SSO + RBAC" />
+              <MetricChip tone="control" label={t("marketing.enterprise.page.metrics.deploymentFit")} value={t("marketing.enterprise.page.metrics.cloudToOnPrem")} />
+              <MetricChip tone="control" label={t("marketing.enterprise.page.metrics.approvalPath")} value={t("marketing.enterprise.page.metrics.policyAware")} />
+            </div>
+          </Reveal>
+        </div>
+      </Section>
+
+      <Section className="pt-24">
+        <Reveal>
+          <SectionHeading
+            eyebrow={<Eyebrow>{t("pages.EnterprisePage.deployment_options")}</Eyebrow>}
+            title={t("marketing.enterprise.page.deploymentTitle")}
+            description={t("marketing.enterprise.page.deploymentDesc")}
+          />
+        </Reveal>
+
+        <Stagger className="mt-12 grid gap-4 lg:grid-cols-3">
+          {deploymentModes.map((mode, index) => (
+            <StaggerItem key={mode.title}>
+              <MarketingCard tone="control">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white dark:bg-white dark:text-slate-950">
+                  <mode.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-8 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">
+                  {mode.title}
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                  {mode.desc}
+                </p>
+              </MarketingCard>
+            </StaggerItem>
+          ))}
+        </Stagger>
+      </Section>
+
+      <Section className="pt-24">
+        <Reveal>
+          <div className="flex flex-col gap-5 rounded-[38px] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(243,246,249,0.94),rgba(226,232,240,0.9))] p-6 shadow-[0_30px_100px_-60px_rgba(15,23,42,0.22)] dark:border-slate-800 dark:bg-[linear-gradient(135deg,rgba(2,6,23,0.94),rgba(15,23,42,0.92),rgba(30,41,59,0.88))] sm:flex-row sm:items-end sm:justify-between sm:p-8">
+            <div>
+              <Eyebrow>{t("marketing.enterprise.page.cta.eyebrow")}</Eyebrow>
+              <h2 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">
+                {t("pages.EnterprisePage.need_enterprise_onboarding_support")}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+                {t("marketing.enterprise.page.cta.desc")}
+              </p>
+            </div>
+            <Link
+              to="/register"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+            >
+              {t("pages.EnterprisePage.talk_to_sales")}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </Reveal>
+      </Section>
     </PublicMarketingLayout>
   );
 }
