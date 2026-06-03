@@ -51,18 +51,20 @@ export default function BillingPage() {
 
   const formatCurrency = React.useCallback((value?: number | null) => {
     const amount = Number(value ?? 0);
-    if (!Number.isFinite(amount)) return "$0";
-    return new Intl.NumberFormat("en-US", {
+    if (!Number.isFinite(amount)) return "0 ₫";
+    return new Intl.NumberFormat("vi-VN", {
       style: "currency",
-      currency: "USD",
-      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-      maximumFractionDigits: 2,
+      currency: "VND",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amount);
   }, []);
 
   const getLimitValueFromCurrentPlan = React.useCallback(
     (limitType: string, fallback: number) => {
-      const currentPlan = plans.find((p) => p.id === currentSubscription?.planId);
+      const currentPlan = plans.find(
+        (p) => p.id === currentSubscription?.planId,
+      );
       const matched = currentPlan?.limits?.find(
         (l) => String(l.limitType) === limitType,
       );
@@ -186,6 +188,14 @@ export default function BillingPage() {
     limitValue: getLimitValueFromCurrentPlan("MaxLlmCallsPerMonth", 25000),
   };
 
+  const visiblePlans = plans.filter((plan) => {
+    const normalizedName = `${plan.name ?? ""} ${plan.displayName ?? ""}`
+      .trim()
+      .toLowerCase();
+
+    return !normalizedName.includes("test plan") && normalizedName !== "testplan";
+  });
+
   const getPaymentDateText = (payment: (typeof payments)[number]) => {
     const rawDate = payment.createdDateTime || payment.transactionDate;
     if (!rawDate) return "N/A";
@@ -250,104 +260,6 @@ export default function BillingPage() {
           </button>
         </header>
 
-        {/* Usage Overview - REAL DATA */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Test Runs */}
-          <div className="bg-surface-container-low dark:bg-surface-container-high p-6 rounded-2xl border border-outline-variant/10">
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-              {t("billing.usage.testRuns")}
-            </p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-bold text-on-surface">
-                {testRunsUsage.currentUsage.toLocaleString()}
-              </h3>
-              <span className="text-on-surface-variant text-sm">
-                / {testRunsUsage.limitValue.toLocaleString()}
-              </span>
-            </div>
-            <div className="mt-4 h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary"
-                style={{
-                  width: `${Math.min((testRunsUsage.currentUsage / testRunsUsage.limitValue) * 100, 100)}%`,
-                }}
-              ></div>
-            </div>
-            <p className="mt-2 text-xs text-on-surface-variant">
-              {t("billing.usage.percentUsed", {
-                percent: Math.round(
-                  (testRunsUsage.currentUsage / testRunsUsage.limitValue) * 100,
-                ),
-              })}
-            </p>
-          </div>
-
-          {/* Projects */}
-          <div className="bg-surface-container-low dark:bg-surface-container-high p-6 rounded-2xl border border-outline-variant/10">
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-              {t("billing.usage.projects")}
-            </p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-bold text-on-surface">
-                {projectsUsage.currentUsage}
-              </h3>
-              <span className="text-on-surface-variant text-sm">
-                / {projectsUsage.limitValue}
-              </span>
-            </div>
-            <div className="mt-4 h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  "h-full",
-                  projectsUsage.currentUsage >= projectsUsage.limitValue
-                    ? "bg-amber-500"
-                    : "bg-primary",
-                )}
-                style={{
-                  width: `${Math.min((projectsUsage.currentUsage / projectsUsage.limitValue) * 100, 100)}%`,
-                }}
-              ></div>
-            </div>
-            {projectsUsage.currentUsage >= projectsUsage.limitValue ? (
-              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                {t("billing.usage.projectsLimit")}
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-on-surface-variant">
-                {t("billing.usage.remaining", {
-                  count: projectsUsage.limitValue - projectsUsage.currentUsage,
-                })}
-              </p>
-            )}
-          </div>
-
-          {/* AI Tokens */}
-          <div className="bg-surface-container-low dark:bg-surface-container-high p-6 rounded-2xl border border-outline-variant/10">
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-              {t("billing.usage.aiTokens")}
-            </p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-bold text-on-surface">
-                {(aiTokensUsage.currentUsage / 1000).toFixed(1)}k
-              </h3>
-              <span className="text-on-surface-variant text-sm">
-                / {(aiTokensUsage.limitValue / 1000).toFixed(0)}k
-              </span>
-            </div>
-            <div className="mt-4 h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-indigo-500"
-                style={{
-                  width: `${Math.min((aiTokensUsage.currentUsage / aiTokensUsage.limitValue) * 100, 100)}%`,
-                }}
-              ></div>
-            </div>
-            <p className="mt-2 text-xs text-on-surface-variant">
-              {t("billing.usage.resetsMonthly")}
-            </p>
-          </div>
-        </section>
-
         {/* Pricing Plans - REAL DATA */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
@@ -379,8 +291,8 @@ export default function BillingPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {plans.length > 0 ? (
-              plans.map((plan) => {
+            {visiblePlans.length > 0 ? (
+              visiblePlans.map((plan) => {
                 const isCurrentPlan = currentSubscription?.planId === plan.id;
                 const isPopular =
                   plan.name?.toLowerCase().includes("professional") || false;
@@ -423,7 +335,8 @@ export default function BillingPage() {
                           {t(
                             `billing.plans.billingCycle.${selectedBillingCycle === 1 ? "yearly" : "monthly"}`,
                             {
-                              defaultValue: selectedBillingCycle === 1 ? "year" : "month",
+                              defaultValue:
+                                selectedBillingCycle === 1 ? "year" : "month",
                             },
                           )}
                         </span>
@@ -455,7 +368,9 @@ export default function BillingPage() {
                             })}
                             :{" "}
                             {(limit as any).isUnlimited
-                              ? t("common.unlimited", { defaultValue: "Unlimited" })
+                              ? t("common.unlimited", {
+                                  defaultValue: "Unlimited",
+                                })
                               : (limit.limitValue?.toLocaleString() ?? 0)}
                           </li>
                         ))
@@ -536,7 +451,7 @@ export default function BillingPage() {
                           {getPaymentDateText(payment)}
                         </td>
                         <td className="px-8 py-5 text-sm font-medium text-on-surface">
-                          ${payment.amount.toFixed(2)} {payment.currency}
+                          {formatCurrency(payment.amount)}
                         </td>
                         <td className="px-8 py-5">
                           <span

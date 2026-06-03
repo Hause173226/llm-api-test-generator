@@ -6,7 +6,7 @@ import {
   clearAuthToken,
 } from "../config/api";
 import apiService from "../services/apiService";
-import userService from "../services/userService";
+import userService, { UserProfile } from "../services/userService";
 
 interface User {
   id: string;
@@ -23,6 +23,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  syncUserProfile: (profile: UserProfile | null) => void;
   register: (
     fullName: string,
     email: string,
@@ -41,6 +43,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const syncUserProfile = (profile: UserProfile | null): void => {
+    if (!profile) {
+      setUser(null);
+      return;
+    }
+
+    setUser({
+      id: profile.userId,
+      email: profile.email,
+      fullName: profile.displayName || profile.userName || profile.email,
+      roles: profile.roles || [],
+      avatarUrl: profile.avatarUrl,
+    });
+  };
+
+  const refreshUser = async (): Promise<void> => {
+    const profile = await userService.getCurrentUser();
+    syncUserProfile(profile);
+  };
+
   useEffect(() => {
     const bootstrapSession = async () => {
       const storedUser = getUser();
@@ -50,27 +72,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         try {
           // Prefer using current access token first.
           // Only refresh when the token is actually invalid/expired.
-          const profile = await userService.getCurrentUser();
-          setUser({
-            id: profile.userId,
-            email: profile.email,
-            fullName: profile.displayName || profile.userName || profile.email,
-            roles: profile.roles || [],
-            avatarUrl: profile.avatarUrl,
-          });
+          await refreshUser();
         } catch {
           try {
             // Token likely expired; refresh via cookie with apiService lock.
             await apiService.refreshSession();
-            const profile = await userService.getCurrentUser();
-            setUser({
-              id: profile.userId,
-              email: profile.email,
-              fullName:
-                profile.displayName || profile.userName || profile.email,
-              roles: profile.roles || [],
-              avatarUrl: profile.avatarUrl,
-            });
+            await refreshUser();
           } catch {
             clearAuthToken();
             setUser(null);
@@ -148,6 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     login,
     loginWithGoogle,
     logout,
+    refreshUser,
+    syncUserProfile,
     register,
   };
 

@@ -30,13 +30,13 @@
     "loading": "Đang tải...",
     "save": "Lưu",
     "cancel": "Hủy",
-    "manualWorkspace": "Kh?ng gian l?m vi?c th? c?ng",
-    "manualWorkspaceCollapsedLine1": "Th? c?ng",
+    "manualWorkspace": "Không gian làm việc thủ công",
+    "manualWorkspaceCollapsedLine1": "Thủ công",
     "manualWorkspaceCollapsedLine2": "Workspace",
-    "selectProject": "Ch?n d? ?n",
-    "clearSelectedProject": "X?a d? ?n ?? ch?n",
-    "loadingProjects": "?ang t?i d? ?n...",
-    "noProjectsFound": "Kh?ng t?m th?y d? ?n"
+    "selectProject": "Chọn dự án",
+    "clearSelectedProject": "Xóa dự án đã chọn",
+    "loadingProjects": "Đang tải dự án...",
+    "noProjectsFound": "Không tìm thấy dự án"
   },
   "manualTesting": {
     "title": "Kiểm thử thủ công",
@@ -613,6 +613,7 @@
       "step2HelperStatus": "{{pending}} đang chờ, {{approved}} đã phê duyệt",
       "step3Title": "Bước 3: Test Cases",
       "step3HelperReady": "{{count}} test case đã sẵn sàng",
+      "step3HelperApprovedReady": "Các gợi ý đã duyệt đã sẵn sàng cho Bước 3",
       "step3HelperEmpty": "Chưa có test case nào",
       "saveApproveOrder": "Lưu & Phê duyệt thứ tự",
       "approveOrder": "Phê duyệt thứ tự",
@@ -1487,6 +1488,50 @@
     }
   },
   "marketing": {
+    "chrome": {
+      "brandTag": "QA tự động",
+      "platform": "Nền tảng TestFlow",
+      "openMenu": "Mở menu",
+      "closeMenu": "Đóng menu"
+    },
+    "landing": {
+      "heroEyebrow": "Dành cho các đội ngũ sản phẩm kỹ thuật",
+      "heroSignals": {
+        "context": {
+          "label": "Tiếp nhận ngữ cảnh",
+          "value": "Spec, phụ thuộc và luật nghiệp vụ"
+        },
+        "generation": {
+          "label": "Vòng lặp generate",
+          "value": "Mở rộng scenario với prompt được kiểm soát"
+        },
+        "feedback": {
+          "label": "Phản hồi thực thi",
+          "value": "Biến failure thành vòng chạy kế tiếp thông minh hơn"
+        }
+      },
+      "orchestration": {
+        "label": "Điều phối trực tiếp",
+        "title": "Đồ thị QA tự động",
+        "status": "Ổn định"
+      },
+      "metrics": {
+        "coverage": "Mức tăng độ phủ",
+        "confidence": "Mức tin cậy release",
+        "confidenceDesc": "Prompt được kiểm soát, thứ tự thực thi ổn định và giải thích failure rõ ràng trong một bề mặt vận hành."
+      },
+      "narrative": {
+        "label": "Câu chuyện sản phẩm",
+        "title": "Testing không còn là một bước bàn giao, mà trở thành một hệ thống sản phẩm đúng nghĩa."
+      },
+      "featuresEditorialTitle": "Một mô hình vận hành cho chất lượng API, không phải một đống màn hình rời rạc.",
+      "editorial": {
+        "label": "Góc nhìn tổng biên tập",
+        "title": "Từ discovery đến quyết định, mỗi bước đều cấp ngữ cảnh cho bước tiếp theo."
+      },
+      "executionEyebrow": "Độ tin cậy thực thi",
+      "ctaEyebrow": "Sẵn sàng khi team của bạn sẵn sàng"
+    },
     "product": {
       "title": "Sản phẩm",
       "subtitle": "Nền tảng all-in-one cho discovery, generation, execution và reporting trong kiểm thử API.",
@@ -1510,7 +1555,7 @@
       },
       "checklist": [
         "Quản lý dự án và thông số API theo vòng đời đầy đủ",
-        "Sinh test case tự động từ endpoint + context nghiệp vụ",
+        "Sinh test case tự động từ endpoint và context nghiệp vụ",
         "Chạy test theo test run và theo dõi kết quả chi tiết",
         "Gợi ý scenario từ AI để mở rộng độ phủ nhanh"
       ],
@@ -1518,9 +1563,49 @@
         "label": "Quy trình 3 bước",
         "items": [
           "Kết nối spec và chuẩn hóa endpoint",
-          "Generate test + review suggestion",
+          "Generate test và review suggestion",
           "Execute run và phân tích kết quả"
         ]
+      },
+      "page": {
+        "eyebrow": "Hệ thống sản phẩm",
+        "hero": {
+          "label": "Workflow canvas",
+          "title": "Một bề mặt xuyên suốt toàn bộ vòng đời testing"
+        },
+        "metrics": {
+          "activeTeams": "Team đang hoạt động",
+          "generatedCases": "Test case đã sinh",
+          "timeSaved": "Thời gian tiết kiệm TB",
+          "suiteVelocity": "Tốc độ suite",
+          "releaseBlockers": "Blocker release",
+          "crossEnvironment": "Run đa môi trường",
+          "reviewLoop": "Vòng review tới run",
+          "confidenceSignal": "Tín hiệu tin cậy",
+          "confidenceReady": "Sẵn sàng release"
+        },
+        "overview": {
+          "eyebrow": "Tổng quan bố cục sản phẩm",
+          "title": "Được xây như một hệ điều hành thật sự cho đội QA, không phải một bó feature rời rạc.",
+          "desc": "Trải nghiệm sản phẩm được sắp nhịp theo setup, generate, execution và release confidence để team đi từ context đến action mà không bị đứt mạch."
+        },
+        "storytelling": {
+          "eyebrow": "Feature storytelling",
+          "title": "Mỗi lớp đều có nhiệm vụ riêng: intake, build, run rồi mới decision.",
+          "desc": "Cấu trúc trang chuyển từ góc nhìn chiến lược sang chi tiết thực thi để cả buyer lẫn người trực tiếp dùng sản phẩm đều hiểu nhanh."
+        },
+        "moduleLabel": "Mô-đun {{index}}",
+        "delivery": {
+          "label": "Nhịp độ delivery",
+          "title": "Workflow được thiết kế tuyến tính ở nơi cần sự rõ ràng và linh hoạt ở nơi team cần sắc thái."
+        },
+        "stageLabel": "Giai đoạn {{index}}",
+        "cta": {
+          "eyebrow": "Bước tiếp theo",
+          "title": "Sẵn sàng hiện đại hóa chất lượng API?",
+          "desc": "Tạo suite thông minh đầu tiên trong vài phút, rồi mở rộng cùng một workflow đó qua nhiều service, environment và release gate.",
+          "button": "Bắt đầu miễn phí"
+        }
       }
     },
     "intelligence": {
@@ -1533,7 +1618,7 @@
         },
         "governance": {
           "title": "Prompt Governance",
-          "desc": "Prompt/rules/format được quản lý tập trung từ BE."
+          "desc": "Prompt, rules và format được quản lý tập trung từ BE."
         },
         "feedback": {
           "title": "Execution Feedback",
@@ -1552,7 +1637,56 @@
       "notes": [
         "Failure explanation tự động từ run result",
         "Hỗ trợ callback async cho pipeline generate"
-      ]
+      ],
+      "page": {
+        "eyebrow": "Cỗ máy trí tuệ",
+        "architecture": {
+          "context": {
+            "title": "Lớp ngữ cảnh",
+            "desc": "Thu thập metadata endpoint, thứ tự thực thi và ràng buộc nghiệp vụ trước khi bất kỳ suggestion nào được tạo ra."
+          },
+          "orchestration": {
+            "title": "Điều phối prompt",
+            "desc": "Kết hợp prompt được kiểm soát từ backend rules, hướng dẫn tác vụ và response contract chặt chẽ."
+          },
+          "reasoning": {
+            "title": "Lớp suy luận",
+            "desc": "Sinh ra boundary, negative và recovery scenario bám sát dependency graph thực tế."
+          }
+        },
+        "hero": {
+          "label": "Luồng trí tuệ",
+          "title": "Được kiểm soát bởi context. Được mài sắc nhờ feedback runtime."
+        },
+        "metrics": {
+          "signalLoops": "Vòng lặp tín hiệu",
+          "realtime": "Thời gian thực",
+          "promptGovernance": "Quản trị prompt",
+          "centralized": "Tập trung",
+          "failureLearning": "Học từ failure",
+          "continuous": "Liên tục",
+          "promptAssembly": "Lắp ghép prompt",
+          "contextRetention": "Giữ ngữ cảnh",
+          "structured": "Có cấu trúc",
+          "feedbackQuality": "Chất lượng feedback",
+          "traceable": "Có thể truy vết"
+        },
+        "overview": {
+          "eyebrow": "Kiến trúc trí tuệ",
+          "title": "Mô hình chỉ là một lớp. Chất lượng đến từ toàn bộ hệ thống bao quanh nó.",
+          "desc": "TestFlow xem AI generation như một workflow được kiểm soát: nhận đúng context, ràng buộc output, rồi đưa kết quả thực thi quay lại vòng lặp kế tiếp."
+        },
+        "pipelineTitle": "Một chuỗi tín hiệu đủ rõ cho kỹ sư và đủ đáng tin cho cả team.",
+        "pipelineDesc": "Thay vì trình bày AI như một chiếc hộp đen, trang này tách pipeline thành một chuỗi quyết định vận hành rõ ràng.",
+        "stepLabel": "Bước {{index}}",
+        "signalLabel": "Tín hiệu",
+        "cta": {
+          "eyebrow": "Vòng lặp phản hồi",
+          "title": "Biến failure thành vòng học hỏi",
+          "desc": "Đưa insight từ execution trực tiếp vào vòng generate tiếp theo mà không mất governance hay traceability.",
+          "button": "Mở Runs"
+        }
+      }
     },
     "enterprise": {
       "title": "Doanh nghiệp",
@@ -1579,6 +1713,55 @@
           "Kiểm soát truy cập theo role và project",
           "Hỗ trợ quy trình review/approval trước khi generate"
         ]
+      },
+      "page": {
+        "eyebrow": "Sẵn sàng cho doanh nghiệp",
+        "hero": {
+          "label": "Góc nhìn buyer",
+          "title": "Tư thế bảo mật, quyền kiểm soát triển khai và độ tin cậy rollout trong cùng một view.",
+          "items": [
+            "Quản trị danh tính và truy cập",
+            "Tùy chọn triển khai thân thiện với procurement",
+            "Khả năng audit cho các đợt rà soát vận hành"
+          ]
+        },
+        "metrics": {
+          "sla": "SLA",
+          "auditRetention": "Thời gian lưu audit",
+          "enterpriseAccounts": "Tài khoản enterprise",
+          "identityControls": "Kiểm soát danh tính",
+          "deploymentFit": "Mức phù hợp triển khai",
+          "cloudToOnPrem": "Từ cloud tới on-prem",
+          "approvalPath": "Luồng phê duyệt",
+          "policyAware": "Bám chính sách"
+        },
+        "overview": {
+          "eyebrow": "Chủ đích enterprise",
+          "title": "Được thiết kế cho buyer cần sự rõ ràng vận hành trước cả khi cần một buổi demo.",
+          "desc": "Trải nghiệm nhấn mạnh vào control, rollout pattern và trách nhiệm giải trình để các platform leader đánh giá mức phù hợp nhanh hơn cùng các bên security, compliance và delivery."
+        },
+        "governanceTitle": "Governance được trình bày như một khung ra quyết định, không phải một chú thích nhỏ.",
+        "governanceDesc": "Thay vì chôn chi tiết enterprise trong một checklist, trang này tạo cấu trúc rõ ràng cho cách tổ chức triển khai, kiểm soát và audit việc sử dụng.",
+        "deployment": {
+          "managed": {
+            "title": "Managed Cloud",
+            "desc": "Onboarding nhanh với cập nhật tập trung và khả năng chịu lỗi nằm sẵn trong control plane."
+          },
+          "hybrid": {
+            "title": "Hybrid",
+            "desc": "Giữ workload nhạy cảm trong network của bạn trong khi lớp vận hành vẫn được điều phối từ cloud."
+          },
+          "onPrem": {
+            "title": "On-prem",
+            "desc": "Chạy hoàn toàn trong hạ tầng của bạn khi ranh giới compliance hoặc chính sách procurement yêu cầu."
+          }
+        },
+        "deploymentTitle": "Chọn ranh giới kiểm soát phù hợp với thực tế hạ tầng của bạn.",
+        "deploymentDesc": "Câu chuyện triển khai được giữ thực tế: mỗi tổ chức sẽ cần mức sở hữu khác nhau với runtime, network và đường nâng cấp.",
+        "cta": {
+          "eyebrow": "Trao đổi với sales",
+          "desc": "Chúng tôi có thể cùng bạn map security control, rollout strategy và độ phù hợp triển khai với kiến trúc và stakeholder procurement."
+        }
       }
     },
     "pricing": {
@@ -1602,7 +1785,7 @@
           "desc": "Tự động hóa đầy đủ cho team phát triển",
           "features": [
             "Generate test bằng AI",
-            "LLM suggestion + failure explanation",
+            "LLM suggestion và failure explanation",
             "Workflow callback và pipeline nâng cao"
           ]
         },
@@ -1611,10 +1794,45 @@
           "price": "Liên hệ",
           "desc": "Gói riêng cho nhu cầu bảo mật và compliance",
           "features": [
-            "SSO + RBAC theo tổ chức",
+            "SSO và RBAC theo tổ chức",
             "Audit logs và governance",
-            "Hybrid / on-prem deployment"
+            "Hybrid và on-prem deployment"
           ]
+        }
+      },
+      "page": {
+        "eyebrow": "Mô hình giá",
+        "hero": {
+          "label": "Phân tầng pricing",
+          "title": "Lộ trình rõ ràng từ team adoption đến procurement review"
+        },
+        "metrics": {
+          "starter": "Starter",
+          "preferredPlan": "Gói ưu tiên",
+          "buyerPath": "Lộ trình buyer",
+          "enterpriseReady": "Sẵn sàng cho enterprise"
+        },
+        "phases": [
+          "Đánh giá",
+          "Mở rộng",
+          "Chuẩn hóa"
+        ],
+        "packagesEyebrow": "Các gói",
+        "packagesTitle": "Pricing đủ rõ ràng cho procurement ngay cả trước cuộc gọi đầu tiên.",
+        "packagesDesc": "Thứ bậc gói, tín hiệu tin cậy và logic nâng cấp được thể hiện rõ để team biết nên trial cái gì, chuẩn hóa cái gì và khi nào cần kéo security vào.",
+        "billedYearly": "Thanh toán theo năm",
+        "perMonth": "Mỗi tháng",
+        "talkToSales": "Liên hệ sales",
+        "startEvaluation": "Bắt đầu đánh giá",
+        "loading": "Đang tải bảng giá từ hệ thống",
+        "buyerTrustEyebrow": "Niềm tin của buyer",
+        "buyerTrustTitle": "Pricing chỉ đáng tin khi package, support và governance đi cùng nhau.",
+        "buyerTrustDesc": "Team có thể bắt đầu nhỏ mà không bị mơ hồ, trong khi buyer quan tâm tới bảo mật vẫn thấy rõ lộ trình tới governance, kiểm soát triển khai và hỗ trợ thương mại.",
+        "comparison": {
+          "projects": "Project không giới hạn trên Pro và Enterprise",
+          "generation": "Generate bằng LLM từ gói Pro",
+          "governance": "SSO và governance control trên Enterprise",
+          "support": "Hỗ trợ email cho tất cả các gói"
         }
       }
     }
@@ -1790,12 +2008,12 @@
       "complete": "Hoàn thành",
       "failed": "Thất bại",
       "retry_happy_path": "Thử lại Happy Path",
-      "boundary_negative_test_cases": "Kịch bản Biên/Âm",
-      "retry_boundary_negative": "Thử lại Biên/Âm",
+      "boundary_negative_test_cases": "K�ch b�n Bi�n/�m",
+      "retry_boundary_negative": "Th� l�i Bi�n/�m",
       "go_back": "Quay lại",
       "continue_to_test_cases": "Tiếp tục đến Kịch bản kiểm thử",
       "tip": "Mẹo:",
-      "unified_generation_tip": "Quy trình sinh hợp nhất chạy một lần cho tất cả loại (Happy Path, Biên, Âm). Việc này có thể mất vài phút tùy theo số lượng điểm cuối."
+      "unified_generation_tip": "Quy tr�nh sinh h�p nh�t ch�y m�t l�n cho t�t c� lo�i (Happy Path, Bi�n, �m). Vi�c n�y c� th� m�t v�i ph�t t�y theo s� l��ng \u0011i�m cu�i."
     },
     "GenerationRunExecutePage": {
       "title": "Chạy kịch bản kiểm thử được sinh",
@@ -2428,12 +2646,73 @@
       "test_case_count_one": "{{count}} test case",
       "test_case_count_other": "{{count}} test case",
       "not_available": "—",
-      "last_run_passed": "??t",
-      "last_run_failed": "Th?t b?i",
+      "last_run_passed": "Đạt",
+      "last_run_failed": "Thất bại",
       "last_run_skipped": "B? qua"
     },
     "VerifyEmailPage": {
       "testflow_intelligenc": "TestFlow Intelligence"
+    },
+    "settings": {
+      "title": "Cài đặt tài khoản",
+      "subtitle": "Quản lý thông tin cá nhân, bảo mật và các tùy chọn ứng dụng của bạn.",
+      "save": "Lưu thay đổi",
+      "success": "Cài đặt của bạn đã được cập nhật thành công.",
+      "tabs": {
+        "profile": "Thông tin hồ sơ",
+        "security": "Bảo mật và mật khẩu",
+        "notifications": "Tùy chọn thông báo"
+      },
+      "profile": {
+        "title": "Thông tin hồ sơ",
+        "subtitle": "Cập nhật thông tin cá nhân và dữ liệu liên hệ của bạn.",
+        "name": "Họ và tên pháp lý",
+        "displayName": "Tên hiển thị",
+        "displayNamePlaceholder": "Nhập tên hiển thị",
+        "timezone": "Múi giờ",
+        "timezonePlaceholder": "Ví dụ: Asia/Ho_Chi_Minh",
+        "email": "Địa chỉ email",
+        "emailWarning": "Việc thay đổi địa chỉ email sẽ yêu cầu một quy trình xác minh mới. Bạn sẽ nhận được liên kết xác nhận tại địa chỉ email mới.",
+        "updateSuccess": "Cập nhật hồ sơ thành công.",
+        "invalidFileType": "Vui lòng chọn tệp hình ảnh hợp lệ.",
+        "fileTooLarge": "Ảnh đại diện phải nhỏ hơn 5 MB.",
+        "avatarUploaded": "Cập nhật ảnh đại diện thành công.",
+        "deleteAvatar": "Xóa ảnh đại diện",
+        "deleteAvatarUnavailable": "Tính năng xóa ảnh đại diện chưa khả dụng vì backend chưa triển khai API tương ứng.",
+        "emailVerified": "Email đã xác minh",
+        "emailNotVerified": "Email chưa xác minh"
+      },
+      "security": {
+        "title": "Bảo mật và mật khẩu",
+        "subtitle": "Đảm bảo tài khoản của bạn được bảo vệ bằng mật khẩu mạnh.",
+        "current": "Mật khẩu hiện tại",
+        "new": "Mật khẩu mới",
+        "confirm": "Xác nhận mật khẩu mới",
+        "passwordMismatch": "Mật khẩu mới và mật khẩu xác nhận phải giống nhau.",
+        "passwordTooShort": "Mật khẩu mới phải có ít nhất 8 ký tự.",
+        "passwordChanged": "Đổi mật khẩu thành công.",
+        "passwordRequirements": "Hãy dùng ít nhất 8 ký tự và chọn mật khẩu mạnh không dùng lại ở nơi khác."
+      },
+      "notifications": {
+        "title": "Tùy chọn thông báo",
+        "subtitle": "Kiểm soát cách thức và thời điểm bạn nhận được cập nhật từ nền tảng.",
+        "critical": {
+          "label": "Cảnh báo hệ thống quan trọng",
+          "desc": "Nhận thông báo ngay lập tức về lỗi API và thời gian ngừng hoạt động của hệ thống."
+        },
+        "weekly": {
+          "label": "Báo cáo hiệu suất hằng tuần",
+          "desc": "Bản tóm tắt kết quả thực thi kiểm thử và các chỉ số sức khỏe API."
+        },
+        "security": {
+          "label": "Thông báo bảo mật và đăng nhập",
+          "desc": "Cảnh báo cho các lần đăng nhập mới, thay đổi mật khẩu và cập nhật bảo mật."
+        },
+        "marketing": {
+          "label": "Cập nhật và tin tức sản phẩm",
+          "desc": "Luôn cập nhật thông tin về các tính năng mới, cải tiến và thông báo nền tảng."
+        }
+      }
     }
   }
 }

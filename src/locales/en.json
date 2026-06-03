@@ -570,6 +570,7 @@
       "step2HelperStatus": "{{pending}} pending, {{approved}} approved",
       "step3Title": "Step 3: Test Cases",
       "step3HelperReady": "{{count}} test cases ready",
+      "step3HelperApprovedReady": "Approved suggestions are ready for Step 3",
       "step3HelperEmpty": "No test cases yet",
       "saveApproveOrder": "Save & Approve Order",
       "approveOrder": "Approve Order",
@@ -950,14 +951,26 @@
       "timezone": "Timezone",
       "timezonePlaceholder": "e.g., Asia/Ho_Chi_Minh",
       "email": "Mail Address",
-      "emailWarning": "Changing your mail address will require a new verification process. You will receive a confirmation link at your new address."
+      "emailWarning": "Changing your mail address will require a new verification process. You will receive a confirmation link at your new address.",
+      "updateSuccess": "Profile updated successfully.",
+      "invalidFileType": "Please select a valid image file.",
+      "fileTooLarge": "Avatar image must be smaller than 5 MB.",
+      "avatarUploaded": "Avatar updated successfully.",
+      "deleteAvatar": "Delete avatar",
+      "deleteAvatarUnavailable": "Delete avatar is not available yet because the backend API has not been implemented.",
+      "emailVerified": "Email verified",
+      "emailNotVerified": "Email not verified"
     },
     "security": {
       "title": "Security and Password",
       "subtitle": "Ensure your account is protected with a strong password.",
       "current": "Current Password",
       "new": "New Password",
-      "confirm": "Confirm New Password"
+      "confirm": "Confirm New Password",
+      "passwordMismatch": "New password and confirmation password must match.",
+      "passwordTooShort": "New password must be at least 8 characters.",
+      "passwordChanged": "Password changed successfully.",
+      "passwordRequirements": "Use at least 8 characters and choose a strong password you do not reuse elsewhere."
     },
     "notifications": {
       "title": "Notification Preferences",
@@ -1473,6 +1486,50 @@
     }
   },
   "marketing": {
+    "chrome": {
+      "brandTag": "Autonomous QA",
+      "platform": "TestFlow Platform",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu"
+    },
+    "landing": {
+      "heroEyebrow": "Built for technical product teams",
+      "heroSignals": {
+        "context": {
+          "label": "Context intake",
+          "value": "Specs, dependencies, business rules"
+        },
+        "generation": {
+          "label": "Generation loop",
+          "value": "Scenario expansion with governed prompts"
+        },
+        "feedback": {
+          "label": "Execution feedback",
+          "value": "Failures converted into smarter next runs"
+        }
+      },
+      "orchestration": {
+        "label": "Live orchestration",
+        "title": "Autonomous QA graph",
+        "status": "Healthy"
+      },
+      "metrics": {
+        "coverage": "Coverage delta",
+        "confidence": "Release confidence",
+        "confidenceDesc": "Governed prompts, stable execution order, and clear failure reasoning in one operating surface."
+      },
+      "narrative": {
+        "label": "Narrative",
+        "title": "Testing stops feeling like a handoff and starts behaving like a product system."
+      },
+      "featuresEditorialTitle": "An operating model for API quality, not a pile of disconnected screens.",
+      "editorial": {
+        "label": "Editorial overview",
+        "title": "From discovery to decision, every step feeds the next with context."
+      },
+      "executionEyebrow": "Execution confidence",
+      "ctaEyebrow": "Ready when your team is"
+    },
     "product": {
       "title": "Product",
       "subtitle": "An all-in-one platform for discovery, generation, execution, and reporting in API testing.",
@@ -1507,6 +1564,46 @@
           "Generate tests and review suggestions",
           "Execute runs and analyze results"
         ]
+      },
+      "page": {
+        "eyebrow": "Product system",
+        "hero": {
+          "label": "Workflow canvas",
+          "title": "One surface across the testing lifecycle"
+        },
+        "metrics": {
+          "activeTeams": "Active teams",
+          "generatedCases": "Generated cases",
+          "timeSaved": "Avg. time saved",
+          "suiteVelocity": "Suite velocity",
+          "releaseBlockers": "Release blockers",
+          "crossEnvironment": "Cross-environment runs",
+          "reviewLoop": "Review-to-run loop",
+          "confidenceSignal": "Confidence signal",
+          "confidenceReady": "Release ready"
+        },
+        "overview": {
+          "eyebrow": "Product layout overview",
+          "title": "Built like a real operating system for QA teams, not a loose feature bundle.",
+          "desc": "The product experience is paced around setup, generation, execution, and release confidence so teams can move from context to action without losing the thread."
+        },
+        "storytelling": {
+          "eyebrow": "Feature storytelling",
+          "title": "Every layer has a job: intake, build, run, then decision.",
+          "desc": "The page structure shifts from strategic view to execution detail so buyers and practitioners can both understand the product quickly."
+        },
+        "moduleLabel": "Module {{index}}",
+        "delivery": {
+          "label": "Delivery rhythm",
+          "title": "The workflow is intentionally linear when it should be, and flexible where teams need nuance."
+        },
+        "stageLabel": "Stage {{index}}",
+        "cta": {
+          "eyebrow": "Next step",
+          "title": "Ready to modernize API quality?",
+          "desc": "Build your first intelligent suite in minutes, then scale the same workflow across services, environments, and release gates.",
+          "button": "Start Free"
+        }
       }
     },
     "intelligence": {
@@ -1538,7 +1635,56 @@
       "notes": [
         "Automated failure explanations from run results",
         "Async callback support for generation pipelines"
-      ]
+      ],
+      "page": {
+        "eyebrow": "Intelligence engine",
+        "architecture": {
+          "context": {
+            "title": "Context Layer",
+            "desc": "Collect endpoint metadata, execution order, and business constraints before any suggestion is generated."
+          },
+          "orchestration": {
+            "title": "Prompt Orchestration",
+            "desc": "Compose governed prompts from backend rules, task instructions, and strict response contracts."
+          },
+          "reasoning": {
+            "title": "Reasoning Layer",
+            "desc": "Produce boundary, negative, and recovery scenarios shaped by the real dependency graph."
+          }
+        },
+        "hero": {
+          "label": "Intelligence flow",
+          "title": "Governed by context. Sharpened by runtime feedback."
+        },
+        "metrics": {
+          "signalLoops": "Signal loops",
+          "realtime": "Realtime",
+          "promptGovernance": "Prompt governance",
+          "centralized": "Centralized",
+          "failureLearning": "Failure learning",
+          "continuous": "Continuous",
+          "promptAssembly": "Prompt assembly",
+          "contextRetention": "Context retention",
+          "structured": "Structured",
+          "feedbackQuality": "Feedback quality",
+          "traceable": "Traceable"
+        },
+        "overview": {
+          "eyebrow": "Intelligence architecture",
+          "title": "The model is only one layer. The system around it is where quality comes from.",
+          "desc": "TestFlow treats AI generation as a governed workflow: ingest the right context, constrain outputs, then route execution outcomes back into the next cycle."
+        },
+        "pipelineTitle": "A signal chain designed to be legible to engineers and trustworthy to teams.",
+        "pipelineDesc": "Instead of presenting AI as a magic box, the page breaks the pipeline into a sequence of operational decisions.",
+        "stepLabel": "Step {{index}}",
+        "signalLabel": "Signal",
+        "cta": {
+          "eyebrow": "Feedback loops",
+          "title": "Turn failures into learning loops",
+          "desc": "Route execution insights directly into sharper suggestions for the next generation pass without losing governance or traceability.",
+          "button": "Open Runs"
+        }
+      }
     },
     "enterprise": {
       "title": "Enterprise",
@@ -1565,6 +1711,55 @@
           "Role- and project-level access controls",
           "Review/approval workflows before generation"
         ]
+      },
+      "page": {
+        "eyebrow": "Enterprise readiness",
+        "hero": {
+          "label": "Buyer overview",
+          "title": "Security posture, deployment control, and rollout confidence in one view.",
+          "items": [
+            "Identity and access governance",
+            "Procurement-friendly deployment options",
+            "Auditability for operational reviews"
+          ]
+        },
+        "metrics": {
+          "sla": "SLA",
+          "auditRetention": "Audit retention",
+          "enterpriseAccounts": "Enterprise accounts",
+          "identityControls": "Identity controls",
+          "deploymentFit": "Deployment fit",
+          "cloudToOnPrem": "Cloud to on-prem",
+          "approvalPath": "Approval path",
+          "policyAware": "Policy aware"
+        },
+        "overview": {
+          "eyebrow": "Enterprise intent",
+          "title": "Designed for buyers who need operational clarity before they need a demo.",
+          "desc": "The experience emphasizes controls, rollout patterns, and accountability so platform leaders can evaluate fit quickly with security, compliance, and delivery stakeholders."
+        },
+        "governanceTitle": "Governance is presented as a decision framework, not a footnote.",
+        "governanceDesc": "Instead of burying enterprise detail in a checklist, the page gives structure to how organizations adopt, control, and audit usage.",
+        "deployment": {
+          "managed": {
+            "title": "Managed Cloud",
+            "desc": "Fast onboarding with centralized updates and resilience built into the control plane."
+          },
+          "hybrid": {
+            "title": "Hybrid",
+            "desc": "Keep sensitive workloads in your network while coordinating the operating layer from cloud."
+          },
+          "onPrem": {
+            "title": "On-prem",
+            "desc": "Run fully inside your environment when compliance boundaries or procurement policies require it."
+          }
+        },
+        "deploymentTitle": "Choose the control boundary that matches your infrastructure reality.",
+        "deploymentDesc": "The deployment story is intentionally pragmatic: different organizations need different ownership of runtime, network, and upgrade paths.",
+        "cta": {
+          "eyebrow": "Sales conversation",
+          "desc": "We can map security controls, rollout strategy, and deployment fit with your architecture and procurement stakeholders."
+        }
       }
     },
     "pricing": {
@@ -1601,6 +1796,41 @@
             "Audit logs and governance controls",
             "Hybrid / on-prem deployment"
           ]
+        }
+      },
+      "page": {
+        "eyebrow": "Pricing model",
+        "hero": {
+          "label": "Pricing hierarchy",
+          "title": "Clear path from team adoption to procurement review"
+        },
+        "metrics": {
+          "starter": "Starter",
+          "preferredPlan": "Preferred plan",
+          "buyerPath": "Buyer path",
+          "enterpriseReady": "Enterprise ready"
+        },
+        "phases": [
+          "Evaluate",
+          "Expand",
+          "Standardize"
+        ],
+        "packagesEyebrow": "Packages",
+        "packagesTitle": "Pricing that feels procurement-friendly before the first call.",
+        "packagesDesc": "Hierarchy, trust cues, and upgrade logic are made explicit so teams know what to trial, what to standardize, and when to involve security.",
+        "billedYearly": "Billed yearly",
+        "perMonth": "Per month",
+        "talkToSales": "Talk to sales",
+        "startEvaluation": "Start evaluation",
+        "loading": "Loading plans from backend",
+        "buyerTrustEyebrow": "Buyer trust",
+        "buyerTrustTitle": "Pricing is only credible when packaging, support, and governance line up.",
+        "buyerTrustDesc": "Teams can start small without confusion, while security-conscious buyers still see a clear path to governance, deployment control, and commercial support.",
+        "comparison": {
+          "projects": "Unlimited projects on Pro & Enterprise",
+          "generation": "LLM-powered generation from Pro",
+          "governance": "SSO and governance controls on Enterprise",
+          "support": "Email support for all plans"
         }
       }
     }
