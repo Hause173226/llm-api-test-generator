@@ -20,6 +20,20 @@ export interface TestCase {
   hasSrsContext?: boolean;
   srsDocumentTitle?: string;
   coveredRequirements?: Array<{ id?: string; code?: string; title?: string }>;
+  produces?: string[];
+  consumes?: string[];
+  dependsOn?: string[];
+  dependsOnIds?: string[];
+  flowRequired?: boolean;
+  abortIfDependencyFailed?: boolean;
+  executionHints?: {
+    produces?: string[];
+    consumes?: string[];
+    dependsOn?: string[];
+    flowRequired?: boolean;
+    abortIfDependencyFailed?: boolean;
+    [key: string]: any;
+  };
   isEnabled?: boolean;
   tags?: string[];
   request?: {
@@ -46,13 +60,22 @@ export interface TestCase {
     expectedProvenance?: string | null;
   };
   variables?: Array<{
+    name?: string;
     variableName?: string;
+    path?: string;
     extractFrom?: string;
     jsonPath?: string;
     headerName?: string;
     regex?: string;
     defaultValue?: string;
   }>;
+  dependencies?: Array<{
+    id?: string;
+    testCaseId?: string;
+    dependsOnTestCaseId?: string;
+    name?: string;
+  }>;
+  raw?: any;
   isActive: boolean;
   order: number;
   createdAt: string;
@@ -121,6 +144,22 @@ export interface CreateTestCaseRequest {
 const normalizeTestCase = (item: any): TestCase => {
   const request = item?.request || item?.Request || {};
   const expectation = item?.expectation || item?.Expectation || {};
+  const executionHints = item?.executionHints || item?.ExecutionHints || {};
+  const normalizeStringArray = (value: any): string[] => {
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    if (typeof value === "string" && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+      } catch {
+        return value
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean);
+      }
+    }
+    return [];
+  };
 
   return {
     id: item?.id || item?.Id || item?.testCaseId || "",
@@ -184,14 +223,47 @@ const normalizeTestCase = (item: any): TestCase => {
       hasSrsContext: item?.hasSrsContext ?? item?.HasSrsContext,
       srsDocumentTitle: item?.srsDocumentTitle ?? item?.SrsDocumentTitle,
       coveredRequirements: item?.coveredRequirements ?? item?.CoveredRequirements,
+      executionHints,
+      produces: normalizeStringArray(
+        executionHints?.produces ?? executionHints?.Produces ?? item?.produces ?? item?.Produces,
+      ),
+      consumes: normalizeStringArray(
+        executionHints?.consumes ?? executionHints?.Consumes ?? item?.consumes ?? item?.Consumes,
+      ),
+      dependsOn: normalizeStringArray(
+        executionHints?.dependsOn ?? executionHints?.DependsOn ?? item?.dependsOn ?? item?.DependsOn,
+      ),
+      dependsOnIds: normalizeStringArray(
+        item?.dependsOnIds ?? item?.DependsOnIds ?? item?.dependencyIds ?? item?.DependencyIds,
+      ),
+      flowRequired:
+        executionHints?.flowRequired ??
+        executionHints?.FlowRequired ??
+        item?.flowRequired ??
+        item?.FlowRequired,
+      abortIfDependencyFailed:
+        executionHints?.abortIfDependencyFailed ??
+        executionHints?.AbortIfDependencyFailed ??
+        item?.abortIfDependencyFailed ??
+        item?.AbortIfDependencyFailed,
     variables: (item?.variables || item?.Variables || []).map((v: any) => ({
-      variableName: v?.variableName || v?.VariableName,
+      name: v?.name || v?.Name,
+      variableName:
+        v?.variableName || v?.VariableName || v?.name || v?.Name,
+      path: v?.path || v?.Path,
       extractFrom: v?.extractFrom || v?.ExtractFrom,
-      jsonPath: v?.jsonPath || v?.JsonPath,
+      jsonPath: v?.jsonPath || v?.JsonPath || v?.path || v?.Path,
       headerName: v?.headerName || v?.HeaderName,
       regex: v?.regex || v?.Regex,
       defaultValue: v?.defaultValue || v?.DefaultValue,
     })),
+    dependencies: (item?.dependencies || item?.Dependencies || []).map((d: any) => ({
+      id: d?.id || d?.Id,
+      testCaseId: d?.testCaseId || d?.TestCaseId,
+      dependsOnTestCaseId: d?.dependsOnTestCaseId || d?.DependsOnTestCaseId,
+      name: d?.name || d?.Name,
+    })),
+    raw: item,
     isActive: item?.isActive ?? item?.IsActive ?? true,
     order:
       item?.order ?? item?.Order ?? item?.orderIndex ?? item?.OrderIndex ?? 0,

@@ -18,6 +18,11 @@ import {
   Edit3,
   Trash2,
   Plus,
+  Eye,
+  FileJson,
+  ShieldCheck,
+  GitBranch,
+  Braces,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import Modal from "../components/ui/Modal";
@@ -35,6 +40,206 @@ import { useProjectBreadcrumbs } from "../hooks/useProjectBreadcrumbs";
 import GlobalSpinner from "../components/ui/GlobalSpinner";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+type ParsedResponse = {
+  status: string;
+  description?: string;
+  hasSchema: boolean;
+};
+
+const BODY_METHODS = new Set(["POST", "PUT", "PATCH"]);
+
+const parseMaybeJson = (value: unknown): any => {
+  if (value == null) return null;
+  if (typeof value !== "string") return value;
+  if (!value.trim()) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+const asRecord = (value: unknown): Record<string, any> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : {};
+
+const hasDeepKey = (value: unknown, keyPattern: RegExp): boolean => {
+  if (value == null) return false;
+  if (typeof value !== "object") return keyPattern.test(String(value));
+  if (Array.isArray(value)) return value.some((item) => hasDeepKey(item, keyPattern));
+  return Object.entries(value as Record<string, unknown>).some(
+    ([key, child]) => keyPattern.test(key) || hasDeepKey(child, keyPattern),
+  );
+};
+
+const getRequestSchema = (endpoint: any): Record<string, any> => {
+  const params = Array.isArray(endpoint?.parameters)
+    ? endpoint.parameters
+    : Array.isArray(endpoint?.raw?.Parameters)
+      ? endpoint.raw.Parameters
+      : [];
+  const bodyParam = params.find((param: any) => {
+    const location = String(param?.location || param?.Location || "").toLowerCase();
+    return ["body", "requestbody", "request_body"].includes(location);
+  });
+  const bodyParamSchema = parseMaybeJson(
+    bodyParam?.schema ||
+      bodyParam?.Schema ||
+      bodyParam?.content ||
+      bodyParam?.Content,
+  );
+  if (bodyParamSchema && typeof bodyParamSchema === "object") {
+    return asRecord(bodyParamSchema);
+  }
+
+  const body = parseMaybeJson(
+    endpoint?.requestBody ??
+      endpoint?.RequestBody ??
+      endpoint?.raw?.requestBody ??
+      endpoint?.raw?.RequestBody,
+  );
+  const bodyRecord = asRecord(body);
+  const content =
+    bodyRecord.content ||
+    bodyRecord.Content ||
+    bodyRecord.requestBodyContent ||
+    bodyRecord.RequestBodyContent;
+  const jsonContent =
+    asRecord(content)?.["application/json"] ||
+    asRecord(content)?.["application/*+json"] ||
+    Object.values(asRecord(content))[0];
+  const schema =
+    asRecord(jsonContent).schema ||
+    asRecord(jsonContent).Schema ||
+    bodyRecord.schema ||
+    bodyRecord.Schema ||
+    bodyRecord;
+  return asRecord(parseMaybeJson(schema));
+};
+
+const getSchemaProperties = (schema: Record<string, any>) => {
+  const props = asRecord(schema.properties || schema.Properties);
+  return Object.entries(props).map(([name, value]) => ({
+    name,
+    type: String(asRecord(value).type || asRecord(value).Type || "unknown"),
+  }));
+};
+
+const getRequiredFields = (schema: Record<string, any>) => {
+  const required = schema.required || schema.Required;
+  return Array.isArray(required) ? required.map(String) : [];
+};
+
+const getParsedResponses = (endpoint: any): ParsedResponse[] => {
+  const raw = parseMaybeJson(
+    endpoint?.responses ??
+      endpoint?.Responses ??
+      endpoint?.raw?.responses ??
+      endpoint?.raw?.Responses,
+  );
+  if (Array.isArray(raw)) {
+    return raw.map((item) => ({
+      status: String(
+        item.statusCode ??
+          item.StatusCode ??
+          item.httpStatusCode ??
+          item.HttpStatusCode ??
+          item.status ??
+          item.Status ??
+          item.code ??
+          item.Code ??
+          "unknown",
+      ),
+      description: item.description ?? item.Description,
+      hasSchema:
+        Boolean(
+          item.schema ||
+            item.Schema ||
+            item.schemaJson ||
+            item.SchemaJson ||
+            item.responseSchema ||
+            item.ResponseSchema ||
+            item.content ||
+            item.Content,
+        ) || hasDeepKey(item, /schema|properties|items|content/i),
+    }));
+  }
+  const record = asRecord(raw);
+  return Object.entries(record).map(([status, value]) => ({
+    status,
+    description: asRecord(value).description || asRecord(value).Description,
+    hasSchema: hasDeepKey(value, /schema|properties|items/i),
+  }));
+};
+
+const getPathParams = (endpoint: any) => {
+  const params = Array.isArray(endpoint?.parameters)
+    ? endpoint.parameters
+    : Array.isArray(endpoint?.raw?.Parameters)
+      ? endpoint.raw.Parameters
+      : [];
+  const fromParams = params
+    .filter((p: any) => String(p?.in || p?.In || "").toLowerCase() === "path")
+    .map((p: any) => String(p?.name || p?.Name || "").trim())
+    .filter(Boolean);
+  const fromPath = Array.from(String(endpoint?.path || "").matchAll(/\{([^}]+)\}/g)).map(
+    (match) => match[1],
+  );
+  return Array.from(new Set([...fromParams, ...fromPath]));
+};
+
+const getQueryParams = (endpoint: any) => {
+  const params = Array.isArray(endpoint?.parameters)
+    ? endpoint.parameters
+    : Array.isArray(endpoint?.raw?.Parameters)
+      ? endpoint.raw.Parameters
+      : [];
+  return params
+    .filter((p: any) => String(p?.in || p?.In || "").toLowerCase() === "query")
+    .map((p: any) => String(p?.name || p?.Name || "").trim())
+    .filter(Boolean);
+};
+
+const endpointRequiresAuth = (endpoint: any) => {
+  const raw = endpoint?.raw || {};
+  return Boolean(
+    endpoint?.security ||
+      (Array.isArray(endpoint?.securityRequirements) &&
+        endpoint.securityRequirements.length > 0) ||
+      raw.security ||
+      raw.securityRequirements ||
+      raw.Security ||
+      raw.SecurityRequirements ||
+      hasDeepKey(endpoint?.parameters, /authorization|bearer|jwt/i),
+  );
+};
+
+const getContractQuality = (endpoint: any) => {
+  const method = String(endpoint?.method || endpoint?.httpMethod || "").toUpperCase();
+  const schema = getRequestSchema(endpoint);
+  const responses = getParsedResponses(endpoint);
+  const checks = [
+    { label: "Operation metadata", ok: Boolean(endpoint?.operationId || endpoint?.summary || endpoint?.description) },
+    { label: "Request schema", ok: !BODY_METHODS.has(method) || Object.keys(schema).length > 0 },
+    { label: "Response status", ok: responses.length > 0 },
+    { label: "Response schema", ok: responses.some((response) => response.hasSchema) },
+    { label: "Auth signal", ok: endpointRequiresAuth(endpoint) || true },
+  ];
+  const scoredChecks = checks.filter((check) => check.label !== "Auth signal");
+  const score = Math.round(
+    (scoredChecks.filter((check) => check.ok).length / Math.max(1, scoredChecks.length)) * 100,
+  );
+  const missing = scoredChecks.filter((check) => !check.ok).map((check) => check.label);
+  return { score, missing, checks };
+};
+
+const qualityClass = (score: number) => {
+  if (score >= 80) return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200";
+  if (score >= 50) return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200";
+  return "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200";
+};
 
 export default function EndpointsPage() {
   const { t } = useTranslation();
@@ -60,6 +265,7 @@ export default function EndpointsPage() {
   );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -178,6 +384,11 @@ export default function EndpointsPage() {
   const openDeleteModal = (endpoint: any) => {
     setSelectedEndpoint(endpoint);
     setIsDeleteModalOpen(true);
+  };
+
+  const openContractModal = (endpoint: any) => {
+    setSelectedEndpoint(endpoint);
+    setIsContractModalOpen(true);
   };
 
   const handleDelete = async () => {
@@ -487,7 +698,17 @@ export default function EndpointsPage() {
               </p>
             </div>
           ) : (
-            endpoints.map((endpoint) => (
+            endpoints.map((endpoint) => {
+              const requestSchema = getRequestSchema(endpoint);
+              const requestFields = getSchemaProperties(requestSchema);
+              const requiredFields = getRequiredFields(requestSchema);
+              const responses = getParsedResponses(endpoint);
+              const pathParams = getPathParams(endpoint);
+              const queryParams = getQueryParams(endpoint);
+              const authRequired = endpointRequiresAuth(endpoint);
+              const quality = getContractQuality(endpoint);
+
+              return (
               <div
                 key={endpoint.id}
                 className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-xl border border-outline-variant/10 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group"
@@ -520,6 +741,46 @@ export default function EndpointsPage() {
                           {endpoint.description}
                         </p>
                       )}
+                      <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-on-surface-variant md:grid-cols-4">
+                        <div className="rounded-lg bg-surface-container-low dark:bg-slate-800/80 px-3 py-2">
+                          <div className="mb-1 flex items-center gap-1.5 font-bold text-on-surface">
+                            <Braces className="h-3.5 w-3.5 text-indigo-500" />
+                            Request
+                          </div>
+                          <div>
+                            {BODY_METHODS.has(String(endpoint.method).toUpperCase())
+                              ? `${requestFields.length} fields, ${requiredFields.length} required`
+                              : "No body expected"}
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-surface-container-low dark:bg-slate-800/80 px-3 py-2">
+                          <div className="mb-1 flex items-center gap-1.5 font-bold text-on-surface">
+                            <FileJson className="h-3.5 w-3.5 text-sky-500" />
+                            Response
+                          </div>
+                          <div>
+                            {responses.length > 0
+                              ? `${responses.map((r) => r.status).slice(0, 3).join(", ")}${responses.length > 3 ? " +" : ""}`
+                              : "No response schema"}
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-surface-container-low dark:bg-slate-800/80 px-3 py-2">
+                          <div className="mb-1 flex items-center gap-1.5 font-bold text-on-surface">
+                            <GitBranch className="h-3.5 w-3.5 text-emerald-500" />
+                            Params
+                          </div>
+                          <div>
+                            {pathParams.length} path, {queryParams.length} query
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-surface-container-low dark:bg-slate-800/80 px-3 py-2">
+                          <div className="mb-1 flex items-center gap-1.5 font-bold text-on-surface">
+                            <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
+                            Auth
+                          </div>
+                          <div>{authRequired ? "Bearer/security detected" : "Public or unspecified"}</div>
+                        </div>
+                      </div>
                       {endpoint.tags &&
                         Array.isArray(endpoint.tags) &&
                         endpoint.tags.length > 0 && (
@@ -534,6 +795,28 @@ export default function EndpointsPage() {
                             ))}
                           </div>
                         )}
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span
+                          className={cn(
+                            "rounded-full px-3 py-1 text-[11px] font-bold",
+                            qualityClass(quality.score),
+                          )}
+                        >
+                          Contract quality: {quality.score}%
+                        </span>
+                        {quality.missing.length > 0 && (
+                          <span className="text-[11px] text-amber-700 dark:text-amber-300">
+                            Missing: {quality.missing.join(", ")}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => openContractModal(endpoint)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant/20 px-3 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50 dark:border-slate-700 dark:text-indigo-300 dark:hover:bg-indigo-950/40"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          View parsed contract
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -583,7 +866,8 @@ export default function EndpointsPage() {
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -697,6 +981,225 @@ export default function EndpointsPage() {
             />
           </div>
         </div>
+      </Modal>
+
+      {/* Parsed Contract Modal */}
+      <Modal
+        isOpen={isContractModalOpen}
+        onClose={() => {
+          setIsContractModalOpen(false);
+          setSelectedEndpoint(null);
+        }}
+        title="Parsed API contract"
+        className="max-w-5xl"
+        footer={
+          <button
+            onClick={() => {
+              setIsContractModalOpen(false);
+              setSelectedEndpoint(null);
+            }}
+            className="px-6 py-3 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+        }
+      >
+        {selectedEndpoint && (() => {
+          const requestSchema = getRequestSchema(selectedEndpoint);
+          const requestFields = getSchemaProperties(requestSchema);
+          const requiredFields = getRequiredFields(requestSchema);
+          const responses = getParsedResponses(selectedEndpoint);
+          const pathParams = getPathParams(selectedEndpoint);
+          const queryParams = getQueryParams(selectedEndpoint);
+          const authRequired = endpointRequiresAuth(selectedEndpoint);
+          const quality = getContractQuality(selectedEndpoint);
+          const rawPreview = JSON.stringify(selectedEndpoint.raw || selectedEndpoint, null, 2);
+
+          return (
+            <div className="space-y-6 text-sm text-slate-700 dark:text-slate-200">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-xs font-black",
+                      getMethodColor(selectedEndpoint.method),
+                    )}
+                  >
+                    {selectedEndpoint.method}
+                  </span>
+                  <div>
+                    <div className="font-mono text-base font-bold text-slate-950 dark:text-white">
+                      {selectedEndpoint.path}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      Source: Swagger/OpenAPI endpoint metadata
+                      {selectedEndpoint.operationId ? ` | OperationId: ${selectedEndpoint.operationId}` : ""}
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      "ml-auto rounded-full px-3 py-1 text-xs font-bold",
+                      qualityClass(quality.score),
+                    )}
+                  >
+                    Contract quality {quality.score}%
+                  </span>
+                </div>
+                {selectedEndpoint.description && (
+                  <p className="mt-3 text-slate-600 dark:text-slate-300">
+                    {selectedEndpoint.description}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="mb-3 flex items-center gap-2 font-bold">
+                    <Braces className="h-4 w-4 text-indigo-500" />
+                    Request body
+                  </div>
+                  {!BODY_METHODS.has(String(selectedEndpoint.method).toUpperCase()) ? (
+                    <p className="text-slate-500 dark:text-slate-400">
+                      This method normally has no request body.
+                    </p>
+                  ) : requestFields.length === 0 ? (
+                    <p className="text-amber-700 dark:text-amber-300">
+                      Request body schema was not found in the parsed contract.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {requestFields.map((field) => (
+                        <div
+                          key={field.name}
+                          className="flex items-center justify-between rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800"
+                        >
+                          <span className="font-mono text-xs">{field.name}</span>
+                          <span className="text-xs text-slate-500">
+                            {field.type}
+                            {requiredFields.includes(field.name) ? " | required" : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="mb-3 flex items-center gap-2 font-bold">
+                    <GitBranch className="h-4 w-4 text-emerald-500" />
+                    Parameters
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="mb-1 text-xs font-bold uppercase text-slate-500">
+                        Path params
+                      </div>
+                      <div className="text-xs">
+                        {pathParams.length ? pathParams.join(", ") : "None"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-1 text-xs font-bold uppercase text-slate-500">
+                        Query params
+                      </div>
+                      <div className="text-xs">
+                        {queryParams.length ? queryParams.join(", ") : "None"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="mb-3 flex items-center gap-2 font-bold">
+                    <ShieldCheck className="h-4 w-4 text-amber-500" />
+                    Auth signal
+                  </div>
+                  <p className={cn("text-sm font-semibold", authRequired ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300")}>
+                    {authRequired ? "Security requirement detected" : "No explicit security requirement"}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    This is parsed from Swagger security metadata or Authorization-related parameters.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                <div className="mb-3 flex items-center gap-2 font-bold">
+                  <FileJson className="h-4 w-4 text-sky-500" />
+                  Responses
+                </div>
+                {responses.length === 0 ? (
+                  <p className="text-amber-700 dark:text-amber-300">
+                    No response status/schema was found in this parsed contract.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {responses.map((response) => (
+                      <div
+                        key={`${response.status}-${response.description || ""}`}
+                        className="rounded-xl bg-slate-100 px-3 py-2 dark:bg-slate-800"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-mono text-xs font-bold">
+                            HTTP {response.status}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                              response.hasSchema
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+                            )}
+                          >
+                            {response.hasSchema ? "Schema found" : "No schema"}
+                          </span>
+                        </div>
+                        {response.description && (
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {response.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                <div className="mb-3 font-bold">Quality checklist</div>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  {quality.checks.map((check) => (
+                    <div
+                      key={check.label}
+                      className="flex items-center justify-between rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800"
+                    >
+                      <span>{check.label}</span>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                          check.ok
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                            : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200",
+                        )}
+                      >
+                        {check.ok ? "Found" : "Missing"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <details className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                <summary className="cursor-pointer font-bold">
+                  Raw parsed metadata
+                </summary>
+                <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
+                  {rawPreview}
+                </pre>
+              </details>
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* Delete Confirmation Modal */}
