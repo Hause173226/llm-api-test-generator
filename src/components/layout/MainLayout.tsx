@@ -17,15 +17,15 @@ export default function MainLayout({ children, title, breadcrumbs }: MainLayoutP
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950">
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
       <Sidebar isCollapsed={isSidebarCollapsed} />
       <main
         className={cn(
-          "flex-1 flex flex-col relative transition-all duration-300 ease-in-out h-screen overflow-hidden",
+          "flex-1 min-h-0 min-w-0 flex flex-col relative transition-all duration-300 ease-in-out h-screen overflow-hidden",
           isSidebarCollapsed ? "ml-20" : "ml-72"
         )}
       >
-        <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50 dark:bg-slate-950">
           <TopAppBar
             title={title}
             isSidebarCollapsed={isSidebarCollapsed}
@@ -42,4 +42,3 @@ export default function MainLayout({ children, title, breadcrumbs }: MainLayoutP
     </div>
   );
 }
-

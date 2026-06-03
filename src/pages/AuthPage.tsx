@@ -152,19 +152,20 @@ export default function AuthPage() {
 
     try {
       if (!isLogin) {
-        const res = await register(
+        await register(
           formData.fullName,
           formData.email,
           formData.password,
           formData.confirmPassword,
         );
-        setRegisterSuccessEmail(formData.email);
+        showSuccessToast(t("auth.validation.registerSuccess"));
         setFormData({
           fullName: "",
           email: "",
           password: "",
           confirmPassword: "",
         });
+        navigate("/login");
       } else {
         await login(formData.email, formData.password);
         showSuccessToast(t("auth.validation.loginSuccess"));
@@ -195,7 +196,7 @@ export default function AuthPage() {
   };
 
   // Màn check email sau khi register thành công
-  if (registerSuccessEmail) {
+  if (false && registerSuccessEmail) {
     return (
       <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-700 p-10 flex flex-col items-center text-center space-y-6">

@@ -4,26 +4,28 @@ import { API_CONFIG } from "../config/api";
 
 // Types based on Backend models
 export interface PlanLimit {
+  id?: string;
   limitType: string;
-  limitValue: number;
+  limitValue?: number | null;
+  isUnlimited?: boolean;
 }
 
 export interface Plan {
   id: string;
   name: string;
   displayName?: string;
-  description: string;
+  description?: string | null;
   price?: number;
   priceMonthly?: number | null;
   priceYearly?: number | null;
   // Legacy field kept for backward compatibility
   billingCycle?: number;
-  currency?: string;
+  currency?: string | null;
   isActive: boolean;
   sortOrder?: number;
   limits: PlanLimit[];
   createdDateTime: string;
-  updatedDateTime?: string;
+  updatedDateTime?: string | null;
 }
 
 export interface Subscription {
@@ -111,6 +113,94 @@ export interface PayOsCheckout {
   orderCode: number;
 }
 
+const toNullableNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : NaN;
+
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toPlanLimits = (value: unknown): PlanLimit[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const limit = item as Partial<PlanLimit> | null;
+      if (!limit || typeof limit !== "object" || !limit.limitType) {
+        return null;
+      }
+
+      return {
+        id: typeof limit.id === "string" ? limit.id : undefined,
+        limitType: String(limit.limitType),
+        limitValue: toNullableNumber(limit.limitValue),
+        isUnlimited: Boolean(limit.isUnlimited),
+      } satisfies PlanLimit;
+    })
+    .filter((item): item is PlanLimit => Boolean(item));
+};
+
+const normalizePlansPayload = (payload: unknown): Plan[] => {
+  const source = Array.isArray(payload)
+    ? payload
+    : Array.isArray((payload as { data?: unknown })?.data)
+      ? (payload as { data: unknown[] }).data
+      : Array.isArray((payload as { items?: unknown })?.items)
+        ? (payload as { items: unknown[] }).items
+        : Array.isArray((payload as { result?: unknown })?.result)
+          ? (payload as { result: unknown[] }).result
+          : [];
+
+  return source
+    .map((item) => {
+      const plan = item as Partial<Plan> | null;
+      if (!plan || typeof plan !== "object") {
+        return null;
+      }
+
+      const id = typeof plan.id === "string" ? plan.id : "";
+      const name = typeof plan.name === "string" ? plan.name : "";
+      if (!id || !name) {
+        return null;
+      }
+
+      return {
+        id,
+        name,
+        displayName:
+          typeof plan.displayName === "string" ? plan.displayName : undefined,
+        description:
+          typeof plan.description === "string" ? plan.description : null,
+        price: toNullableNumber(plan.price) ?? undefined,
+        priceMonthly: toNullableNumber(plan.priceMonthly),
+        priceYearly: toNullableNumber(plan.priceYearly),
+        billingCycle:
+          typeof plan.billingCycle === "number" ? plan.billingCycle : undefined,
+        currency: typeof plan.currency === "string" ? plan.currency : null,
+        isActive: plan.isActive !== false,
+        sortOrder: toNullableNumber(plan.sortOrder) ?? undefined,
+        limits: toPlanLimits(plan.limits),
+        createdDateTime:
+          typeof plan.createdDateTime === "string"
+            ? plan.createdDateTime
+            : new Date(0).toISOString(),
+        updatedDateTime:
+          typeof plan.updatedDateTime === "string" ? plan.updatedDateTime : null,
+      } satisfies Plan;
+    })
+    .filter((item): item is Plan => Boolean(item));
+};
+
 const subscriptionService = {
   // Get all available plans
   getPlans: async (): Promise<Plan[]> => {
@@ -128,7 +218,7 @@ const subscriptionService = {
       });
       if (!response.ok) return [];
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      return normalizePlansPayload(data);
     } catch {
       return [];
     }

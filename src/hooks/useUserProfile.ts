@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import userService, { UserProfile, UpdateProfileRequest, ChangePasswordRequest } from '../services/userService';
 import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 // NOTE: NotificationSettings removed because Backend API not available
 // If you need notification settings, implement the Backend API first
 
 export const useUserProfile = () => {
+  const { refreshUser, syncUserProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +18,7 @@ export const useUserProfile = () => {
       setError(null);
       const data = await userService.getCurrentUser();
       setProfile(data);
+      syncUserProfile(data);
     } catch (err) {
       const errorMessage = handleError(err);
       setError(errorMessage);
@@ -32,6 +35,7 @@ export const useUserProfile = () => {
     try {
       const updated = await userService.updateProfile(data);
       setProfile(updated);
+      syncUserProfile(updated);
       return true;
     } catch (err) {
       handleError(err);
@@ -53,8 +57,11 @@ export const useUserProfile = () => {
     try {
       const result = await userService.uploadAvatar(file);
       if (profile) {
-        setProfile({ ...profile, avatarUrl: result.avatarUrl });
+        const updatedProfile = { ...profile, avatarUrl: result.avatarUrl };
+        setProfile(updatedProfile);
+        syncUserProfile(updatedProfile);
       }
+      await refreshUser();
       return true;
     } catch (err) {
       handleError(err);

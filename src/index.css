@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  
+
   --color-on-surface: #0b1c30;
   --color-on-secondary: #ffffff;
   --color-inverse-on-surface: #eaf1ff;
@@ -105,9 +105,17 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
     @apply bg-surface text-on-surface antialiased;
     font-family: var(--font-sans);
+    margin: 0;
+    overflow-x: hidden;
   }
 }
 
