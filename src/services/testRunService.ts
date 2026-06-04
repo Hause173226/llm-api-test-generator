@@ -1,5 +1,7 @@
 import apiService from "./apiService";
 
+export const DEFAULT_VALIDATION_SCORE_THRESHOLD = 0.5;
+
 export interface TestRun {
   id: string;
   testSuiteId: string;
@@ -87,6 +89,33 @@ export interface TestCaseRunDetail {
   requirementCode?: string;
   primaryRequirementId?: string;
   expectedProvenance?: string;
+}
+
+export interface TestCaseRunOverrideRequest {
+  testCaseId: string;
+  name?: string;
+  description?: string;
+  testType?: string;
+  request?: {
+    httpMethod?: string;
+    url?: string;
+    headers?: string;
+    pathParams?: string;
+    queryParams?: string;
+    bodyType?: string;
+    body?: string;
+    timeout?: number;
+  };
+  expectation?: {
+    expectedStatus?: string;
+    responseSchema?: string;
+    headerChecks?: string;
+    bodyContains?: string;
+    bodyNotContains?: string;
+    jsonPathChecks?: string;
+    maxResponseTime?: number | null;
+    expectedProvenance?: string;
+  };
 }
 
 export interface TestRunDetailResponse {
@@ -451,6 +480,7 @@ export interface StartTestRunRequest {
   validationProfile?: "Default" | "DemoAdaptive" | "SrsStrict";
   retryPolicy?: RetryPolicyRequest;
   recordRun?: boolean;
+  testCaseOverrides?: TestCaseRunOverrideRequest[];
 }
 
 const testRunService = {
@@ -487,6 +517,7 @@ const testRunService = {
         validationProfile: data.validationProfile,
         retryPolicy: data.retryPolicy ?? null,
         recordRun: data.recordRun ?? true,
+        testCaseOverrides: data.testCaseOverrides ?? undefined,
       },
     );
     return mapBackendRunDetail(response || {});

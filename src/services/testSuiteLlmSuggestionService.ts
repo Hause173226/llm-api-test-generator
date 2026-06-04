@@ -114,6 +114,15 @@ export interface ReviewSuggestionRequest {
     testType?: string;
     priority?: string;
     tags?: string[];
+    request?: {
+      httpMethod?: string;
+      url?: string;
+      headers?: Record<string, string>;
+      pathParams?: Record<string, string>;
+      queryParams?: Record<string, string>;
+      bodyType?: string;
+      body?: string;
+    };
   };
 }
 
