@@ -867,44 +867,35 @@ export default function SrsDocumentsPage() {
     4: t("pages.SrsDocumentsPage.constraint"),
   };
 
+  const isBoilerplateEvidence = (text?: string | null) => {
+    const value = String(text || "").trim().toLowerCase();
+    if (!value) return true;
+    const folded = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const hasApiSignal =
+      /\b(get|post|put|patch|delete)\b|\/api\/|http\s*\d{3}|\b\d{3}\b|authorization|bearer|jwt|token|password|email|required|validation|response|request|endpoint|auth|login|register|status|error|success|role|permission|min|max|format|schema|constraint/i.test(
+        folded,
+      );
+    const looksLikeTocOrIntro =
+      /muc luc|table of contents|contents|gioi thieu|mo ta tong quan|phu luc|tai lieu tham chieu|glossary|references|appendix/.test(
+        folded,
+      );
+
+    return looksLikeTocOrIntro && !hasApiSignal;
+  };
   const buildRequirementEvidence = (req: SrsRequirement) => {
-    const content = selectedSrsContent;
-    if (!content) return null;
+    const parsed = parseConstraintItems(
+      req.refinedConstraints || req.testableConstraints,
+    );
+    const snippets = parsed.items
+      .map((item) => String(item.sourceText || "").trim())
+      .filter((text) => text && !isBoilerplateEvidence(text));
 
-    const paragraphs = content
-      .split(/\r?\n\r?\n+/)
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
+    const uniqueSnippets = Array.from(new Set(snippets));
+    if (uniqueSnippets.length === 0) return null;
 
-    const titleTokens = (req.title || "")
-      .toLowerCase()
-      .split(/[^a-z0-9_]+/i)
-      .filter((t) => t.length >= 4);
-    const descTokens = (req.description || "")
-      .toLowerCase()
-      .split(/[^a-z0-9_]+/i)
-      .filter((t) => t.length >= 5)
-      .slice(0, 6);
-    const codeToken = (req.requirementCode || "").toLowerCase();
-    const tokens = [
-      ...new Set([codeToken, ...titleTokens, ...descTokens].filter(Boolean)),
-    ];
-    if (tokens.length === 0) return null;
-
-    let best: { text: string; score: number } | null = null;
-    for (const p of paragraphs) {
-      const lower = p.toLowerCase();
-      let score = 0;
-      for (const t of tokens) {
-        if (lower.includes(t)) score++;
-      }
-      if (!best || score > best.score) {
-        best = { text: p, score };
-      }
-    }
-
-    if (!best || best.score === 0) return null;
-    return best.text.length > 420 ? `${best.text.slice(0, 420)}...` : best.text;
+    const evidence = uniqueSnippets.slice(0, 4).join("\n");
+    return evidence.length > 420 ? `${evidence.slice(0, 420)}...` : evidence;
   };
 
   return (
