@@ -455,8 +455,17 @@ export default function SuggestionsPage() {
         throw new Error("Max response time must be 0 or greater.");
       }
 
+      const sourceRun = runDetail?.run || runs.find((run) => run.id === selectedRunId);
+      const environmentId = sourceRun?.environmentId;
+      if (!environmentId) {
+        throw new Error(
+          "This run does not expose an execution environment. Please rerun from the Runs page or select a run with an environment.",
+        );
+      }
+
       const result = await testRunService.startTestRun({
         testSuiteId: selectedSuiteId,
+        environmentId,
         selectedTestCaseIds: [editingCase.testCaseId],
         recordRun: true,
         testCaseOverrides: [
@@ -2300,5 +2309,4 @@ export default function SuggestionsPage() {
     </MainLayout>
   );
 }
-
 
