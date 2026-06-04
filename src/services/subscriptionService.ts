@@ -134,7 +134,7 @@ const toPlanLimits = (value: unknown): PlanLimit[] => {
   }
 
   return value
-    .map((item) => {
+    .map((item): PlanLimit | null => {
       const limit = item as Partial<PlanLimit> | null;
       if (!limit || typeof limit !== "object" || !limit.limitType) {
         return null;
@@ -162,7 +162,7 @@ const normalizePlansPayload = (payload: unknown): Plan[] => {
           : [];
 
   return source
-    .map((item) => {
+    .map((item): Plan | null => {
       const plan = item as Partial<Plan> | null;
       if (!plan || typeof plan !== "object") {
         return null;
