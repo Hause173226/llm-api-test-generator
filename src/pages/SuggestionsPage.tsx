@@ -3,10 +3,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
+  Edit3,
   Filter,
+  Play,
   RefreshCw,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import StepTransitionOverlay from "../components/ui/StepTransitionOverlay";
@@ -15,6 +18,8 @@ import { useProject } from "../contexts/ProjectContext";
 import { useTestSuites } from "../hooks/useTestSuites";
 import { apiService } from "../services/apiService";
 import testRunService, {
+  DEFAULT_VALIDATION_SCORE_THRESHOLD,
+  TestCaseRunDetail,
   TestRun,
   TestRunDetailResponse,
 } from "../services/testRunService";
@@ -45,6 +50,24 @@ interface FailureExplanationModel {
   failureCodes?: string[];
 }
 
+interface EditCaseRunDraft {
+  name: string;
+  description: string;
+  httpMethod: string;
+  url: string;
+  headersJson: string;
+  queryParamsJson: string;
+  bodyType: string;
+  requestBody: string;
+  timeoutMs: string;
+  expectedStatus: string;
+  expectedBodyContains: string;
+  expectedBodyNotContains: string;
+  expectedHeaderChecks: string;
+  expectedJsonPathChecks: string;
+  expectedMaxResponseTime: string;
+}
+
 export default function SuggestionsPage() {
   const { t } = useTranslation();
   const breadcrumbs = useProjectBreadcrumbs(t("suggestions.title"));
@@ -73,6 +96,11 @@ export default function SuggestionsPage() {
   const [isLoadingRuns, setIsLoadingRuns] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [editingCase, setEditingCase] = useState<TestCaseRunDetail | null>(
+    null,
+  );
+  const [editDraft, setEditDraft] = useState<EditCaseRunDraft | null>(null);
+  const [isStartingEditedRun, setIsStartingEditedRun] = useState(false);
   const fetchRunsRequestIdRef = useRef(0);
   const fetchRunDetailRequestIdRef = useRef(0);
 
@@ -345,6 +373,142 @@ export default function SuggestionsPage() {
         ...prev,
         [testCaseId]: false,
       }));
+    }
+  };
+
+  const formatJsonObject = (value?: Record<string, string>) =>
+    JSON.stringify(value && typeof value === "object" ? value : {}, null, 2);
+
+  const openEditCaseModal = (testCase: TestCaseRunDetail) => {
+    setEditingCase(testCase);
+    setEditDraft({
+      name: testCase.name || "",
+      description: testCase.description || "",
+      httpMethod: testCase.httpMethod || "GET",
+      url: testCase.resolvedUrl || "",
+      headersJson: formatJsonObject(testCase.requestHeaders),
+      queryParamsJson: formatJsonObject(testCase.queryParams),
+      bodyType: testCase.bodyType || "JSON",
+      requestBody: testCase.requestBody || "",
+      timeoutMs:
+        typeof testCase.timeoutMs === "number"
+          ? String(testCase.timeoutMs)
+          : "30000",
+      expectedStatus: testCase.expectedStatus || "",
+      expectedBodyContains: testCase.expectedBodyContains || "",
+      expectedBodyNotContains: testCase.expectedBodyNotContains || "",
+      expectedHeaderChecks: testCase.expectedHeaderChecks || "",
+      expectedJsonPathChecks: testCase.expectedJsonPathChecks || "",
+      expectedMaxResponseTime:
+        typeof testCase.expectedMaxResponseTime === "number"
+          ? String(testCase.expectedMaxResponseTime)
+          : "",
+    });
+  };
+
+  const closeEditCaseModal = () => {
+    if (isStartingEditedRun) return;
+    setEditingCase(null);
+    setEditDraft(null);
+  };
+
+  const parseObjectJson = (raw: string, label: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return {};
+    }
+
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`${label} must be a JSON object.`);
+    }
+
+    return parsed as Record<string, string>;
+  };
+
+  const startEditedRun = async () => {
+    if (!selectedSuiteId || !editingCase || !editDraft) {
+      return;
+    }
+
+    try {
+      setIsStartingEditedRun(true);
+      const headers = parseObjectJson(editDraft.headersJson, "Headers");
+      const queryParams = parseObjectJson(
+        editDraft.queryParamsJson,
+        "Query parameters",
+      );
+      const timeoutMs = Number(editDraft.timeoutMs || 30000);
+      const maxResponseTime =
+        editDraft.expectedMaxResponseTime.trim().length > 0
+          ? Number(editDraft.expectedMaxResponseTime)
+          : null;
+
+      if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+        throw new Error("Timeout must be greater than 0.");
+      }
+
+      if (
+        maxResponseTime != null &&
+        (!Number.isFinite(maxResponseTime) || maxResponseTime < 0)
+      ) {
+        throw new Error("Max response time must be 0 or greater.");
+      }
+
+      const sourceRun = runDetail?.run || runs.find((run) => run.id === selectedRunId);
+      const environmentId = sourceRun?.environmentId;
+      if (!environmentId) {
+        throw new Error(
+          "This run does not expose an execution environment. Please rerun from the Runs page or select a run with an environment.",
+        );
+      }
+
+      const result = await testRunService.startTestRun({
+        testSuiteId: selectedSuiteId,
+        environmentId,
+        selectedTestCaseIds: [editingCase.testCaseId],
+        recordRun: true,
+        testCaseOverrides: [
+          {
+            testCaseId: editingCase.testCaseId,
+            name: editDraft.name.trim() || editingCase.name,
+            description: editDraft.description,
+            testType: editingCase.testType,
+            request: {
+              httpMethod: editDraft.httpMethod.trim() || "GET",
+              url: editDraft.url.trim(),
+              headers: JSON.stringify(headers),
+              queryParams: JSON.stringify(queryParams),
+              bodyType: editDraft.bodyType.trim() || "JSON",
+              body: editDraft.requestBody,
+              timeout: timeoutMs,
+            },
+            expectation: {
+              expectedStatus: editDraft.expectedStatus.trim(),
+              bodyContains: editDraft.expectedBodyContains,
+              bodyNotContains: editDraft.expectedBodyNotContains,
+              headerChecks: editDraft.expectedHeaderChecks,
+              jsonPathChecks: editDraft.expectedJsonPathChecks,
+              maxResponseTime,
+              expectedProvenance: editingCase.expectedProvenance,
+            },
+          },
+        ],
+      });
+
+      showSuccessToast("Created a new run from the edited test case.");
+      setEditingCase(null);
+      setEditDraft(null);
+      const next = new URLSearchParams();
+      if (selectedProjectId) next.set("projectId", selectedProjectId);
+      if (selectedSuiteId) next.set("suiteId", selectedSuiteId);
+      if (result.run?.id) next.set("runId", result.run.id);
+      navigate(`/runs?${next.toString()}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : undefined;
+      showErrorToast(message || handleError(err));
+    } finally {
+      setIsStartingEditedRun(false);
     }
   };
 
@@ -874,6 +1038,15 @@ export default function SuggestionsPage() {
                     <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-surface-container-high dark:bg-slate-800 text-on-surface-variant">
                       HTTP: {testCase.httpStatusCode ?? "N/A"}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => openEditCaseModal(testCase)}
+                      className="ml-auto inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/15"
+                      title="Edit and create a new run"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Edit & rerun
+                    </button>
                   </div>
 
                   <p className="text-lg font-bold text-on-surface">
@@ -1467,7 +1640,7 @@ export default function SuggestionsPage() {
                                               Threshold:{" "}
                                               {(
                                                 testCase.validationScoreThreshold ??
-                                                0.8
+                                                DEFAULT_VALIDATION_SCORE_THRESHOLD
                                               ).toFixed(2)}
                                             </span>
                                             <span
@@ -1869,11 +2042,271 @@ export default function SuggestionsPage() {
             )}
           </div>
         )}
+
+        {editingCase && editDraft && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+            <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/20 dark:border-slate-700 shadow-2xl">
+              <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-outline-variant/10 dark:border-slate-700 bg-surface-container-lowest dark:bg-slate-900 px-6 py-4">
+                <div>
+                  <h2 className="text-lg font-bold text-on-surface">
+                    Edit testcase for new run
+                  </h2>
+                  <p className="text-xs text-on-surface-variant">
+                    The original testcase definition will not be updated.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeEditCaseModal}
+                  disabled={isStartingEditedRun}
+                  className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 p-6 lg:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Name
+                  </span>
+                  <input
+                    value={editDraft.name}
+                    onChange={(e) =>
+                      setEditDraft({ ...editDraft, name: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    HTTP method
+                  </span>
+                  <select
+                    value={editDraft.httpMethod}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        httpMethod: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface dark:bg-slate-800"
+                  >
+                    {["GET", "POST", "PUT", "PATCH", "DELETE"].map(
+                      (method) => (
+                        <option key={method} value={method}>
+                          {method}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+
+                <label className="space-y-1 lg:col-span-2">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    URL
+                  </span>
+                  <input
+                    value={editDraft.url}
+                    onChange={(e) =>
+                      setEditDraft({ ...editDraft, url: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 font-mono text-xs text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1 lg:col-span-2">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Description
+                  </span>
+                  <textarea
+                    value={editDraft.description}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        description: e.target.value,
+                      })
+                    }
+                    rows={2}
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Headers JSON
+                  </span>
+                  <textarea
+                    value={editDraft.headersJson}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        headersJson: e.target.value,
+                      })
+                    }
+                    rows={7}
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 font-mono text-xs text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Query JSON
+                  </span>
+                  <textarea
+                    value={editDraft.queryParamsJson}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        queryParamsJson: e.target.value,
+                      })
+                    }
+                    rows={7}
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 font-mono text-xs text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Body type
+                  </span>
+                  <input
+                    value={editDraft.bodyType}
+                    onChange={(e) =>
+                      setEditDraft({ ...editDraft, bodyType: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Timeout ms
+                  </span>
+                  <input
+                    value={editDraft.timeoutMs}
+                    onChange={(e) =>
+                      setEditDraft({ ...editDraft, timeoutMs: e.target.value })
+                    }
+                    inputMode="numeric"
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1 lg:col-span-2">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Request body
+                  </span>
+                  <textarea
+                    value={editDraft.requestBody}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        requestBody: e.target.value,
+                      })
+                    }
+                    rows={8}
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 font-mono text-xs text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Expected status
+                  </span>
+                  <input
+                    value={editDraft.expectedStatus}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        expectedStatus: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Max response time
+                  </span>
+                  <input
+                    value={editDraft.expectedMaxResponseTime}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        expectedMaxResponseTime: e.target.value,
+                      })
+                    }
+                    inputMode="numeric"
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    Body contains JSON
+                  </span>
+                  <textarea
+                    value={editDraft.expectedBodyContains}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        expectedBodyContains: e.target.value,
+                      })
+                    }
+                    rows={5}
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 font-mono text-xs text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-on-surface-variant">
+                    JSON path checks
+                  </span>
+                  <textarea
+                    value={editDraft.expectedJsonPathChecks}
+                    onChange={(e) =>
+                      setEditDraft({
+                        ...editDraft,
+                        expectedJsonPathChecks: e.target.value,
+                      })
+                    }
+                    rows={5}
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 font-mono text-xs text-on-surface dark:bg-slate-800"
+                  />
+                </label>
+              </div>
+
+              <div className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-outline-variant/10 dark:border-slate-700 bg-surface-container-lowest dark:bg-slate-900 px-6 py-4">
+                <button
+                  type="button"
+                  onClick={closeEditCaseModal}
+                  disabled={isStartingEditedRun}
+                  className="rounded-lg border border-outline-variant/20 px-4 py-2 text-sm font-semibold text-on-surface disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={startEditedRun}
+                  disabled={isStartingEditedRun}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-primary disabled:opacity-60"
+                >
+                  {isStartingEditedRun ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4" />
+                  )}
+                  Save to new run
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
 }
-
-
-
 

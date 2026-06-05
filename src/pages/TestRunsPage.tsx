@@ -38,6 +38,7 @@ import environmentService, {
 } from "../services/environmentService";
 import testCaseService, { TestCase } from "../services/testCaseService";
 import testRunService, {
+  DEFAULT_VALIDATION_SCORE_THRESHOLD,
   TestRunDetailResponse,
 } from "../services/testRunService";
 import { testSuiteService } from "../services/testSuiteService";
@@ -217,6 +218,21 @@ export default function TestRunsPage() {
       setLoadingRunDetailsById((prev) => ({ ...prev, [runId]: false }));
     }
   };
+
+  useEffect(() => {
+    const runId = searchParams.get("runId");
+    if (!runId || !activeSuiteId || expandedRunId === runId) {
+      return;
+    }
+
+    if (!testRuns.some((run) => run.id === runId)) {
+      return;
+    }
+
+    setExpandedRunId(runId);
+    loadRunDetails(runId, activeSuiteId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSuiteId, searchParams, testRuns]);
 
   // minimal autoAnalysisState placeholder used by UI
   const autoAnalysisState = {
@@ -1154,7 +1170,7 @@ export default function TestRunsPage() {
                                                         Threshold:{" "}
                                                         {(
                                                           testCase.validationScoreThreshold ??
-                                                          0.8
+                                                          DEFAULT_VALIDATION_SCORE_THRESHOLD
                                                         ).toFixed(2)}
                                                       </span>
                                                       <span
