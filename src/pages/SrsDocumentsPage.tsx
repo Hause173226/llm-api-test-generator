@@ -44,6 +44,7 @@ import {
 } from "../services/srsService";
 import { cn } from "../lib/utils";
 import { useTestSuites } from "../hooks/useTestSuites";
+import { apiService } from "../services/apiService";
 
 const SRS_LINK_SYNC_EVENT = "srs:link-sync-updated";
 
@@ -162,6 +163,9 @@ export default function SrsDocumentsPage() {
 
   const [isAddReqOpen, setIsAddReqOpen] = useState(false);
   const [showFullSrsContent, setShowFullSrsContent] = useState(false);
+  const [filePreviewContent, setFilePreviewContent] = useState("");
+  const [filePreviewError, setFilePreviewError] = useState("");
+  const [isFilePreviewLoading, setIsFilePreviewLoading] = useState(false);
   const [expandedRequirementIds, setExpandedRequirementIds] = useState<
     Record<string, boolean>
   >({});
@@ -258,6 +262,9 @@ export default function SrsDocumentsPage() {
     if (!selectedDocument) return;
     loadDocumentDetail(selectedDocument.id);
     setLinkSuiteId(selectedDocument.testSuiteId ?? "");
+    setFilePreviewContent("");
+    setFilePreviewError("");
+    setIsFilePreviewLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDocument?.id]);
 
@@ -833,6 +840,122 @@ export default function SrsDocumentsPage() {
     return String(raw || "").trim();
   }, [selectedDocument]);
 
+  const selectedSrsStorageFileId = String(
+    selectedDocument?.storageFileId || "",
+  ).trim();
+
+  const downloadSelectedSrsFile = async (): Promise<Blob | null> => {
+    if (!selectedSrsStorageFileId) {
+      setFilePreviewError(t("pages.SrsDocumentsPage.no_storage_file_id"));
+      return null;
+    }
+
+    return await apiService.downloadFile(
+      `/files/${selectedSrsStorageFileId}/download`,
+    );
+  };
+
+  const openUploadedSrsFile = async () => {
+    setFilePreviewError("");
+    setIsFilePreviewLoading(true);
+    try {
+      const blob = await downloadSelectedSrsFile();
+      if (!blob) return;
+
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      setFilePreviewError(t("pages.SrsDocumentsPage.file_preview_failed"));
+      handleError(err);
+    } finally {
+      setIsFilePreviewLoading(false);
+    }
+  };
+
+  const formatUploadedSrsPreviewText = (rawText: string, blobType: string) => {
+    const text = String(rawText || "").trim();
+    const looksLikeHtml =
+      /text\/html/i.test(blobType || "") ||
+      /^<!doctype\s+html/i.test(text) ||
+      /^<html[\s>]/i.test(text);
+
+    if (!looksLikeHtml) {
+      return text;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, "text/html");
+    doc.querySelectorAll("script, style, noscript").forEach((node) => {
+      node.remove();
+    });
+
+    doc.querySelectorAll("br").forEach((node) => {
+      node.replaceWith(doc.createTextNode("\n"));
+    });
+    doc.querySelectorAll("p, div, section, article, header, footer, tr").forEach((node) => {
+      node.appendChild(doc.createTextNode("\n"));
+    });
+    doc.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((node) => {
+      node.prepend(doc.createTextNode("\n"));
+      node.appendChild(doc.createTextNode("\n"));
+    });
+    doc.querySelectorAll("li").forEach((node) => {
+      node.prepend(doc.createTextNode("- "));
+      node.appendChild(doc.createTextNode("\n"));
+    });
+    doc.querySelectorAll("td, th").forEach((node) => {
+      node.appendChild(doc.createTextNode("  "));
+    });
+
+    return (doc.body?.textContent || text)
+      .replace(/\u00a0/g, " ")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
+
+  const loadUploadedSrsTextPreview = async () => {
+    setFilePreviewContent("");
+    setFilePreviewError("");
+    setIsFilePreviewLoading(true);
+    try {
+      const blob = await downloadSelectedSrsFile();
+      if (!blob) return;
+
+      const buffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buffer.slice(0, Math.min(buffer.byteLength, 4096)));
+      const hasBinaryByte = bytes.some((byte) => byte === 0);
+      const header = String.fromCharCode(...bytes.slice(0, 8));
+      const isKnownBinary =
+        header.startsWith("%PDF") ||
+        header.startsWith("PK\u0003\u0004") ||
+        header.startsWith("PK\u0005\u0006");
+
+      if (hasBinaryByte || isKnownBinary) {
+        setFilePreviewError(t("pages.SrsDocumentsPage.binary_preview_not_supported"));
+        return;
+      }
+
+      const decodedText = new TextDecoder("utf-8", { fatal: false })
+        .decode(buffer)
+        .trim();
+      const text = formatUploadedSrsPreviewText(decodedText, blob.type);
+      if (!text) {
+        setFilePreviewError(t("pages.SrsDocumentsPage.file_preview_empty"));
+        return;
+      }
+
+      setFilePreviewContent(text);
+      setShowFullSrsContent(true);
+    } catch (err) {
+      setFilePreviewError(t("pages.SrsDocumentsPage.file_preview_failed"));
+      handleError(err);
+    } finally {
+      setIsFilePreviewLoading(false);
+    }
+  };
+
   const analysisStatusLabel: Record<number, string> = {
     0: t("pages.SrsDocumentsPage.status_pending"),
     1: t("pages.SrsDocumentsPage.status_processing"),
@@ -1317,9 +1440,103 @@ export default function SrsDocumentsPage() {
                     )}
                   </div>
                   {!selectedSrsContent ? (
-                    <p className="mt-2 text-sm text-on-surface-variant">
-                      {t("pages.SrsDocumentsPage.ch_a_c_raw_content_hi_n_th")}
-                    </p>
+                    selectedDocument.sourceType === 1 ? (
+                      <div className="mt-3 rounded-xl border border-dashed border-outline-variant/30 bg-surface-container px-3 py-3">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
+                            <Upload className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div>
+                              <p className="text-sm font-semibold text-on-surface">
+                                {t("pages.SrsDocumentsPage.srs_file_context")}
+                              </p>
+                              <p className="mt-1 text-xs text-on-surface-variant">
+                                {t(
+                                  "pages.SrsDocumentsPage.raw_text_not_extracted",
+                                )}
+                              </p>
+                            </div>
+                            <div className="grid gap-2 md:grid-cols-2">
+                              <div className="rounded-lg bg-surface-container-low px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                                  {t("pages.SrsDocumentsPage.sourceType")}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-on-surface">
+                                  {sourceTypeLabel[selectedDocument.sourceType]}
+                                </p>
+                              </div>
+                              <div className="rounded-lg bg-surface-container-low px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                                  {t("pages.SrsDocumentsPage.storage_file_id")}
+                                </p>
+                                <p className="mt-1 break-all font-mono text-xs text-on-surface">
+                                  {selectedSrsStorageFileId ||
+                                    t(
+                                      "pages.SrsDocumentsPage.no_storage_file_id",
+                                    )}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={openUploadedSrsFile}
+                                disabled={
+                                  isFilePreviewLoading ||
+                                  !selectedSrsStorageFileId
+                                }
+                                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                              >
+                                {isFilePreviewLoading ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <FileText className="h-3.5 w-3.5" />
+                                )}
+                                {t("pages.SrsDocumentsPage.open_uploaded_file")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={loadUploadedSrsTextPreview}
+                                disabled={
+                                  isFilePreviewLoading ||
+                                  !selectedSrsStorageFileId
+                                }
+                                className="inline-flex items-center gap-2 rounded-lg bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface disabled:opacity-50"
+                              >
+                                {isFilePreviewLoading ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                )}
+                                {t("pages.SrsDocumentsPage.load_text_preview")}
+                              </button>
+                            </div>
+                            {filePreviewError && (
+                              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+                                {filePreviewError}
+                              </p>
+                            )}
+                            {filePreviewContent && (
+                              <pre
+                                className={cn(
+                                  "rounded-xl border border-outline-variant/20 bg-surface-container px-3 py-2 text-xs text-on-surface-variant whitespace-pre-wrap break-words",
+                                  showFullSrsContent
+                                    ? "max-h-[420px] overflow-auto"
+                                    : "max-h-32 overflow-hidden",
+                                )}
+                              >
+                                {filePreviewContent}
+                              </pre>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-on-surface-variant">
+                        {t("pages.SrsDocumentsPage.ch_a_c_raw_content_hi_n_th")}
+                      </p>
+                    )
                   ) : (
                     <pre
                       className={cn(

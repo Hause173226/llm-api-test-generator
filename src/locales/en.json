@@ -2249,6 +2249,11 @@
       "view_full": "View full",
       "n_i_dung_srs_upload": "Uploaded SRS content",
       "ch_a_c_raw_content_hi_n_th": "No raw content available to display.",
+      "srs_file_context": "File upload context",
+      "sourceType": "Source type",
+      "storage_file_id": "Storage file ID",
+      "no_storage_file_id": "No storage file ID available.",
+      "raw_text_not_extracted": "This SRS was uploaded as a file. Raw text is not available yet; click Analyze to let the backend extract the file content and send it to the LLM.",
       "analysis_job_status": "Analysis Job Status",
       "selectedjob": "Selected job",
       "status": "Status",
@@ -2399,7 +2404,12 @@
       "url_placeholder": "https://example.com/srs-document",
       "contract_flow_hint": "Follow the contract flow: create document, analyze asynchronously, review requirements, answer critical clarifications, then refine.",
       "answer_clarification": "Answer Clarification",
-      "type_clarification_answer": "Type the clarification answer"
+      "type_clarification_answer": "Type the clarification answer",
+      "open_uploaded_file": "Open uploaded file",
+      "load_text_preview": "Load text preview",
+      "binary_preview_not_supported": "This file is PDF/DOCX/binary, so it cannot be shown as plain text here. Open the uploaded file or run Analyze to let the backend extract text.",
+      "file_preview_empty": "The uploaded file has no readable text content.",
+      "file_preview_failed": "Could not load the uploaded file preview."
     },
     "SuggestionsPage": {
       "run_runnumber_run_status": "#{run.runNumber || \"-\"} - {run.status}",

@@ -2401,7 +2401,17 @@
       "url_placeholder": "https://example.com/srs-document",
       "contract_flow_hint": "Hãy đi theo đúng luồng: tạo tài liệu, phân tích bất đồng bộ, rà soát yêu cầu, trả lời các câu hỏi làm rõ quan trọng, rồi mới tinh chỉnh.",
       "answer_clarification": "Trả lời câu hỏi làm rõ",
-      "type_clarification_answer": "Nhập câu trả lời làm rõ"
+      "type_clarification_answer": "Nhập câu trả lời làm rõ",
+      "srs_file_context": "Ng? c?nh file upload",
+      "sourceType": "Lo?i ngu?n",
+      "storage_file_id": "ID file l?u tr?",
+      "no_storage_file_id": "Kh?ng c? ID file l?u tr?.",
+      "raw_text_not_extracted": "SRS n?y ???c t?i l?n b?ng file. N?i dung text th? ch?a s?n s?ng; b?m Analyze ?? backend tr?ch n?i dung file v? g?i sang LLM.",
+      "open_uploaded_file": "M? file ?? upload",
+      "load_text_preview": "T?i preview text",
+      "binary_preview_not_supported": "File n?y l? PDF/DOCX/binary n?n kh?ng th? hi?n th? d?ng text thu?n ? ??y. H?y m? file ?? upload ho?c b?m Analyze ?? backend tr?ch text.",
+      "file_preview_empty": "File ?? upload kh?ng c? n?i dung text c? th? ??c.",
+      "file_preview_failed": "Kh?ng th? t?i preview file ?? upload."
     },
     "SuggestionsPage": {
       "run_runnumber_run_status": "#{run.runNumber || \"-\"} - {run.status}",
