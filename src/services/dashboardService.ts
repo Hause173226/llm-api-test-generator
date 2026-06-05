@@ -1,5 +1,7 @@
 import { apiService } from './apiService';
 import { projectService } from './projectService';
+import { testSuiteService } from './testSuiteService';
+import testRunService, { type TestRun } from './testRunService';
 
 // Types
 export interface DashboardMetrics {
@@ -29,6 +31,69 @@ export interface TopEndpoint {
 
 // Dashboard Service
 class DashboardService {
+  private projectRunsCache = new Map<
+    string,
+    { expiresAt: number; promise: Promise<TestRun[]> }
+  >();
+
+  private async getProjectTestRuns(projectId: string): Promise<TestRun[]> {
+    const cached = this.projectRunsCache.get(projectId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.promise;
+    }
+
+    const promise = (async () => {
+      const suites = await testSuiteService.getTestSuites(projectId);
+      if (!suites.length) return [];
+
+      const runsBySuite = await Promise.all(
+        suites.map(async (suite) => {
+          try {
+            const result = await testRunService.getTestRunsByTestSuite(
+              suite.id,
+              1,
+              100,
+            );
+            return result.items.map((run) => ({
+              ...run,
+              projectId,
+              testSuiteId: run.testSuiteId || suite.id,
+              testSuiteName: run.testSuiteName || suite.name,
+            }));
+          } catch (error) {
+            console.error(
+              `Error fetching test runs for suite ${suite.id}:`,
+              error,
+            );
+            return [];
+          }
+        }),
+      );
+
+      return runsBySuite
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt || b.startedAt || 0).getTime() -
+            new Date(a.createdAt || a.startedAt || 0).getTime(),
+        );
+    })();
+
+    this.projectRunsCache.set(projectId, {
+      expiresAt: Date.now() + 30_000,
+      promise,
+    });
+
+    promise.finally(() => {
+      const current = this.projectRunsCache.get(projectId);
+      if (current?.promise === promise) {
+        this.projectRunsCache.delete(projectId);
+      }
+    });
+
+    return promise;
+  }
+
   async getMetrics(projectId?: string): Promise<DashboardMetrics> {
     try {
       // Always get total active projects (not filtered by project)
@@ -75,25 +140,34 @@ class DashboardService {
             console.log('Total endpoints:', endpointsCount);
           }
 
-          // Get test runs for the project
+          // Get test runs for every suite in the project. Backend does not expose
+          // /projects/{projectId}/test-runs; the stable contract is suite-level.
           try {
-            const testRuns = await apiService.get<any>(`/projects/${projectId}/test-runs`);
-            console.log('Test runs response:', testRuns);
-            const runsArray = Array.isArray(testRuns) ? testRuns : (testRuns.items || []);
+            const runsArray = await this.getProjectTestRuns(projectId);
             
             // Calculate monthly runs (last 30 days)
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            monthlyRuns = runsArray.filter((run: any) => 
-              new Date(run.createdDateTime || run.createdAt) >= thirtyDaysAgo
+            monthlyRuns = runsArray.filter((run) => 
+              new Date(run.createdAt || run.startedAt || 0) >= thirtyDaysAgo
             ).length;
 
-            // Calculate pass rate
-            if (runsArray.length > 0) {
-              const passedRuns = runsArray.filter((run: any) => 
-                run.status === 'Passed' || run.status === 'Success' || run.status === 'Completed'
+            // Calculate pass rate from executed test cases, not run status.
+            const totalExecutedTests = runsArray.reduce(
+              (sum, run) => sum + Number(run.totalTests || 0),
+              0,
+            );
+            const totalPassedTests = runsArray.reduce(
+              (sum, run) => sum + Number(run.passedTests || 0),
+              0,
+            );
+            if (totalExecutedTests > 0) {
+              passRate = (totalPassedTests / totalExecutedTests) * 100;
+            } else if (runsArray.length > 0) {
+              const completedRuns = runsArray.filter(
+                (run) => run.status === 'completed',
               ).length;
-              passRate = (passedRuns / runsArray.length) * 100;
+              passRate = (completedRuns / runsArray.length) * 100;
             }
             console.log('Monthly runs:', monthlyRuns, 'Pass rate:', passRate.toFixed(1) + '%');
           } catch (err) {
@@ -128,21 +202,20 @@ class DashboardService {
     try {
       if (!projectId) return [];
 
-      const response = await apiService.get<any>(`/projects/${projectId}/test-runs`);
-      const items = Array.isArray(response) ? response : (response.items || []);
+      const items = await this.getProjectTestRuns(projectId);
 
       return items
-        .sort((a: any, b: any) => {
-          const dateA = new Date(a.createdDateTime || a.createdAt).getTime();
-          const dateB = new Date(b.createdDateTime || b.createdAt).getTime();
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.startedAt || 0).getTime();
+          const dateB = new Date(b.createdAt || b.startedAt || 0).getTime();
           return dateB - dateA;
         })
         .slice(0, 10)
-        .map((run: any) => ({
+        .map((run) => ({
           id: run.id,
-          type: (run.status === 'Failed' || run.status === 'Error') ? 'test_failure' : 'test_run',
-          message: `Test Run "${run.testSuiteName || run.name || 'Unknown'}" ${(run.status || 'completed').toLowerCase()}`,
-          timestamp: run.createdDateTime || run.createdAt,
+          type: run.status === 'failed' ? 'test_failure' : 'test_run',
+          message: `Test Run "${run.testSuiteName || 'Unknown suite'}" ${(run.status || 'completed').toLowerCase()}`,
+          timestamp: run.createdAt || run.startedAt || new Date().toISOString(),
         }));
     } catch (error) {
       console.error('Error fetching recent activity:', error);

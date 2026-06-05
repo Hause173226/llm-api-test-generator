@@ -502,60 +502,7 @@ export default function TestRunsPage() {
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-sm flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-surface-container-low dark:bg-slate-800 text-primary dark:text-indigo-400">
-              <Zap className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                {t("testRuns.stats.total")}
-              </p>
-              <p className="text-2xl font-black text-on-surface">
-                {stats.total}
-              </p>
-            </div>
-          </div>
-          <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-sm flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-surface-container-low dark:bg-slate-800 text-emerald-500">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                {t("testRuns.stats.success")}
-              </p>
-              <p className="text-2xl font-black text-on-surface">
-                {stats.passed}
-              </p>
-            </div>
-          </div>
-          <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-sm flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-surface-container-low dark:bg-slate-800 text-error dark:text-rose-400">
-              <XCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                {t("testRuns.stats.failures")}
-              </p>
-              <p className="text-2xl font-black text-on-surface">
-                {stats.failed}
-              </p>
-            </div>
-          </div>
-          <div className="bg-surface-container-lowest dark:bg-slate-900 p-6 rounded-2xl border border-outline-variant/10 dark:border-slate-800 shadow-sm flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-surface-container-low dark:bg-slate-800 text-amber-500">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                {t("testRuns.stats.duration")}
-              </p>
-              <p className="text-2xl font-black text-on-surface">
-                {stats.avgDuration}
-              </p>
-            </div>
-          </div>
-        </div>
+
 
         {/* Filter Bar */}
         <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/10 dark:border-slate-800 flex flex-wrap items-center gap-4 shadow-sm">
