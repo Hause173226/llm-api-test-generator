@@ -796,14 +796,7 @@ export default function EndpointsPage() {
                           </div>
                         )}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span
-                          className={cn(
-                            "rounded-full px-3 py-1 text-[11px] font-bold",
-                            qualityClass(quality.score),
-                          )}
-                        >
-                          Contract quality: {quality.score}%
-                        </span>
+                  
                         {quality.missing.length > 0 && (
                           <span className="text-[11px] text-amber-700 dark:text-amber-300">
                             Missing: {quality.missing.join(", ")}

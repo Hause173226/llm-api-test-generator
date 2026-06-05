@@ -162,6 +162,7 @@ export default function SrsDocumentsPage() {
   });
 
   const [isAddReqOpen, setIsAddReqOpen] = useState(false);
+  const [isSrsContentOpen, setIsSrsContentOpen] = useState(true);
   const [showFullSrsContent, setShowFullSrsContent] = useState(false);
   const [filePreviewContent, setFilePreviewContent] = useState("");
   const [filePreviewError, setFilePreviewError] = useState("");
@@ -855,24 +856,6 @@ export default function SrsDocumentsPage() {
     );
   };
 
-  const openUploadedSrsFile = async () => {
-    setFilePreviewError("");
-    setIsFilePreviewLoading(true);
-    try {
-      const blob = await downloadSelectedSrsFile();
-      if (!blob) return;
-
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (err) {
-      setFilePreviewError(t("pages.SrsDocumentsPage.file_preview_failed"));
-      handleError(err);
-    } finally {
-      setIsFilePreviewLoading(false);
-    }
-  };
-
   const formatUploadedSrsPreviewText = (rawText: string, blobType: string) => {
     const text = String(rawText || "").trim();
     const looksLikeHtml =
@@ -948,6 +931,7 @@ export default function SrsDocumentsPage() {
 
       setFilePreviewContent(text);
       setShowFullSrsContent(true);
+      setIsSrsContentOpen(true);
     } catch (err) {
       setFilePreviewError(t("pages.SrsDocumentsPage.file_preview_failed"));
       handleError(err);
@@ -1341,7 +1325,7 @@ export default function SrsDocumentsPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-surface-container-low p-4">
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant">
                       {t("pages.SrsDocumentsPage.project")}
@@ -1350,15 +1334,7 @@ export default function SrsDocumentsPage() {
                       {selectedProject?.name || projectId}
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-surface-container-low p-4">
-                    <p className="text-xs uppercase tracking-widest text-on-surface-variant">
-                      {t("pages.SrsDocumentsPage.analysis_job")}
-                    </p>
-                    <p className="mt-1 font-semibold text-on-surface">
-                      {analysisJobId ||
-                        t("pages.SrsDocumentsPage.not_triggered")}
-                    </p>
-                  </div>
+            
                   <div className="rounded-2xl bg-surface-container-low p-4">
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant">
                       {t("pages.SrsDocumentsPage.requirements")}
@@ -1423,25 +1399,39 @@ export default function SrsDocumentsPage() {
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
-                  <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsSrsContentOpen((v) => !v)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant">
                       {t("pages.SrsDocumentsPage.n_i_dung_srs_upload")}
                     </p>
-                    {selectedSrsContent && (
-                      <button
-                        type="button"
-                        onClick={() => setShowFullSrsContent((v) => !v)}
-                        className="text-xs font-semibold text-primary hover:underline"
-                      >
-                        {showFullSrsContent
-                          ? t("pages.SrsDocumentsPage.collapse")
-                          : t("pages.SrsDocumentsPage.view_full")}
-                      </button>
-                    )}
-                  </div>
-                  {!selectedSrsContent ? (
+                    <ChevronRight
+                      className={cn(
+                        "h-4 w-4 text-on-surface-variant transition-transform",
+                        isSrsContentOpen ? "rotate-90" : "",
+                      )}
+                    />
+                  </button>
+                  {isSrsContentOpen && (
+                    <div className="mt-3 space-y-3">
+                      {(selectedSrsContent || filePreviewContent) && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowFullSrsContent((v) => !v)}
+                            className="text-xs font-semibold text-primary hover:underline"
+                          >
+                            {showFullSrsContent
+                              ? t("pages.SrsDocumentsPage.collapse")
+                              : t("pages.SrsDocumentsPage.view_full")}
+                          </button>
+                        </div>
+                      )}
+                      {!selectedSrsContent ? (
                     selectedDocument.sourceType === 1 ? (
-                      <div className="mt-3 rounded-xl border border-dashed border-outline-variant/30 bg-surface-container px-3 py-3">
+                      <div className="rounded-xl border border-dashed border-outline-variant/30 bg-surface-container px-3 py-3">
                         <div className="flex items-start gap-3">
                           <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
                             <Upload className="h-4 w-4" />
@@ -1457,7 +1447,7 @@ export default function SrsDocumentsPage() {
                                 )}
                               </p>
                             </div>
-                            <div className="grid gap-2 md:grid-cols-2">
+                            <div className="grid gap-2 md:grid-cols-1">
                               <div className="rounded-lg bg-surface-container-low px-3 py-2">
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
                                   {t("pages.SrsDocumentsPage.sourceType")}
@@ -1466,35 +1456,8 @@ export default function SrsDocumentsPage() {
                                   {sourceTypeLabel[selectedDocument.sourceType]}
                                 </p>
                               </div>
-                              <div className="rounded-lg bg-surface-container-low px-3 py-2">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                                  {t("pages.SrsDocumentsPage.storage_file_id")}
-                                </p>
-                                <p className="mt-1 break-all font-mono text-xs text-on-surface">
-                                  {selectedSrsStorageFileId ||
-                                    t(
-                                      "pages.SrsDocumentsPage.no_storage_file_id",
-                                    )}
-                                </p>
-                              </div>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={openUploadedSrsFile}
-                                disabled={
-                                  isFilePreviewLoading ||
-                                  !selectedSrsStorageFileId
-                                }
-                                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                              >
-                                {isFilePreviewLoading ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <FileText className="h-3.5 w-3.5" />
-                                )}
-                                {t("pages.SrsDocumentsPage.open_uploaded_file")}
-                              </button>
                               <button
                                 type="button"
                                 onClick={loadUploadedSrsTextPreview}
@@ -1502,7 +1465,7 @@ export default function SrsDocumentsPage() {
                                   isFilePreviewLoading ||
                                   !selectedSrsStorageFileId
                                 }
-                                className="inline-flex items-center gap-2 rounded-lg bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface disabled:opacity-50"
+                                className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-xs font-semibold text-amber-50 disabled:opacity-50"
                               >
                                 {isFilePreviewLoading ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1548,6 +1511,8 @@ export default function SrsDocumentsPage() {
                     >
                       {selectedSrsContent}
                     </pre>
+                      )}
+                    </div>
                   )}
                 </div>
               </section>
