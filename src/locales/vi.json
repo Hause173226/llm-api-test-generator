@@ -2220,6 +2220,7 @@
     "SrsDocumentsPage": {
       "srs_documents": "Tài liệu SRS",
       "manage_srs_documents_run_analysis_and_re": "Quản lý tài liệu SRS, chạy phân tích và rà soát yêu cầu.",
+      "ai_training_warning": "Cảnh báo: AI có thể sử dụng tài liệu tải lên để huấn luyện mô hình. Không tải lên dữ liệu nhạy cảm.",
       "refresh": "Làm mới",
       "new_srs": "SRS mới",
       "documents": "Tài liệu",

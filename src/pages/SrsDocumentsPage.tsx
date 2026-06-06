@@ -1012,7 +1012,7 @@ export default function SrsDocumentsPage() {
     >
       <div className="space-y-8 pb-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <div className="space-y-1">
+          <div className="space-y-3">
             <h1 className="text-4xl font-bold tracking-tight text-on-surface">
               {t("pages.SrsDocumentsPage.srs_documents")}
             </h1>
@@ -1021,6 +1021,10 @@ export default function SrsDocumentsPage() {
                 "pages.SrsDocumentsPage.manage_srs_documents_run_analysis_and_re",
               )}
             </p>
+            <div className="inline-flex max-w-2xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{t("pages.SrsDocumentsPage.ai_training_warning")}</p>
+            </div>
           </div>
           <div className="flex gap-3">
             <button

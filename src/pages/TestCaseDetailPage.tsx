@@ -50,6 +50,32 @@ interface Assertion {
   value: any;
 }
 
+const constraintFieldLabels: Record<string, string> = {
+  constraint: "Rule",
+  field: "Field",
+  operator: "Operator",
+  value: "Value",
+  expectedStatus: "Expected status",
+  expectedOutcome: "Expected outcome",
+  testType: "Test type",
+  priority: "Priority",
+  sourceText: "Source text",
+  requirementScope: "Scope",
+};
+
+const constraintKeyOrder = [
+  "constraint",
+  "field",
+  "operator",
+  "value",
+  "expectedStatus",
+  "expectedOutcome",
+  "testType",
+  "priority",
+  "sourceText",
+  "requirementScope",
+] as const;
+
 export default function TestCaseDetailPage() {
   const { t } = useTranslation();
   const params = useParams<{ suiteId?: string; testCaseId?: string }>();
@@ -248,6 +274,134 @@ export default function TestCaseDetailPage() {
     }
 
     return {};
+  };
+
+  const toDisplayLabel = (key: string) =>
+    constraintFieldLabels[key] ??
+    key
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .replace(/[_-]+/g, " ")
+      .replace(/^./, (char) => char.toUpperCase());
+
+  const formatConstraintValue = (value: unknown): string => {
+    if (value === null || value === undefined || value === "") return "-";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      const allPrimitive = value.every(
+        (item) =>
+          item === null ||
+          item === undefined ||
+          typeof item === "string" ||
+          typeof item === "number" ||
+          typeof item === "boolean",
+      );
+
+      if (allPrimitive) {
+        return value.map((item) => String(item)).join(", ");
+      }
+    }
+
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  };
+
+  const parseConstraintItems = (raw?: string | null): unknown[] | null => {
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        // Keep plain-text fallback when constraints are not valid JSON.
+      }
+    }
+
+    return null;
+  };
+
+  const renderConstraintContent = (raw?: string | null) => {
+    if (!raw) return null;
+
+    const parsedItems = parseConstraintItems(raw);
+
+    if (!parsedItems) {
+      return (
+        <p className="text-[11px] text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap leading-relaxed">
+          <span className="font-bold">Constraints:</span> {raw}
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        <p className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+          Constraints
+        </p>
+        {parsedItems.map((item, index) => {
+          if (!item || typeof item !== "object" || Array.isArray(item)) {
+            return (
+              <div
+                key={`constraint-${index}`}
+                className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-3 py-2 dark:border-emerald-700/40 dark:bg-emerald-900/20"
+              >
+                <p className="text-[11px] whitespace-pre-wrap leading-relaxed text-emerald-800 dark:text-emerald-300">
+                  {formatConstraintValue(item)}
+                </p>
+              </div>
+            );
+          }
+
+          const constraint = item as Record<string, unknown>;
+          const orderedKeys = constraintKeyOrder.filter((key) => key in constraint);
+          const remainingKeys = Object.keys(constraint).filter(
+            (key) =>
+              !constraintKeyOrder.includes(
+                key as (typeof constraintKeyOrder)[number],
+              ),
+          );
+          const allKeys = [...orderedKeys, ...remainingKeys];
+
+          return (
+            <div
+              key={`constraint-${index}`}
+              className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-3 py-2.5 dark:border-emerald-700/40 dark:bg-emerald-900/20"
+            >
+              {constraint.constraint && (
+                <p className="mb-2 text-[11px] font-semibold leading-relaxed text-emerald-900 dark:text-emerald-200">
+                  {String(constraint.constraint)}
+                </p>
+              )}
+              <div className="space-y-1.5">
+                {allKeys
+                  .filter((key) => key !== "constraint")
+                  .map((key) => (
+                    <div
+                      key={key}
+                      className="grid grid-cols-[92px_1fr] gap-2 text-[11px] leading-relaxed"
+                    >
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                        {toDisplayLabel(key)}:
+                      </span>
+                      <span className="whitespace-pre-wrap break-words text-emerald-800 dark:text-emerald-300">
+                        {formatConstraintValue(constraint[key])}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -1669,12 +1823,11 @@ export default function TestCaseDetailPage() {
                                             {coveredRequirementDetails[req.id].description}
                                           </p>
                                         )}
-                                        {coveredRequirementDetails[req.id].testableConstraints && (
-                                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap">
-                                            <span className="font-bold">Constraints:</span>{" "}
-                                            {coveredRequirementDetails[req.id].testableConstraints}
-                                          </p>
-                                        )}
+                                        {coveredRequirementDetails[req.id].testableConstraints &&
+                                          renderConstraintContent(
+                                            coveredRequirementDetails[req.id]
+                                              .testableConstraints,
+                                          )}
                                         {coveredRequirementDetails[req.id].assumptions && (
                                           <p className="text-[11px] text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap">
                                             <span className="font-bold">Assumptions:</span>{" "}
@@ -1714,12 +1867,11 @@ export default function TestCaseDetailPage() {
                                             {coveredRequirementDetails[reqId].description}
                                           </p>
                                         )}
-                                        {coveredRequirementDetails[reqId].testableConstraints && (
-                                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap">
-                                            <span className="font-bold">Constraints:</span>{" "}
-                                            {coveredRequirementDetails[reqId].testableConstraints}
-                                          </p>
-                                        )}
+                                        {coveredRequirementDetails[reqId].testableConstraints &&
+                                          renderConstraintContent(
+                                            coveredRequirementDetails[reqId]
+                                              .testableConstraints,
+                                          )}
                                       </div>
                                     )}
                                   </div>
