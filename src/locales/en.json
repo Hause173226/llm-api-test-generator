@@ -2218,6 +2218,7 @@
     "SrsDocumentsPage": {
       "srs_documents": "SRS Documents",
       "manage_srs_documents_run_analysis_and_re": "Manage SRS documents, run analysis, and review requirements.",
+      "ai_training_warning": "Warning: AI analysis may use uploaded documents for model training. Do not upload sensitive data.",
       "refresh": "Refresh",
       "new_srs": "New SRS",
       "documents": "Documents",
